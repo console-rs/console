@@ -60,6 +60,7 @@
 //! string as it would be displayed by the terminal.  Both of those together
 //! are useful for more complex formatting.
 #[cfg(unix)] extern crate libc;
+#[cfg(unix)] extern crate termios;
 #[cfg(windows)] extern crate winapi;
 #[cfg(windows)] extern crate kernel32;
 #[macro_use] extern crate lazy_static;

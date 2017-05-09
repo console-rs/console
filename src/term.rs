@@ -77,6 +77,20 @@ impl Term {
         }
     }
 
+    /// Read a single character from the terminal.
+    ///
+    /// This does not echo the character.
+    pub fn read_char(&self) -> io::Result<char> {
+        read_single_char()
+    }
+
+    /// Read one line of input.
+    pub fn read_line(&self) -> io::Result<String> {
+        let mut rv = String::new();
+        io::stdin().read_line(&mut rv)?;
+        Ok(rv)
+    }
+
     /// Flushes
     pub fn flush(&self) -> io::Result<()> {
         match self.buffer {

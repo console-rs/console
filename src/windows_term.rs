@@ -2,7 +2,7 @@ use std::io;
 use std::mem;
 use std::os::windows::io::{RawHandle, AsRawHandle};
 
-use winapi::{CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
+use winapi::{INT, CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
              CONSOLE_SCREEN_BUFFER_INFO, COORD};
 use kernel32::{GetConsoleScreenBufferInfo,
                GetConsoleMode, SetConsoleCursorPosition,
@@ -77,5 +77,16 @@ fn get_console_screen_buffer_info(hand: HANDLE)
     match unsafe { GetConsoleScreenBufferInfo(hand, &mut csbi) } {
         0 => None,
         _ => Some((hand, csbi)),
+    }
+}
+
+pub fn read_single_char() -> io::Result<char> {
+    extern "C" fn _getwch() -> INT;
+    let c = _getwch();
+    // this is bullshit, we should convert such thing into errors
+    if c == 0 || c == 0xe0 {
+        Ok(_getwch() as char)
+    } else {
+        c as char
     }
 }
