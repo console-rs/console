@@ -1,11 +1,11 @@
 use std::io;
 use std::mem;
 use std::char;
-use std::os::windows::io::{RawHandle, AsRawHandle};
+use std::os::windows::io::AsRawHandle;
 
 use winapi::{INT, CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
              CONSOLE_SCREEN_BUFFER_INFO, COORD};
-use kernel32::{GetConsoleScreenBufferInfo,
+use kernel32::{GetConsoleScreenBufferInfo, GetStdHandle,
                GetConsoleMode, SetConsoleCursorPosition,
                FillConsoleOutputCharacterA};
 
@@ -22,10 +22,10 @@ pub fn is_a_terminal(out: &Term) -> bool {
 }
 
 pub fn terminal_size() -> Option<(u16, u16)> {
-    let hand = STD_OUTPUT_HANDLE as RawHandle;
+    let hand = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
     if let Some((_, csbi)) = get_console_screen_buffer_info(hand) {
-        Some(((csbi.srWindow.Right - csbi.srWindow.Left) as u16,
-              (csbi.srWindow.Bottom - csbi.srWindow.Top) as u16))
+        Some(((csbi.srWindow.Bottom - csbi.srWindow.Top) as u16,
+              (csbi.srWindow.Right - csbi.srWindow.Left) as u16))
     } else {
         None
     }
