@@ -1,5 +1,6 @@
 use std::io;
 use std::mem;
+use std::char;
 use std::os::windows::io::{RawHandle, AsRawHandle};
 
 use winapi::{INT, CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
@@ -65,6 +66,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR,
                                         width as DWORD, pos, &mut written);
+            SetConsoleCursorPosition(hand, pos);
         }
     }
     Ok(())
@@ -80,13 +82,18 @@ fn get_console_screen_buffer_info(hand: HANDLE)
     }
 }
 
+extern "C" {
+    fn _getwch() -> INT;
+}
+
 pub fn read_single_char() -> io::Result<char> {
-    extern "C" fn _getwch() -> INT;
-    let c = _getwch();
-    // this is bullshit, we should convert such thing into errors
-    if c == 0 || c == 0xe0 {
-        Ok(_getwch() as char)
-    } else {
-        c as char
+    unsafe {
+        let c = _getwch();
+        // this is bullshit, we should convert such thing into errors
+        Ok(char::from_u32(if c == 0 || c == 0xe0 {
+            _getwch() as u32
+        } else {
+            c as u32
+        }).unwrap_or('\x00'))
     }
 }

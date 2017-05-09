@@ -91,7 +91,11 @@ impl Term {
         Ok(rv)
     }
 
-    /// Flushes
+    /// Flushes internal buffers.
+    ///
+    /// This forces the contents of the internal buffer to be written to
+    /// the terminal.  This is unnecessary for unbuffered terminals which
+    /// will automatically flush.
     pub fn flush(&self) -> io::Result<()> {
         match self.buffer {
             Some(ref buffer) => {
@@ -107,6 +111,9 @@ impl Term {
     }
 
     /// Checks if the terminal is indeed a terminal.
+    ///
+    /// Alternatively you can use the `user_attended` function which does
+    /// the same.
     pub fn is_term(&self) -> bool {
         is_a_terminal(self)
     }
@@ -136,11 +143,16 @@ impl Term {
     }
 
     /// Clears the current line.
+    ///
+    /// The positions the cursor at the beginning of the line again.
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
     }
 
     /// Clear the last `n` lines.
+    ///
+    /// This positions the cursor at the beginning of the first line
+    /// that was cleared.
     pub fn clear_last_lines(&self, n: usize) -> io::Result<()> {
         self.move_cursor_up(n)?;
         for _ in 0..n {
