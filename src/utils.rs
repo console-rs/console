@@ -6,6 +6,8 @@ use regex::Regex;
 use unicode_width::UnicodeWidthStr;
 use clicolors_control;
 
+use term::Term;
+
 /// Returns `true` if colors should be enabled.
 ///
 /// This honors the [clicolors spec](http://bixense.com/clicolors/).
@@ -347,6 +349,37 @@ impl_fmt!(Pointer);
 impl_fmt!(UpperExp);
 impl_fmt!(UpperHex);
 
+
+/// "Intelligent" emoji formatter.
+///
+/// This struct intelligently wraps an emoji so that it is rendered
+/// only on systems that want emojis and renders a fallback on others.
+///
+/// Example:
+///
+/// ```rust
+/// use console::Emoji;
+/// println!("[3/4] {}Downloading ...", Emoji("🚚 ", ""));
+/// println!("[4/4] {} Done!", Emoji("✨", ":-)"));
+/// ```
+#[derive(Copy, Clone)]
+pub struct Emoji<'a, 'b>(pub &'a str, pub &'b str);
+
+impl<'a, 'b> Emoji<'a, 'b> {
+    pub fn new(emoji: &'a str, fallback: &'b str) -> Emoji<'a, 'b> {
+        Emoji(emoji, fallback)
+    }
+}
+
+impl<'a, 'b> fmt::Display for Emoji<'a, 'b> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if Term::stdout().want_emoji() {
+            write!(f, "{}", self.0)
+        } else {
+            write!(f, "{}", self.1)
+        }
+    }
+}
 
 #[test]
 fn test_text_width() {

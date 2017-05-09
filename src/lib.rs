@@ -71,7 +71,7 @@ extern crate clicolors_control;
 
 pub use term::{Term, user_attended};
 pub use utils::{style, Style, StyledObject, Color, Attribute,
-                strip_ansi_codes, measure_text_width,
+                Emoji, strip_ansi_codes, measure_text_width,
                 colors_enabled, set_colors_enabled};
 
 mod term;
