@@ -215,5 +215,22 @@ impl AsRawHandle for Term {
     }
 }
 
+impl io::Write for Term {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.write_through(buf)?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl io::Read for Term {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        io::stdin().read(buf)
+    }
+}
+
 #[cfg(unix)] pub use unix_term::*;
 #[cfg(windows)] pub use windows_term::*;
