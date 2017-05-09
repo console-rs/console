@@ -80,3 +80,7 @@ pub fn read_single_char() -> io::Result<char> {
     termios::tcsetattr(fd, termios::TCSADRAIN, &original)?;
     rv
 }
+
+pub fn wants_emoji() -> bool {
+    cfg!(target_os = "macos")
+}

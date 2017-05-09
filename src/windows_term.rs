@@ -97,3 +97,7 @@ pub fn read_single_char() -> io::Result<char> {
         }).unwrap_or('\x00'))
     }
 }
+
+pub fn wants_emoji() -> bool {
+    false
+}

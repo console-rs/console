@@ -118,6 +118,11 @@ impl Term {
         is_a_terminal(self)
     }
 
+    /// Checks if this terminal wants emoji output.
+    pub fn want_emoji(&self) -> bool {
+        self.is_term() && wants_emoji()
+    }
+
     /// Returns the terminal size or gets sensible defaults.
     #[inline(always)]
     pub fn size(&self) -> (u16, u16) {
