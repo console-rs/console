@@ -78,6 +78,12 @@ pub fn read_single_char() -> io::Result<char> {
         }
     };
     termios::tcsetattr(fd, termios::TCSADRAIN, &original)?;
+
+    // if the user hit ^C we want to signal SIGINT to outselves.
+    if let Ok('\x03') = rv {
+        unsafe { libc::raise(libc::SIGINT); }
+    }
+
     rv
 }
 
