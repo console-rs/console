@@ -120,6 +120,24 @@ impl Term {
         Ok(rv)
     }
 
+    /// Read securely a line of input.
+    ///
+    /// This is similar to `read_line` but will not echo the output.  This
+    /// also switches the terminal into a different mode where not all
+    /// characters might be accepted.
+    pub fn read_secure_line(&self) -> io::Result<String> {
+        if !self.is_term() {
+            return Ok("".into());
+        }
+        match read_secure() {
+            Ok(rv) => {
+                self.write_line("")?;
+                Ok(rv)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     /// Flushes internal buffers.
     ///
     /// This forces the contents of the internal buffer to be written to

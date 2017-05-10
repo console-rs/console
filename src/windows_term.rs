@@ -96,8 +96,26 @@ pub fn key_from_key_code(code: INT) -> Key {
         winapi::VK_DOWN => Key::ArrowDown,
         winapi::VK_RETURN => Key::Enter,
         winapi::VK_ESCAPE => Key::Escape,
+        winapi::VK_BACK => Key::Char('\x08'),
+        winapi::VK_TAB => Key::Char('\x09'),
         _ => Key::Unknown,
     }
+}
+
+pub fn read_secure() -> io::Result<String> {
+    let mut rv = String::new();
+    loop {
+        match read_single_key()? {
+            Key::Return => { break; }
+            Key::Char('\x08') { 
+                if rv.len() > 0 {
+                    rv.truncate(rv.len() - 1);
+                }
+            }
+            Key::Char(c) => { rv.push(c); }
+        }
+    }
+    Ok(rv)
 }
 
 pub fn read_single_key() -> io::Result<Key> {

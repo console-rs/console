@@ -1,4 +1,5 @@
 use std::io;
+use std::io::{BufRead, BufReader};
 use std::fs;
 use std::mem;
 use std::str;
@@ -73,6 +74,41 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
             Key::Unknown
         }
     }
+}
+
+pub fn read_secure() -> io::Result<String> {
+    let f_tty;
+    let fd = unsafe {
+        if libc::isatty(libc::STDIN_FILENO) == 1 {
+            f_tty = None;
+            libc::STDIN_FILENO
+        } else {
+            let f = fs::File::open("/dev/tty")?;
+            let fd = f.as_raw_fd();
+            f_tty = Some(BufReader::new(f));
+            fd
+        }
+    };
+
+    let mut termios = termios::Termios::from_fd(fd)?;
+    let original = termios.clone();
+    termios.c_lflag &= !termios::ECHO;
+    termios::tcsetattr(fd, termios::TCSAFLUSH, &termios)?;
+    let mut rv = String::new();
+
+    let read_rv = if let Some(mut f) = f_tty {
+        f.read_line(&mut rv)
+    } else {
+        io::stdin().read_line(&mut rv)
+    };
+
+    termios::tcsetattr(fd, termios::TCSAFLUSH, &original)?;
+
+    read_rv.map(|_| {
+        let len = rv.trim_right_matches(&['\r', '\n'][..]).len();
+        rv.truncate(len);
+        rv
+    })
 }
 
 pub fn read_single_key() -> io::Result<Key> {
