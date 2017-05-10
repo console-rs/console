@@ -3,6 +3,7 @@ use std::mem;
 use std::char;
 use std::os::windows::io::AsRawHandle;
 
+use winapi;
 use winapi::{INT, CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
              CONSOLE_SCREEN_BUFFER_INFO, COORD};
 use kernel32::{GetConsoleScreenBufferInfo, GetStdHandle,
@@ -10,6 +11,7 @@ use kernel32::{GetConsoleScreenBufferInfo, GetStdHandle,
                FillConsoleOutputCharacterA};
 
 use term::Term;
+use kb::Key;
 
 pub const DEFAULT_WIDTH: u16 = 79;
 
@@ -86,15 +88,27 @@ extern "C" {
     fn _getwch() -> INT;
 }
 
-pub fn read_single_char() -> io::Result<char> {
+pub fn key_from_key_code(code: INT) -> Key {
+    match buf {
+        winapi::VK_LEFT => Key::ArrowLeft,
+        winapi::VK_RIGHT => Key::ArrowRight,
+        winapi::VK_UP => Key::ArrowUp,
+        winapi::VK_DOWN => Key::ArrowDown,
+        winapi::VK_RETURN => Key::Enter,
+        winapi::VK_ESCAPE => Key::Escape,
+        _ => Key::Unknown,
+    }
+}
+
+pub fn read_single_key() -> io::Result<Key> {
     unsafe {
         let c = _getwch();
         // this is bullshit, we should convert such thing into errors
-        Ok(char::from_u32(if c == 0 || c == 0xe0 {
-            _getwch() as u32
+        if c == 0 || c == 0xe0 {
+            Ok(key_from_key_code(_getwch() as u32))
         } else {
-            c as u32
-        }).unwrap_or('\x00'))
+            Ok(Key::Char(char::from_u32(c as u32).unwrap_or('\x00')))
+        }
     }
 }
 

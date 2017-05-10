@@ -69,6 +69,7 @@ extern crate parking_lot;
 extern crate unicode_width;
 extern crate clicolors_control;
 
+pub use kb::Key;
 pub use term::{Term, user_attended};
 pub use utils::{style, Style, StyledObject, Color, Attribute,
                 Emoji, strip_ansi_codes, measure_text_width,
@@ -76,5 +77,6 @@ pub use utils::{style, Style, StyledObject, Color, Attribute,
 
 mod term;
 mod utils;
+mod kb;
 #[cfg(unix)] mod unix_term;
 #[cfg(windows)] mod windows_term;

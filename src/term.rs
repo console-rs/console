@@ -6,6 +6,8 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
+use kb::Key;
+
 use parking_lot::Mutex;
 
 enum TermTarget {
@@ -77,17 +79,44 @@ impl Term {
         }
     }
 
-    /// Read a single character from the terminal.
+    /// Read a single character from the terminal
     ///
-    /// This does not echo the character.
+    /// This does not echo the character and blocks until a single character
+    /// is entered.
     pub fn read_char(&self) -> io::Result<char> {
-        read_single_char()
+        loop {
+            match self.read_key()? {
+                Key::Char(c) => { return Ok(c); }
+                Key::Enter => { return Ok('\n'); }
+                _ => {}
+            }
+        }
+    }
+
+    /// Read a single key form the terminal.
+    ///
+    /// This does not echo anything.  If the terminal is not user attended
+    /// the return value will always be the unknown key.
+    pub fn read_key(&self) -> io::Result<Key> {
+        if !self.is_term() {
+            Ok(Key::Unknown)
+        } else {
+            read_single_key()
+        }
     }
 
     /// Read one line of input.
+    ///
+    /// This does not include the trailing newline.  If the terminal is not
+    /// user attended the return value will always be an empty string.
     pub fn read_line(&self) -> io::Result<String> {
+        if !self.is_term() {
+            return Ok("".into());
+        }
         let mut rv = String::new();
         io::stdin().read_line(&mut rv)?;
+        let len = rv.trim_right_matches(&['\r', '\n'][..]).len();
+        rv.truncate(len);
         Ok(rv)
     }
 

@@ -1,12 +1,14 @@
 use std::io;
 use std::fs;
 use std::mem;
+use std::str;
 use std::os::unix::io::AsRawFd;
 
 use libc;
 use termios;
 
 use term::Term;
+use kb::Key;
 
 pub const DEFAULT_WIDTH: u16 = 80;
 
@@ -54,7 +56,26 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
     out.write_str(&format!("\r\x1b[2K"))
 }
 
-pub fn read_single_char() -> io::Result<char> {
+pub fn key_from_escape_codes(buf: &[u8]) -> Key {
+    match buf {
+        b"\x1b[D" => Key::ArrowLeft,
+        b"\x1b[C" => Key::ArrowRight,
+        b"\x1b[A" => Key::ArrowUp,
+        b"\x1b[B" => Key::ArrowDown,
+        b"\n" | b"\r" => Key::Enter,
+        b"\x1b[" => Key::Escape,
+        buf => {
+            if let Ok(s) = str::from_utf8(buf) {
+                if let Some(c) = s.chars().next() {
+                    return Key::Char(c);
+                }
+            }
+            Key::Unknown
+        }
+    }
+}
+
+pub fn read_single_key() -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -73,15 +94,19 @@ pub fn read_single_char() -> io::Result<char> {
         let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 20);
         if read < 0 {
             Err(io::Error::last_os_error())
+        } else if buf[0] == b'\x03' {
+            Err(io::Error::new(io::ErrorKind::Interrupted, "read interrupted"))
         } else {
-            Ok(buf[0] as char)
+            Ok(key_from_escape_codes(&buf[..read as usize]))
         }
     };
     termios::tcsetattr(fd, termios::TCSADRAIN, &original)?;
 
     // if the user hit ^C we want to signal SIGINT to outselves.
-    if let Ok('\x03') = rv {
-        unsafe { libc::raise(libc::SIGINT); }
+    if let Err(ref err) = rv {
+        if err.kind() == io::ErrorKind::Interrupted {
+            unsafe { libc::raise(libc::SIGINT); }
+        }
     }
 
     rv
