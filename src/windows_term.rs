@@ -89,7 +89,7 @@ extern "C" {
 }
 
 pub fn key_from_key_code(code: INT) -> Key {
-    match buf {
+    match code {
         winapi::VK_LEFT => Key::ArrowLeft,
         winapi::VK_RIGHT => Key::ArrowRight,
         winapi::VK_UP => Key::ArrowUp,
@@ -105,7 +105,7 @@ pub fn read_single_key() -> io::Result<Key> {
         let c = _getwch();
         // this is bullshit, we should convert such thing into errors
         if c == 0 || c == 0xe0 {
-            Ok(key_from_key_code(_getwch() as u32))
+            Ok(key_from_key_code(_getwch()))
         } else {
             Ok(Key::Char(char::from_u32(c as u32).unwrap_or('\x00')))
         }
