@@ -1,7 +1,7 @@
 [package]
 name = "console"
 description = "A terminal and console abstraction for Rust"
-version = "0.2.0"
+version = "0.3.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
