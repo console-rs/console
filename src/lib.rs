@@ -5,6 +5,7 @@
 //!
 //! Best paired with other libraries in the family:
 //!
+//! * [dialoguer](https://crates.io/crates/dialoguer)
 //! * [indicatif](https://crates.io/crates/indicatif)
 //!
 //! # Terminal Access
