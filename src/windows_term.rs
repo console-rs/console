@@ -109,7 +109,8 @@ pub fn read_secure() -> io::Result<String> {
             Key::Enter => { break; }
             Key::Char('\x08') => {
                 if rv.len() > 0 {
-                    rv.truncate(rv.len() - 1);
+                    let new_len = rv.len() - 1;
+                    rv.truncate(new_len);
                 }
             }
             Key::Char(c) => { rv.push(c); }
