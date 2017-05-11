@@ -113,6 +113,7 @@ pub fn read_secure() -> io::Result<String> {
                 }
             }
             Key::Char(c) => { rv.push(c); }
+            _ => {}
         }
     }
     Ok(rv)
