@@ -104,7 +104,7 @@ impl Attribute {
 }
 
 /// Defines the alignment for padding operations.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
     Left,
     Center,
