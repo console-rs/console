@@ -103,6 +103,14 @@ impl Attribute {
     }
 }
 
+/// Defines the alignment for padding operations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Alignment {
+    Left,
+    Center,
+    Right,
+}
+
 /// A stored style that can be applied.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Style {
@@ -449,6 +457,82 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
     }
 }
 
+/// Truncates a string to a certain number of characters.
+///
+/// This ensures that escape codes are not screwed up in the process.
+/// If the maximum length is hit the string will be truncated but
+/// escapes code will still be honored.  If truncation takes place
+/// the tail string will be appended.
+pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
+    let mut iter = AnsiCodeIterator::new(s);
+    let mut length = 0;
+    let mut rv = None;
+
+    while let Some(item) = iter.next() {
+        match item {
+            (s, false) => {
+                if rv.is_none() {
+                    if s.len() + length > width - tail.len() {
+                        let ts = iter.current_slice();
+                        let idx = ts.len() - s.len() + (width - length - tail.len());
+                        let mut buf = ts[..idx].to_string();
+                        buf.push_str(tail);
+                        rv = Some(buf);
+                    }
+                    length += s.len();
+                }
+            }
+            (s, true) => {
+                if rv.is_some() {
+                    rv.as_mut().unwrap().push_str(s);
+                }
+            }
+        }
+    }
+
+    if let Some(buf) = rv {
+        Cow::Owned(buf)
+    } else {
+        Cow::Borrowed(s)
+    }
+}
+
+/// Pads a string to fill a certain number of characters.
+///
+/// This will honor ansi codes correctly and allows you to align a string
+/// on the left, right or centered.  Additionally truncation can be enabled
+/// by setting `truncate` to a string that should be used as a truncation
+/// marker.
+pub fn pad_str<'a>(s: &'a str, width: usize,
+                   align: Alignment, truncate: Option<&str>) -> Cow<'a, str> {
+    let cols = measure_text_width(s);
+
+    if cols >= width {
+        return match truncate {
+            None => Cow::Borrowed(s),
+            Some(tail) => truncate_str(s, width, tail),
+        };
+    }
+
+    let diff = width - cols;
+
+    let (left_pad, right_pad) = match align {
+        Alignment::Left => (0, diff),
+        Alignment::Right => (diff, 0),
+        Alignment::Center => (diff / 2, diff - diff / 2),
+    };
+
+    let mut rv = String::new();
+    for _ in 0..left_pad {
+        rv.push(' ');
+    }
+    rv.push_str(s);
+    for _ in 0..right_pad {
+        rv.push(' ');
+    }
+    Cow::Owned(rv)
+}
+
 #[test]
 fn test_text_width() {
     let s = style("foo").red().on_black().bold().force_styling(true).to_string();
@@ -456,8 +540,32 @@ fn test_text_width() {
 }
 
 #[test]
+fn test_truncate_str() {
+    let s = format!("foo {}", style("bar").red().force_styling(true));
+    assert_eq!(&truncate_str(&s, 5, ""),
+               &format!("foo {}", style("b").red().force_styling(true)));
+    let s = format!("foo {}", style("bar").red().force_styling(true));
+    assert_eq!(&truncate_str(&s, 5, "!"),
+               &format!("foo {}", style("!").red().force_styling(true)));
+    let s = format!("foo {} baz", style("bar").red().force_styling(true));
+    assert_eq!(&truncate_str(&s, 10, "..."),
+               &format!("foo {}...", style("bar").red().force_styling(true)));
+}
+
+#[test]
+fn test_pad_str() {
+    assert_eq!(pad_str("foo", 7, Alignment::Center, None), "  foo  ");
+    assert_eq!(pad_str("foo", 7, Alignment::Left, None), "foo    ");
+    assert_eq!(pad_str("foo", 7, Alignment::Right, None), "    foo");
+    assert_eq!(pad_str("foo", 3, Alignment::Left, None), "foo");
+    assert_eq!(pad_str("foobar", 3, Alignment::Left, None), "foobar");
+    assert_eq!(pad_str("foobar", 3, Alignment::Left, Some("")), "foo");
+    assert_eq!(pad_str("foobarbaz", 6, Alignment::Left, Some("...")), "foo...");
+}
+
+#[test]
 fn test_ansi_iter_re() {
-    let s = format!("Hello {}!", style("World").red());
+    let s = format!("Hello {}!", style("World").red().force_styling(true));
     let mut iter = AnsiCodeIterator::new(&s);
     assert_eq!(iter.next(), Some(("Hello ", false)));
     assert_eq!(iter.current_slice(), "Hello ");

@@ -74,7 +74,8 @@ pub use kb::Key;
 pub use term::{Term, user_attended};
 pub use utils::{style, Style, StyledObject, Color, Attribute,
                 Emoji, strip_ansi_codes, measure_text_width,
-                colors_enabled, set_colors_enabled, AnsiCodeIterator};
+                colors_enabled, set_colors_enabled, AnsiCodeIterator,
+                pad_str, truncate_str};
 
 mod term;
 mod utils;
