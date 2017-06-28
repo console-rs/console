@@ -83,6 +83,7 @@ impl Color {
 pub enum Attribute {
     Bold,
     Dim,
+    Italic,
     Underlined,
     Blink,
     Reverse,
@@ -95,6 +96,7 @@ impl Attribute {
         match *self {
             Attribute::Bold => 1,
             Attribute::Dim => 2,
+            Attribute::Italic => 3,
             Attribute::Underlined => 4,
             Attribute::Blink => 5,
             Attribute::Reverse => 7,
@@ -232,6 +234,7 @@ impl Style {
     #[inline(always)] pub fn on_white(self) -> Style { self.bg(Color::White) }
     #[inline(always)] pub fn bold(self) -> Style { self.attr(Attribute::Bold) }
     #[inline(always)] pub fn dim(self) -> Style { self.attr(Attribute::Dim) }
+    #[inline(always)] pub fn italic(self) -> Style { self.attr(Attribute::Italic) }
     #[inline(always)] pub fn underlined(self) -> Style { self.attr(Attribute::Underlined) }
     #[inline(always)] pub fn blink(self) -> Style { self.attr(Attribute::Blink) }
     #[inline(always)] pub fn reverse(self) -> Style { self.attr(Attribute::Reverse) }
@@ -314,6 +317,7 @@ impl<D> StyledObject<D> {
     #[inline(always)] pub fn on_white(self) -> StyledObject<D> { self.bg(Color::White) }
     #[inline(always)] pub fn bold(self) -> StyledObject<D> { self.attr(Attribute::Bold) }
     #[inline(always)] pub fn dim(self) -> StyledObject<D> { self.attr(Attribute::Dim) }
+    #[inline(always)] pub fn italic(self) -> StyledObject<D> { self.attr(Attribute::Italic) }
     #[inline(always)] pub fn underlined(self) -> StyledObject<D> { self.attr(Attribute::Underlined) }
     #[inline(always)] pub fn blink(self) -> StyledObject<D> { self.attr(Attribute::Blink) }
     #[inline(always)] pub fn reverse(self) -> StyledObject<D> { self.attr(Attribute::Reverse) }
