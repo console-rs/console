@@ -21,14 +21,14 @@ pub fn is_a_terminal(out: &Term) -> bool {
     }
 }
 
-pub fn terminal_size() -> Option<(u16, u16)> {
+pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     unsafe {
-        if libc::isatty(libc::STDOUT_FILENO) != 1 {
+        if libc::isatty(out.as_raw_fd()) != 1 {
             return None;
         }
 
         let mut winsize: libc::winsize = mem::zeroed();
-        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut winsize);
+        libc::ioctl(out.as_raw_fd(), libc::TIOCGWINSZ, &mut winsize);
         if winsize.ws_row > 0 && winsize.ws_col > 0 {
             Some((winsize.ws_row as u16, winsize.ws_col as u16))
         } else {

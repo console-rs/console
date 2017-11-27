@@ -23,7 +23,7 @@ pub fn is_a_terminal(out: &Term) -> bool {
     }
 }
 
-pub fn terminal_size() -> Option<(u16, u16)> {
+pub fn terminal_size(_out: &Term) -> Option<(u16, u16)> {
     let hand = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
     if let Some((_, csbi)) = get_console_screen_buffer_info(hand) {
         Some(((csbi.srWindow.Bottom - csbi.srWindow.Top) as u16,
