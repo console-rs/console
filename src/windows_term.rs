@@ -4,22 +4,33 @@ use std::char;
 use std::os::windows::io::AsRawHandle;
 
 use winapi;
-use winapi::{INT, CHAR, DWORD, HANDLE, STD_OUTPUT_HANDLE,
-             CONSOLE_SCREEN_BUFFER_INFO, COORD};
-use kernel32::{GetConsoleScreenBufferInfo, GetStdHandle,
-               GetConsoleMode, SetConsoleCursorPosition,
-               FillConsoleOutputCharacterA};
+use winapi::shared::minwindef::{DWORD};
+use winapi::um::winbase::{STD_OUTPUT_HANDLE};
+use winapi::um::winnt::{INT, CHAR, HANDLE};
+use winapi::um::consoleapi::{GetConsoleMode};
+use winapi::um::processenv::{GetStdHandle};
+use winapi::um::wincon::{GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
+                         FillConsoleOutputCharacterA, COORD, 
+                         CONSOLE_SCREEN_BUFFER_INFO};
 
 use term::Term;
 use kb::Key;
 
 pub const DEFAULT_WIDTH: u16 = 79;
 
+pub fn as_handle(term: &Term) -> HANDLE {
+    // convert between winapi::um::winnt::HANDLE and std::os::windows::raw::HANDLE 
+    // which are both c_void. would be nice to find a better way to do this
+    unsafe {
+        ::std::mem::transmute(term.as_raw_handle())
+    }
+}
+
 
 pub fn is_a_terminal(out: &Term) -> bool {
     unsafe {
         let mut tmp = 0;
-        GetConsoleMode(out.as_raw_handle(), &mut tmp) != 0
+        GetConsoleMode(as_handle(out), &mut tmp) != 0
     }
 }
 
@@ -34,7 +45,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
 }
 
 pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(out.as_raw_handle()) {
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
             SetConsoleCursorPosition(hand, COORD {
                 X: 0,
@@ -46,7 +57,7 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(out.as_raw_handle()) {
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
             SetConsoleCursorPosition(hand, COORD {
                 X: 0,
@@ -58,7 +69,7 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn clear_line(out: &Term) -> io::Result<()> {
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(out.as_raw_handle()) {
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
             let width = csbi.srWindow.Right - csbi.srWindow.Left;
             let pos = COORD {
@@ -90,14 +101,14 @@ extern "C" {
 
 pub fn key_from_key_code(code: INT) -> Key {
     match code {
-        winapi::VK_LEFT => Key::ArrowLeft,
-        winapi::VK_RIGHT => Key::ArrowRight,
-        winapi::VK_UP => Key::ArrowUp,
-        winapi::VK_DOWN => Key::ArrowDown,
-        winapi::VK_RETURN => Key::Enter,
-        winapi::VK_ESCAPE => Key::Escape,
-        winapi::VK_BACK => Key::Char('\x08'),
-        winapi::VK_TAB => Key::Char('\x09'),
+        winapi::um::winuser::VK_LEFT => Key::ArrowLeft,
+        winapi::um::winuser::VK_RIGHT => Key::ArrowRight,
+        winapi::um::winuser::VK_UP => Key::ArrowUp,
+        winapi::um::winuser::VK_DOWN => Key::ArrowDown,
+        winapi::um::winuser::VK_RETURN => Key::Enter,
+        winapi::um::winuser::VK_ESCAPE => Key::Escape,
+        winapi::um::winuser::VK_BACK => Key::Char('\x08'),
+        winapi::um::winuser::VK_TAB => Key::Char('\x09'),
         _ => Key::Unknown,
     }
 }

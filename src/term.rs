@@ -256,8 +256,9 @@ impl AsRawFd for Term {
 impl AsRawHandle for Term {
 
     fn as_raw_handle(&self) -> RawHandle {
-        use winapi::{STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
-        use kernel32::GetStdHandle;
+        use winapi::um::winbase::{STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
+        use winapi::um::processenv::{GetStdHandle};        
+
         unsafe {
             GetStdHandle(match self.target {
                 TermTarget::Stdout => STD_OUTPUT_HANDLE,
