@@ -17,6 +17,9 @@ parking_lot = "0"
 regex = "0.2"
 unicode-width = "0.1"
 
+[patch.crates-io]
+clicolors-control = { git = "https://github.com/repi/clicolors-control", branch="winapi-0.3" }
+
 [target.'cfg(unix)'.dependencies]
 termios = "0.2"
 
