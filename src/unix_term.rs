@@ -28,7 +28,10 @@ pub fn terminal_size() -> Option<(u16, u16)> {
         }
 
         let mut winsize: libc::winsize = mem::zeroed();
-        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut winsize);
+        
+        // FIXME: ".into()" used as a temporary fix for a libc bug
+        // https://github.com/rust-lang/libc/pull/704
+        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut winsize);
         if winsize.ws_row > 0 && winsize.ws_col > 0 {
             Some((winsize.ws_row as u16, winsize.ws_col as u16))
         } else {
