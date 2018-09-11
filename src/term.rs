@@ -10,7 +10,9 @@ use kb::Key;
 
 use parking_lot::Mutex;
 
-enum TermTarget {
+/// Where the term is writing.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TermTarget {
     Stdout,
     Stderr,
 }
@@ -54,6 +56,10 @@ impl Term {
             target: TermTarget::Stderr,
             buffer: Some(Mutex::new(vec![])),
         }
+    }
+    /// Returns the targert
+    pub fn target(&self) -> TermTarget {
+        self.target
     }
 
     #[doc(hidden)]

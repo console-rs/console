@@ -4,17 +4,16 @@ use std::char;
 use std::os::windows::io::AsRawHandle;
 
 use winapi;
-use winapi::shared::minwindef::{DWORD};
-use winapi::um::winbase::{STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
+use winapi::shared::minwindef::DWORD;
+use winapi::um::winbase::STD_OUTPUT_HANDLE;
 use winapi::um::winnt::{INT, CHAR, HANDLE};
-use winapi::um::consoleapi::{GetConsoleMode};
 use winapi::um::processenv::{GetStdHandle};
 use winapi::um::wincon::{GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
                          FillConsoleOutputCharacterA, COORD, 
                          CONSOLE_SCREEN_BUFFER_INFO};
 
 use atty;
-use term::Term;
+use term::{Term, TermTarget};
 use kb::Key;
 
 pub const DEFAULT_WIDTH: u16 = 79;
@@ -28,9 +27,9 @@ pub fn as_handle(term: &Term) -> HANDLE {
 }
 
 pub fn is_a_terminal(out: &Term) -> bool {
-    let stream = match out.as_raw_handle() {
-        STD_OUTPUT_HANDLE => atty::Stream::Stdout,
-        STD_ERROR_HANDLE => atty::Stream::Stderr,
+    let stream = match out.target() {
+        TermTarget::Stdout => atty::Stream::Stdout,
+        TermTarget::Stderr => atty::Stream::Stderr,
         _ => return false
     };
     atty::is(stream)
