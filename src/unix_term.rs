@@ -5,6 +5,7 @@ use std::mem;
 use std::str;
 use std::os::unix::io::AsRawFd;
 
+use atty;
 use libc;
 use termios;
 
@@ -16,9 +17,12 @@ pub const DEFAULT_WIDTH: u16 = 80;
 
 #[inline(always)]
 pub fn is_a_terminal(out: &Term) -> bool {
-    unsafe {
-        libc::isatty(out.as_raw_fd()) == 1
-    }
+    let stream = match out.as_raw_fd() {
+        libc::STDOUT_FILENO => atty::Stream::Stdout,
+        libc::STDERR_FILENO => atty::Stream::Stderr,
+        _ => return false
+    };
+    atty::is(stream)
 }
 
 pub fn terminal_size() -> Option<(u16, u16)> {

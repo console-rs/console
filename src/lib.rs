@@ -68,6 +68,7 @@ extern crate regex;
 extern crate parking_lot;
 extern crate unicode_width;
 extern crate clicolors_control;
+extern crate atty;
 
 pub use kb::Key;
 pub use term::{Term, user_attended};
