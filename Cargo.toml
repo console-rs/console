@@ -16,6 +16,7 @@ libc = "0"
 parking_lot = "0"
 regex = "1"
 unicode-width = "0.1"
+atty = "0.2.11"
 
 [target.'cfg(unix)'.dependencies]
 termios = "0.3"
