@@ -509,6 +509,17 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 /// marker.
 pub fn pad_str<'a>(s: &'a str, width: usize,
                    align: Alignment, truncate: Option<&str>) -> Cow<'a, str> {
+    pad_str_with(s, width, align, truncate, ' ')
+}
+/// Pads a string with specific padding to fill a certain number of characters.
+///
+/// This will honor ansi codes correctly and allows you to align a string
+/// on the left, right or centered.  Additionally truncation can be enabled
+/// by setting `truncate` to a string that should be used as a truncation
+/// marker.
+pub fn pad_str_with<'a>(s: &'a str, width: usize,
+                        align: Alignment, truncate: Option<&str>,
+                        pad: char) -> Cow<'a, str> {
     let cols = measure_text_width(s);
 
     if cols >= width {
@@ -528,11 +539,11 @@ pub fn pad_str<'a>(s: &'a str, width: usize,
 
     let mut rv = String::new();
     for _ in 0..left_pad {
-        rv.push(' ');
+        rv.push(pad);
     }
     rv.push_str(s);
     for _ in 0..right_pad {
-        rv.push(' ');
+        rv.push(pad);
     }
     Cow::Owned(rv)
 }
@@ -565,6 +576,18 @@ fn test_pad_str() {
     assert_eq!(pad_str("foobar", 3, Alignment::Left, None), "foobar");
     assert_eq!(pad_str("foobar", 3, Alignment::Left, Some("")), "foo");
     assert_eq!(pad_str("foobarbaz", 6, Alignment::Left, Some("...")), "foo...");
+}
+
+
+#[test]
+fn test_pad_str_with() {
+    assert_eq!(pad_str_with("foo", 7, Alignment::Center, None, '#'), "##foo##");
+    assert_eq!(pad_str_with("foo", 7, Alignment::Left, None, '#'), "foo####");
+    assert_eq!(pad_str_with("foo", 7, Alignment::Right, None, '#'), "####foo");
+    assert_eq!(pad_str_with("foo", 3, Alignment::Left, None, '#'), "foo");
+    assert_eq!(pad_str_with("foobar", 3, Alignment::Left, None, '#'), "foobar");
+    assert_eq!(pad_str_with("foobar", 3, Alignment::Left, Some(""), '#'), "foo");
+    assert_eq!(pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'), "foo...");
 }
 
 #[test]
