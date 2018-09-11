@@ -1,26 +1,25 @@
+use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
-use std::fs;
 use std::mem;
-use std::str;
 use std::os::unix::io::AsRawFd;
+use std::str;
 
 use atty;
 use libc;
 use termios;
 
-use term::Term;
 use kb::Key;
+use term::Term;
 
 pub const DEFAULT_WIDTH: u16 = 80;
-
 
 #[inline(always)]
 pub fn is_a_terminal(out: &Term) -> bool {
     let stream = match out.as_raw_fd() {
         libc::STDOUT_FILENO => atty::Stream::Stdout,
         libc::STDERR_FILENO => atty::Stream::Stderr,
-        _ => return false
+        _ => return false,
     };
     atty::is(stream)
 }
@@ -32,7 +31,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
         }
 
         let mut winsize: libc::winsize = mem::zeroed();
-        
+
         // FIXME: ".into()" used as a temporary fix for a libc bug
         // https://github.com/rust-lang/libc/pull/704
         libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut winsize);
@@ -138,7 +137,10 @@ pub fn read_single_key() -> io::Result<Key> {
         if read < 0 {
             Err(io::Error::last_os_error())
         } else if buf[0] == b'\x03' {
-            Err(io::Error::new(io::ErrorKind::Interrupted, "read interrupted"))
+            Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "read interrupted",
+            ))
         } else {
             Ok(key_from_escape_codes(&buf[..read as usize]))
         }
@@ -148,7 +150,9 @@ pub fn read_single_key() -> io::Result<Key> {
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
         if err.kind() == io::ErrorKind::Interrupted {
-            unsafe { libc::raise(libc::SIGINT); }
+            unsafe {
+                libc::raise(libc::SIGINT);
+            }
         }
     }
 

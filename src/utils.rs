@@ -1,17 +1,17 @@
-use std::fmt;
-use std::collections::BTreeSet;
 use std::borrow::Cow;
+use std::collections::BTreeSet;
+use std::fmt;
 
-use regex::{Regex, Matches};
-use unicode_width::UnicodeWidthStr;
 use clicolors_control;
+use regex::{Matches, Regex};
+use unicode_width::UnicodeWidthStr;
 
 use term::Term;
 
-
 lazy_static! {
     static ref STRIP_ANSI_RE: Regex = Regex::new(
-        r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]").unwrap();
+        r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]"
+    ).unwrap();
 }
 
 /// Returns `true` if colors should be enabled.
@@ -129,7 +129,6 @@ impl Default for Style {
 }
 
 impl Style {
-
     /// Returns an empty default style.
     pub fn new() -> Style {
         Style {
@@ -172,7 +171,9 @@ impl Style {
                 "blink" => rv.blink(),
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
-                _ => { continue; }
+                _ => {
+                    continue;
+                }
             };
         }
         rv
@@ -182,7 +183,7 @@ impl Style {
     pub fn apply_to<D>(&self, val: D) -> StyledObject<D> {
         StyledObject {
             style: self.clone(),
-            val: val
+            val: val,
         }
     }
 
@@ -216,29 +217,98 @@ impl Style {
         self
     }
 
-    #[inline(always)] pub fn black(self) -> Style { self.fg(Color::Black) }
-    #[inline(always)] pub fn red(self) -> Style { self.fg(Color::Red) }
-    #[inline(always)] pub fn green(self) -> Style { self.fg(Color::Green) }
-    #[inline(always)] pub fn yellow(self) -> Style { self.fg(Color::Yellow) }
-    #[inline(always)] pub fn blue(self) -> Style { self.fg(Color::Blue) }
-    #[inline(always)] pub fn magenta(self) -> Style { self.fg(Color::Magenta) }
-    #[inline(always)] pub fn cyan(self) -> Style { self.fg(Color::Cyan) }
-    #[inline(always)] pub fn white(self) -> Style { self.fg(Color::White) }
-    #[inline(always)] pub fn on_black(self) -> Style { self.bg(Color::Black) }
-    #[inline(always)] pub fn on_red(self) -> Style { self.bg(Color::Red) }
-    #[inline(always)] pub fn on_green(self) -> Style { self.bg(Color::Green) }
-    #[inline(always)] pub fn on_yellow(self) -> Style { self.bg(Color::Yellow) }
-    #[inline(always)] pub fn on_blue(self) -> Style { self.bg(Color::Blue) }
-    #[inline(always)] pub fn on_magenta(self) -> Style { self.bg(Color::Magenta) }
-    #[inline(always)] pub fn on_cyan(self) -> Style { self.bg(Color::Cyan) }
-    #[inline(always)] pub fn on_white(self) -> Style { self.bg(Color::White) }
-    #[inline(always)] pub fn bold(self) -> Style { self.attr(Attribute::Bold) }
-    #[inline(always)] pub fn dim(self) -> Style { self.attr(Attribute::Dim) }
-    #[inline(always)] pub fn italic(self) -> Style { self.attr(Attribute::Italic) }
-    #[inline(always)] pub fn underlined(self) -> Style { self.attr(Attribute::Underlined) }
-    #[inline(always)] pub fn blink(self) -> Style { self.attr(Attribute::Blink) }
-    #[inline(always)] pub fn reverse(self) -> Style { self.attr(Attribute::Reverse) }
-    #[inline(always)] pub fn hidden(self) -> Style { self.attr(Attribute::Hidden) }
+    #[inline(always)]
+    pub fn black(self) -> Style {
+        self.fg(Color::Black)
+    }
+    #[inline(always)]
+    pub fn red(self) -> Style {
+        self.fg(Color::Red)
+    }
+    #[inline(always)]
+    pub fn green(self) -> Style {
+        self.fg(Color::Green)
+    }
+    #[inline(always)]
+    pub fn yellow(self) -> Style {
+        self.fg(Color::Yellow)
+    }
+    #[inline(always)]
+    pub fn blue(self) -> Style {
+        self.fg(Color::Blue)
+    }
+    #[inline(always)]
+    pub fn magenta(self) -> Style {
+        self.fg(Color::Magenta)
+    }
+    #[inline(always)]
+    pub fn cyan(self) -> Style {
+        self.fg(Color::Cyan)
+    }
+    #[inline(always)]
+    pub fn white(self) -> Style {
+        self.fg(Color::White)
+    }
+    #[inline(always)]
+    pub fn on_black(self) -> Style {
+        self.bg(Color::Black)
+    }
+    #[inline(always)]
+    pub fn on_red(self) -> Style {
+        self.bg(Color::Red)
+    }
+    #[inline(always)]
+    pub fn on_green(self) -> Style {
+        self.bg(Color::Green)
+    }
+    #[inline(always)]
+    pub fn on_yellow(self) -> Style {
+        self.bg(Color::Yellow)
+    }
+    #[inline(always)]
+    pub fn on_blue(self) -> Style {
+        self.bg(Color::Blue)
+    }
+    #[inline(always)]
+    pub fn on_magenta(self) -> Style {
+        self.bg(Color::Magenta)
+    }
+    #[inline(always)]
+    pub fn on_cyan(self) -> Style {
+        self.bg(Color::Cyan)
+    }
+    #[inline(always)]
+    pub fn on_white(self) -> Style {
+        self.bg(Color::White)
+    }
+    #[inline(always)]
+    pub fn bold(self) -> Style {
+        self.attr(Attribute::Bold)
+    }
+    #[inline(always)]
+    pub fn dim(self) -> Style {
+        self.attr(Attribute::Dim)
+    }
+    #[inline(always)]
+    pub fn italic(self) -> Style {
+        self.attr(Attribute::Italic)
+    }
+    #[inline(always)]
+    pub fn underlined(self) -> Style {
+        self.attr(Attribute::Underlined)
+    }
+    #[inline(always)]
+    pub fn blink(self) -> Style {
+        self.attr(Attribute::Blink)
+    }
+    #[inline(always)]
+    pub fn reverse(self) -> Style {
+        self.attr(Attribute::Reverse)
+    }
+    #[inline(always)]
+    pub fn hidden(self) -> Style {
+        self.attr(Attribute::Hidden)
+    }
 }
 
 /// Wraps an object for formatting for styling.
@@ -299,29 +369,98 @@ impl<D> StyledObject<D> {
         self
     }
 
-    #[inline(always)] pub fn black(self) -> StyledObject<D> { self.fg(Color::Black) }
-    #[inline(always)] pub fn red(self) -> StyledObject<D> { self.fg(Color::Red) }
-    #[inline(always)] pub fn green(self) -> StyledObject<D> { self.fg(Color::Green) }
-    #[inline(always)] pub fn yellow(self) -> StyledObject<D> { self.fg(Color::Yellow) }
-    #[inline(always)] pub fn blue(self) -> StyledObject<D> { self.fg(Color::Blue) }
-    #[inline(always)] pub fn magenta(self) -> StyledObject<D> { self.fg(Color::Magenta) }
-    #[inline(always)] pub fn cyan(self) -> StyledObject<D> { self.fg(Color::Cyan) }
-    #[inline(always)] pub fn white(self) -> StyledObject<D> { self.fg(Color::White) }
-    #[inline(always)] pub fn on_black(self) -> StyledObject<D> { self.bg(Color::Black) }
-    #[inline(always)] pub fn on_red(self) -> StyledObject<D> { self.bg(Color::Red) }
-    #[inline(always)] pub fn on_green(self) -> StyledObject<D> { self.bg(Color::Green) }
-    #[inline(always)] pub fn on_yellow(self) -> StyledObject<D> { self.bg(Color::Yellow) }
-    #[inline(always)] pub fn on_blue(self) -> StyledObject<D> { self.bg(Color::Blue) }
-    #[inline(always)] pub fn on_magenta(self) -> StyledObject<D> { self.bg(Color::Magenta) }
-    #[inline(always)] pub fn on_cyan(self) -> StyledObject<D> { self.bg(Color::Cyan) }
-    #[inline(always)] pub fn on_white(self) -> StyledObject<D> { self.bg(Color::White) }
-    #[inline(always)] pub fn bold(self) -> StyledObject<D> { self.attr(Attribute::Bold) }
-    #[inline(always)] pub fn dim(self) -> StyledObject<D> { self.attr(Attribute::Dim) }
-    #[inline(always)] pub fn italic(self) -> StyledObject<D> { self.attr(Attribute::Italic) }
-    #[inline(always)] pub fn underlined(self) -> StyledObject<D> { self.attr(Attribute::Underlined) }
-    #[inline(always)] pub fn blink(self) -> StyledObject<D> { self.attr(Attribute::Blink) }
-    #[inline(always)] pub fn reverse(self) -> StyledObject<D> { self.attr(Attribute::Reverse) }
-    #[inline(always)] pub fn hidden(self) -> StyledObject<D> { self.attr(Attribute::Hidden) }
+    #[inline(always)]
+    pub fn black(self) -> StyledObject<D> {
+        self.fg(Color::Black)
+    }
+    #[inline(always)]
+    pub fn red(self) -> StyledObject<D> {
+        self.fg(Color::Red)
+    }
+    #[inline(always)]
+    pub fn green(self) -> StyledObject<D> {
+        self.fg(Color::Green)
+    }
+    #[inline(always)]
+    pub fn yellow(self) -> StyledObject<D> {
+        self.fg(Color::Yellow)
+    }
+    #[inline(always)]
+    pub fn blue(self) -> StyledObject<D> {
+        self.fg(Color::Blue)
+    }
+    #[inline(always)]
+    pub fn magenta(self) -> StyledObject<D> {
+        self.fg(Color::Magenta)
+    }
+    #[inline(always)]
+    pub fn cyan(self) -> StyledObject<D> {
+        self.fg(Color::Cyan)
+    }
+    #[inline(always)]
+    pub fn white(self) -> StyledObject<D> {
+        self.fg(Color::White)
+    }
+    #[inline(always)]
+    pub fn on_black(self) -> StyledObject<D> {
+        self.bg(Color::Black)
+    }
+    #[inline(always)]
+    pub fn on_red(self) -> StyledObject<D> {
+        self.bg(Color::Red)
+    }
+    #[inline(always)]
+    pub fn on_green(self) -> StyledObject<D> {
+        self.bg(Color::Green)
+    }
+    #[inline(always)]
+    pub fn on_yellow(self) -> StyledObject<D> {
+        self.bg(Color::Yellow)
+    }
+    #[inline(always)]
+    pub fn on_blue(self) -> StyledObject<D> {
+        self.bg(Color::Blue)
+    }
+    #[inline(always)]
+    pub fn on_magenta(self) -> StyledObject<D> {
+        self.bg(Color::Magenta)
+    }
+    #[inline(always)]
+    pub fn on_cyan(self) -> StyledObject<D> {
+        self.bg(Color::Cyan)
+    }
+    #[inline(always)]
+    pub fn on_white(self) -> StyledObject<D> {
+        self.bg(Color::White)
+    }
+    #[inline(always)]
+    pub fn bold(self) -> StyledObject<D> {
+        self.attr(Attribute::Bold)
+    }
+    #[inline(always)]
+    pub fn dim(self) -> StyledObject<D> {
+        self.attr(Attribute::Dim)
+    }
+    #[inline(always)]
+    pub fn italic(self) -> StyledObject<D> {
+        self.attr(Attribute::Italic)
+    }
+    #[inline(always)]
+    pub fn underlined(self) -> StyledObject<D> {
+        self.attr(Attribute::Underlined)
+    }
+    #[inline(always)]
+    pub fn blink(self) -> StyledObject<D> {
+        self.attr(Attribute::Blink)
+    }
+    #[inline(always)]
+    pub fn reverse(self) -> StyledObject<D> {
+        self.attr(Attribute::Reverse)
+    }
+    #[inline(always)]
+    pub fn hidden(self) -> StyledObject<D> {
+        self.attr(Attribute::Hidden)
+    }
 }
 
 macro_rules! impl_fmt {
@@ -350,7 +489,7 @@ macro_rules! impl_fmt {
                 Ok(())
             }
         }
-    }
+    };
 }
 
 impl_fmt!(Binary);
@@ -362,7 +501,6 @@ impl_fmt!(Octal);
 impl_fmt!(Pointer);
 impl_fmt!(UpperExp);
 impl_fmt!(UpperHex);
-
 
 /// "Intelligent" emoji formatter.
 ///
@@ -507,8 +645,12 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 /// on the left, right or centered.  Additionally truncation can be enabled
 /// by setting `truncate` to a string that should be used as a truncation
 /// marker.
-pub fn pad_str<'a>(s: &'a str, width: usize,
-                   align: Alignment, truncate: Option<&str>) -> Cow<'a, str> {
+pub fn pad_str<'a>(
+    s: &'a str,
+    width: usize,
+    align: Alignment,
+    truncate: Option<&str>,
+) -> Cow<'a, str> {
     pad_str_with(s, width, align, truncate, ' ')
 }
 /// Pads a string with specific padding to fill a certain number of characters.
@@ -517,9 +659,13 @@ pub fn pad_str<'a>(s: &'a str, width: usize,
 /// on the left, right or centered.  Additionally truncation can be enabled
 /// by setting `truncate` to a string that should be used as a truncation
 /// marker.
-pub fn pad_str_with<'a>(s: &'a str, width: usize,
-                        align: Alignment, truncate: Option<&str>,
-                        pad: char) -> Cow<'a, str> {
+pub fn pad_str_with<'a>(
+    s: &'a str,
+    width: usize,
+    align: Alignment,
+    truncate: Option<&str>,
+    pad: char,
+) -> Cow<'a, str> {
     let cols = measure_text_width(s);
 
     if cols >= width {
@@ -550,21 +696,32 @@ pub fn pad_str_with<'a>(s: &'a str, width: usize,
 
 #[test]
 fn test_text_width() {
-    let s = style("foo").red().on_black().bold().force_styling(true).to_string();
+    let s = style("foo")
+        .red()
+        .on_black()
+        .bold()
+        .force_styling(true)
+        .to_string();
     assert_eq!(measure_text_width(&s), 3);
 }
 
 #[test]
 fn test_truncate_str() {
     let s = format!("foo {}", style("bar").red().force_styling(true));
-    assert_eq!(&truncate_str(&s, 5, ""),
-               &format!("foo {}", style("b").red().force_styling(true)));
+    assert_eq!(
+        &truncate_str(&s, 5, ""),
+        &format!("foo {}", style("b").red().force_styling(true))
+    );
     let s = format!("foo {}", style("bar").red().force_styling(true));
-    assert_eq!(&truncate_str(&s, 5, "!"),
-               &format!("foo {}", style("!").red().force_styling(true)));
+    assert_eq!(
+        &truncate_str(&s, 5, "!"),
+        &format!("foo {}", style("!").red().force_styling(true))
+    );
     let s = format!("foo {} baz", style("bar").red().force_styling(true));
-    assert_eq!(&truncate_str(&s, 10, "..."),
-               &format!("foo {}...", style("bar").red().force_styling(true)));
+    assert_eq!(
+        &truncate_str(&s, 10, "..."),
+        &format!("foo {}...", style("bar").red().force_styling(true))
+    );
 }
 
 #[test]
@@ -575,19 +732,39 @@ fn test_pad_str() {
     assert_eq!(pad_str("foo", 3, Alignment::Left, None), "foo");
     assert_eq!(pad_str("foobar", 3, Alignment::Left, None), "foobar");
     assert_eq!(pad_str("foobar", 3, Alignment::Left, Some("")), "foo");
-    assert_eq!(pad_str("foobarbaz", 6, Alignment::Left, Some("...")), "foo...");
+    assert_eq!(
+        pad_str("foobarbaz", 6, Alignment::Left, Some("...")),
+        "foo..."
+    );
 }
-
 
 #[test]
 fn test_pad_str_with() {
-    assert_eq!(pad_str_with("foo", 7, Alignment::Center, None, '#'), "##foo##");
-    assert_eq!(pad_str_with("foo", 7, Alignment::Left, None, '#'), "foo####");
-    assert_eq!(pad_str_with("foo", 7, Alignment::Right, None, '#'), "####foo");
+    assert_eq!(
+        pad_str_with("foo", 7, Alignment::Center, None, '#'),
+        "##foo##"
+    );
+    assert_eq!(
+        pad_str_with("foo", 7, Alignment::Left, None, '#'),
+        "foo####"
+    );
+    assert_eq!(
+        pad_str_with("foo", 7, Alignment::Right, None, '#'),
+        "####foo"
+    );
     assert_eq!(pad_str_with("foo", 3, Alignment::Left, None, '#'), "foo");
-    assert_eq!(pad_str_with("foobar", 3, Alignment::Left, None, '#'), "foobar");
-    assert_eq!(pad_str_with("foobar", 3, Alignment::Left, Some(""), '#'), "foo");
-    assert_eq!(pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'), "foo...");
+    assert_eq!(
+        pad_str_with("foobar", 3, Alignment::Left, None, '#'),
+        "foobar"
+    );
+    assert_eq!(
+        pad_str_with("foobar", 3, Alignment::Left, Some(""), '#'),
+        "foo"
+    );
+    assert_eq!(
+        pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
+        "foo..."
+    );
 }
 
 #[test]

@@ -66,7 +66,7 @@ impl Term {
     pub fn write_str(&self, s: &str) -> io::Result<()> {
         match self.buffer {
             Some(ref buffer) => buffer.lock().write_all(s.as_bytes()),
-            None => self.write_through(s.as_bytes())
+            None => self.write_through(s.as_bytes()),
         }
     }
 
@@ -79,9 +79,7 @@ impl Term {
                 buffer.push(b'\n');
                 Ok(())
             }
-            None => {
-                self.write_through(format!("{}\n", s).as_bytes())
-            }
+            None => self.write_through(format!("{}\n", s).as_bytes()),
         }
     }
 
@@ -92,8 +90,12 @@ impl Term {
     pub fn read_char(&self) -> io::Result<char> {
         loop {
             match self.read_key()? {
-                Key::Char(c) => { return Ok(c); }
-                Key::Enter => { return Ok('\n'); }
+                Key::Char(c) => {
+                    return Ok(c);
+                }
+                Key::Enter => {
+                    return Ok('\n');
+                }
                 _ => {}
             }
         }
@@ -248,7 +250,6 @@ pub fn user_attended() -> bool {
 
 #[cfg(unix)]
 impl AsRawFd for Term {
-
     fn as_raw_fd(&self) -> RawFd {
         use libc;
         match self.target {
@@ -260,10 +261,9 @@ impl AsRawFd for Term {
 
 #[cfg(windows)]
 impl AsRawHandle for Term {
-
     fn as_raw_handle(&self) -> RawHandle {
-        use winapi::um::winbase::{STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
-        use winapi::um::processenv::{GetStdHandle};        
+        use winapi::um::processenv::GetStdHandle;
+        use winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
 
         unsafe {
             GetStdHandle(match self.target {
@@ -291,5 +291,7 @@ impl io::Read for Term {
     }
 }
 
-#[cfg(unix)] pub use unix_term::*;
-#[cfg(windows)] pub use windows_term::*;
+#[cfg(unix)]
+pub use unix_term::*;
+#[cfg(windows)]
+pub use windows_term::*;

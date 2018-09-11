@@ -1,11 +1,10 @@
 extern crate console;
 
 use std::io;
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
-use console::{Term, style};
-
+use console::{style, Term};
 
 fn do_stuff() -> io::Result<()> {
     let term = Term::stdout();
