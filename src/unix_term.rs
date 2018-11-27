@@ -14,7 +14,7 @@ use term::Term;
 
 pub const DEFAULT_WIDTH: u16 = 80;
 
-#[inline(always)]
+#[inline]
 pub fn is_a_terminal(out: &Term) -> bool {
     let stream = match out.as_raw_fd() {
         libc::STDOUT_FILENO => atty::Stream::Stdout,
