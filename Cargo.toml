@@ -10,7 +10,7 @@ documentation = "https://docs.rs/console"
 readme = "README.md"
 
 [dependencies]
-clicolors-control = "0.3.0"
+clicolors-control = "0.3.1"
 lazy_static = "1"
 libc = "0"
 parking_lot = "0"

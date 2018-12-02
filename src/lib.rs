@@ -60,7 +60,6 @@
 //! from a string as well as `measure_text_width` to calculate the width of a
 //! string as it would be displayed by the terminal.  Both of those together
 //! are useful for more complex formatting.
-#[cfg(unix)]
 extern crate libc;
 #[cfg(unix)]
 extern crate termios;
@@ -85,6 +84,7 @@ mod kb;
 mod term;
 #[cfg(unix)]
 mod unix_term;
+mod common_term;
 mod utils;
 #[cfg(windows)]
 mod windows_term;
