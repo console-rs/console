@@ -121,3 +121,7 @@ pub fn read_single_key() -> io::Result<Key> {
 
     rv
 }
+
+pub fn wants_emoji() -> bool {
+    cfg!(target_os = "macos")
+}
