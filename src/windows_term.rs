@@ -1,28 +1,28 @@
 use std::char;
 use std::io;
 use std::mem;
-use std::slice;
 use std::os::windows::io::AsRawHandle;
+use std::slice;
 
 use winapi;
+use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
+use winapi::shared::minwindef::MAX_PATH;
+use winapi::um::fileapi::FILE_NAME_INFO;
+use winapi::um::minwinbase::FileNameInfo;
 use winapi::um::processenv::GetStdHandle;
+use winapi::um::winbase::GetFileInformationByHandleEx;
 use winapi::um::winbase::STD_OUTPUT_HANDLE;
 use winapi::um::wincon::{
     FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
     CONSOLE_SCREEN_BUFFER_INFO, COORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
-use winapi::ctypes::c_void;
-use winapi::um::winbase::GetFileInformationByHandleEx;
-use winapi::um::fileapi::FILE_NAME_INFO;
-use winapi::um::minwinbase::FileNameInfo;
-use winapi::shared::minwindef::MAX_PATH;
 
 use atty;
+use common_term;
 use kb::Key;
 use term::{Term, TermTarget};
-use common_term;
 
 pub const DEFAULT_WIDTH: u16 = 79;
 

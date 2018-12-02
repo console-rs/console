@@ -80,11 +80,11 @@ pub use utils::{
     truncate_str, Alignment, AnsiCodeIterator, Attribute, Color, Emoji, Style, StyledObject,
 };
 
+mod common_term;
 mod kb;
 mod term;
 #[cfg(unix)]
 mod unix_term;
-mod common_term;
 mod utils;
 #[cfg(windows)]
 mod windows_term;
