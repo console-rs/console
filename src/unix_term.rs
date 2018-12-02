@@ -122,6 +122,25 @@ pub fn read_single_key() -> io::Result<Key> {
     rv
 }
 
+pub fn key_from_escape_codes(buf: &[u8]) -> Key {
+    match buf {
+        b"\x1b[D" => Key::ArrowLeft,
+        b"\x1b[C" => Key::ArrowRight,
+        b"\x1b[A" => Key::ArrowUp,
+        b"\x1b[B" => Key::ArrowDown,
+        b"\n" | b"\r" => Key::Enter,
+        b"\x1b" => Key::Escape,
+        buf => {
+            if let Ok(s) = str::from_utf8(buf) {
+                if let Some(c) = s.chars().next() {
+                    return Key::Char(c);
+                }
+            }
+            Key::Unknown
+        }
+    }
+}
+
 pub fn wants_emoji() -> bool {
     cfg!(target_os = "macos")
 }
