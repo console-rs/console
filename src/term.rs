@@ -1,5 +1,6 @@
 use std::io;
 use std::io::Write;
+use std::sync::Arc;
 
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -17,54 +18,69 @@ pub enum TermTarget {
     Stderr,
 }
 
-/// Abstraction around a terminal.
-pub struct Term {
+#[derive(Debug)]
+pub struct TermInner {
     target: TermTarget,
     buffer: Option<Mutex<Vec<u8>>>,
 }
 
+/// Abstraction around a terminal.
+///
+/// A terminal can be cloned.  If a buffer is used it's shared across all
+/// clones which means it largely acts as a handle.
+#[derive(Clone, Debug)]
+pub struct Term {
+    inner: Arc<TermInner>,
+}
+
 impl Term {
+    fn with_inner(inner: TermInner) -> Term {
+        Term {
+            inner: Arc::new(inner),
+        }
+    }
+
     /// Return a new unbuffered terminal
     #[inline(always)]
     pub fn stdout() -> Term {
-        Term {
+        Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: None,
-        }
+        })
     }
 
     /// Return a new unbuffered terminal to stderr
     #[inline(always)]
     pub fn stderr() -> Term {
-        Term {
+        Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: None,
-        }
+        })
     }
 
     /// Return a new buffered terminal
     pub fn buffered_stdout() -> Term {
-        Term {
+        Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: Some(Mutex::new(vec![])),
-        }
+        })
     }
 
     /// Return a new buffered terminal to stderr
     pub fn buffered_stderr() -> Term {
-        Term {
+        Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: Some(Mutex::new(vec![])),
-        }
+        })
     }
     /// Returns the targert
     pub fn target(&self) -> TermTarget {
-        self.target
+        self.inner.target
     }
 
     #[doc(hidden)]
     pub fn write_str(&self, s: &str) -> io::Result<()> {
-        match self.buffer {
+        match self.inner.buffer {
             Some(ref buffer) => buffer.lock().write_all(s.as_bytes()),
             None => self.write_through(s.as_bytes()),
         }
@@ -72,7 +88,7 @@ impl Term {
 
     /// Writes a string to the terminal and adds a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
-        match self.buffer {
+        match self.inner.buffer {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock();
                 buffer.extend_from_slice(s.as_bytes());
@@ -152,7 +168,7 @@ impl Term {
     /// the terminal.  This is unnecessary for unbuffered terminals which
     /// will automatically flush.
     pub fn flush(&self) -> io::Result<()> {
-        match self.buffer {
+        match self.inner.buffer {
             Some(ref buffer) => {
                 let mut buffer = buffer.lock();
                 if !buffer.is_empty() {
@@ -226,7 +242,7 @@ impl Term {
     // helpers
 
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
-        match self.target {
+        match self.inner.target {
             TermTarget::Stdout => {
                 io::stdout().write_all(bytes)?;
                 io::stdout().flush()?;
@@ -252,7 +268,7 @@ pub fn user_attended() -> bool {
 impl AsRawFd for Term {
     fn as_raw_fd(&self) -> RawFd {
         use libc;
-        match self.target {
+        match self.inner.target {
             TermTarget::Stdout => libc::STDOUT_FILENO,
             TermTarget::Stderr => libc::STDERR_FILENO,
         }
@@ -266,7 +282,7 @@ impl AsRawHandle for Term {
         use winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
 
         unsafe {
-            GetStdHandle(match self.target {
+            GetStdHandle(match self.inner.target {
                 TermTarget::Stdout => STD_OUTPUT_HANDLE,
                 TermTarget::Stderr => STD_ERROR_HANDLE,
             }) as RawHandle
