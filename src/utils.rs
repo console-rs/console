@@ -9,9 +9,9 @@ use unicode_width::UnicodeWidthStr;
 use term::Term;
 
 lazy_static! {
-    static ref STRIP_ANSI_RE: Regex = Regex::new(
-        r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]"
-    ).unwrap();
+    static ref STRIP_ANSI_RE: Regex =
+        Regex::new(r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]")
+            .unwrap();
 }
 
 /// Returns `true` if colors should be enabled.
