@@ -12,12 +12,16 @@ use winapi::um::fileapi::FILE_NAME_INFO;
 use winapi::um::minwinbase::FileNameInfo;
 use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
-use winapi::um::winbase::STD_OUTPUT_HANDLE;
+use winapi::um::winbase::{STD_OUTPUT_HANDLE, STD_INPUT_HANDLE};
 use winapi::um::wincon::{
     FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
-    CONSOLE_SCREEN_BUFFER_INFO, COORD,
+    CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
+use winapi::um::consoleapi::{ReadConsoleInputW, GetNumberOfConsoleInputEvents};
+use winapi::um::handleapi::INVALID_HANDLE_VALUE;
+use encode_unicode::CharExt;
+use encode_unicode::error::InvalidUtf16Tuple;
 
 use atty;
 use common_term;
@@ -115,10 +119,6 @@ fn get_console_screen_buffer_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_SCREE
     }
 }
 
-extern "C" {
-    fn _getwch() -> INT;
-}
-
 pub fn key_from_key_code(code: INT) -> Key {
     match code {
         winapi::um::winuser::VK_LEFT => Key::ArrowLeft,
@@ -156,14 +156,116 @@ pub fn read_secure() -> io::Result<String> {
 }
 
 pub fn read_single_key() -> io::Result<Key> {
-    unsafe {
-        let c = _getwch();
-        // this is bullshit, we should convert such thing into errors
-        if c == 0 || c == 0xe0 {
-            Ok(key_from_key_code(_getwch()))
-        } else {
-            Ok(Key::Char(char::from_u32(c as u32).unwrap_or('\x00')))
+    let key_event = read_key_event()?;
+
+    let unicode_char = unsafe { *key_event.uChar.UnicodeChar() };
+    if unicode_char == 0 {
+        return Ok(key_from_key_code(key_event.wVirtualKeyCode as INT))
+    } else {
+        // This is a unicode character, in utf-16. Try to decode it by itself.
+        match char::from_utf16_tuple((unicode_char, None)) {
+            Ok(c) => {
+                // Maintain backward compatibility. The previous implementation (_getwch()) would return
+                // a special keycode for `Enter`, while ReadConsoleInputW() prefers to use '\r'.
+                if c == '\r' {
+                    Ok(Key::Enter)
+                } else {
+                    Ok(Key::Char(c))
+                }
+            },
+            // This is part of a surrogate pair. Try to read the second half.
+            Err(InvalidUtf16Tuple::MissingSecond) => {
+                // Confirm that there is a next character to read.
+                if get_key_event_count()? == 0 {
+                    let message = format!("Read invlid utf16 {}: {}", unicode_char, InvalidUtf16Tuple::MissingSecond);
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, message));
+                }
+                
+                // Read the next character.
+                let next_event = read_key_event()?;
+                let next_surrogate = unsafe { *next_event.uChar.UnicodeChar() };
+                
+                // Attempt to decode it.
+                match char::from_utf16_tuple((unicode_char, Some(next_surrogate))) {
+                    Ok(c) => {
+                        Ok(Key::Char(c))
+                    },
+
+                    // Return an InvalidData error. This is the recommended value for UTF-related I/O errors.
+                    // (This error is given when reading a non-UTF8 file into a String, for example.)
+                    Err(e) => {
+                        let message = format!("Read invalid surrogate pair ({}, {}): {}", unicode_char, next_surrogate, e);
+                        Err(io::Error::new(io::ErrorKind::InvalidData, message))
+                    }
+                }
+            },
+
+            // Return an InvalidData error. This is the recommended value for UTF-related I/O errors.
+            // (This error is given when reading a non-UTF8 file into a String, for example.)
+            Err(e) => {
+                let message = format!("Read invalid utf16 {}: {}", unicode_char, e);
+                Err(io::Error::new(io::ErrorKind::InvalidData, message))
+            }
         }
+    }
+}
+
+fn get_stdin_handle() -> io::Result<HANDLE> {
+    let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
+    if handle == INVALID_HANDLE_VALUE {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(handle)
+    }
+}
+
+/// Get the number of pending events in the ReadConsoleInput queue. Note that while
+/// these aren't necessarily key events, the only way that multiple events can be
+/// put into the queue simultaneously is if a unicode character spanning multiple u16's
+/// is read.
+///
+/// Therefore, this is accurate as long as at least one KEY_EVENT has already been read.
+fn get_key_event_count() -> io::Result<DWORD> {
+    let handle = get_stdin_handle()?;
+    let mut event_count: DWORD = unsafe { mem::zeroed() };
+
+    let success = unsafe { GetNumberOfConsoleInputEvents(handle, &mut event_count) };
+    if success == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(event_count)
+    }
+}
+
+fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
+    let handle = get_stdin_handle()?;
+    let mut buffer: INPUT_RECORD = unsafe { mem::zeroed() };
+
+    let mut events_read: DWORD = unsafe { mem::zeroed() };
+
+    let mut key_event: KEY_EVENT_RECORD;
+    loop {
+        let success = unsafe { ReadConsoleInputW(handle, &mut buffer, 1, &mut events_read) };
+        if success == 0 {
+            return Err(io::Error::last_os_error());
+        }
+        if events_read == 0 {
+            return Err(io::Error::new(io::ErrorKind::Other, "ReadConsoleInput returned no events, instead of waiting for an event"));
+        }
+
+        if events_read == 1 && buffer.EventType != KEY_EVENT {
+            // This isn't a key event; ignore it.
+            continue;
+        }
+
+        key_event = unsafe { mem::transmute(buffer.Event) };
+
+        if key_event.bKeyDown == 0 {
+            // This is a key being released; ignore it.
+            continue;
+        }
+
+        return Ok(key_event);
     }
 }
 

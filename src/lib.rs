@@ -65,6 +65,8 @@ extern crate libc;
 extern crate termios;
 #[cfg(windows)]
 extern crate winapi;
+#[cfg(windows)]
+extern crate encode_unicode;
 #[macro_use]
 extern crate lazy_static;
 extern crate atty;
