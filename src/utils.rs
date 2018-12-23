@@ -6,7 +6,7 @@ use clicolors_control;
 use regex::{Matches, Regex};
 use unicode_width::UnicodeWidthStr;
 
-use term::Term;
+use term::wants_emoji;
 
 lazy_static! {
     static ref STRIP_ANSI_RE: Regex =
@@ -525,7 +525,7 @@ impl<'a, 'b> Emoji<'a, 'b> {
 
 impl<'a, 'b> fmt::Display for Emoji<'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if Term::stdout().want_emoji() {
+        if wants_emoji() {
             write!(f, "{}", self.0)
         } else {
             write!(f, "{}", self.1)

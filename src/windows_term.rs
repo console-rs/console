@@ -282,7 +282,7 @@ pub fn wants_emoji() -> bool {
 }
 
 /// Returns true if there is an MSYS tty on the given handle.
-fn msys_tty_on(term: &Term) -> bool {
+pub fn msys_tty_on(term: &Term) -> bool {
     let handle = term.as_raw_handle();
     unsafe {
         let size = mem::size_of::<FILE_NAME_INFO>();

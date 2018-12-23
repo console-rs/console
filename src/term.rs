@@ -9,6 +9,7 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use kb::Key;
 
+use clicolors_control;
 use parking_lot::Mutex;
 
 /// Where the term is writing.
@@ -22,6 +23,42 @@ pub enum TermTarget {
 pub struct TermInner {
     target: TermTarget,
     buffer: Option<Mutex<Vec<u8>>>,
+}
+
+/// Gives access to the terminal features.
+#[derive(Debug, Clone)]
+pub struct TermFeatures<'a>(&'a Term);
+
+impl<'a> TermFeatures<'a> {
+    /// Checks if this is a real terminal (a tty)
+    #[inline]
+    pub fn is_atty(&self) -> bool {
+        is_a_terminal(self.0)
+    }
+
+    /// Checks if colors are supported by this terminal.
+    ///
+    /// This does not check if colors are enabled.  Currently all terminals
+    /// are considered to support colors
+    #[inline]
+    pub fn colors_supported(&self) -> bool {
+        clicolors_control::terminfo::supports_colors()
+    }
+
+    /// Checks if this terminal is an msys terminal.
+    ///
+    /// This is sometimes useful to disable features that are known to not
+    /// work on msys terminals or require special handling.
+    #[inline]
+    pub fn is_msys(&self) -> bool {
+        msys_tty_on(&self.0)
+    }
+
+    /// Checks if this terminal wants emojis.
+    #[inline]
+    pub fn wants_emoji(&self) -> bool {
+        self.0.is_term() && wants_emoji()
+    }
 }
 
 /// Abstraction around a terminal.
@@ -180,15 +217,21 @@ impl Term {
 
     /// Checks if the terminal is indeed a terminal.
     ///
-    /// Alternatively you can use the `user_attended` function which does
-    /// the same.
+    /// This is a shortcut for `features().is_atty()`.
     pub fn is_term(&self) -> bool {
-        is_a_terminal(self)
+        self.features().is_atty()
+    }
+
+    /// Checks for common terminal features.
+    #[inline]
+    pub fn features(&self) -> TermFeatures<'_> {
+        TermFeatures(self)
     }
 
     /// Checks if this terminal wants emoji output.
+    #[deprecated(note = "Use features().wants_emoji() instead", since = "0.8.0")]
     pub fn want_emoji(&self) -> bool {
-        self.is_term() && wants_emoji()
+        self.features().wants_emoji()
     }
 
     /// Returns the terminal size or gets sensible defaults.
@@ -256,9 +299,10 @@ impl Term {
 /// A fast way to check if the application has a user attended.
 ///
 /// This means that stdout is connected to a terminal instead of a
-/// file or redirected by other means.
+/// file or redirected by other means.  This is a shortcut for
+/// checking the `is_atty` flag on the stdout terminal.
 pub fn user_attended() -> bool {
-    Term::stdout().is_term()
+    Term::stdout().features().is_atty()
 }
 
 #[cfg(unix)]
