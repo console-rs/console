@@ -4,24 +4,24 @@ use std::mem;
 use std::os::windows::io::AsRawHandle;
 use std::slice;
 
+use encode_unicode::error::InvalidUtf16Tuple;
+use encode_unicode::CharExt;
 use winapi;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
+use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputW};
 use winapi::um::fileapi::FILE_NAME_INFO;
+use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::minwinbase::FileNameInfo;
 use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
-use winapi::um::winbase::{STD_OUTPUT_HANDLE, STD_INPUT_HANDLE};
+use winapi::um::winbase::{STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
 use winapi::um::wincon::{
     FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
     CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
-use winapi::um::consoleapi::{ReadConsoleInputW, GetNumberOfConsoleInputEvents};
-use winapi::um::handleapi::INVALID_HANDLE_VALUE;
-use encode_unicode::CharExt;
-use encode_unicode::error::InvalidUtf16Tuple;
 
 use atty;
 use common_term;
@@ -160,7 +160,7 @@ pub fn read_single_key() -> io::Result<Key> {
 
     let unicode_char = unsafe { *key_event.uChar.UnicodeChar() };
     if unicode_char == 0 {
-        return Ok(key_from_key_code(key_event.wVirtualKeyCode as INT))
+        return Ok(key_from_key_code(key_event.wVirtualKeyCode as INT));
     } else {
         // This is a unicode character, in utf-16. Try to decode it by itself.
         match char::from_utf16_tuple((unicode_char, None)) {
@@ -172,33 +172,38 @@ pub fn read_single_key() -> io::Result<Key> {
                 } else {
                     Ok(Key::Char(c))
                 }
-            },
+            }
             // This is part of a surrogate pair. Try to read the second half.
             Err(InvalidUtf16Tuple::MissingSecond) => {
                 // Confirm that there is a next character to read.
                 if get_key_event_count()? == 0 {
-                    let message = format!("Read invlid utf16 {}: {}", unicode_char, InvalidUtf16Tuple::MissingSecond);
+                    let message = format!(
+                        "Read invlid utf16 {}: {}",
+                        unicode_char,
+                        InvalidUtf16Tuple::MissingSecond
+                    );
                     return Err(io::Error::new(io::ErrorKind::InvalidData, message));
                 }
-                
+
                 // Read the next character.
                 let next_event = read_key_event()?;
                 let next_surrogate = unsafe { *next_event.uChar.UnicodeChar() };
-                
+
                 // Attempt to decode it.
                 match char::from_utf16_tuple((unicode_char, Some(next_surrogate))) {
-                    Ok(c) => {
-                        Ok(Key::Char(c))
-                    },
+                    Ok(c) => Ok(Key::Char(c)),
 
                     // Return an InvalidData error. This is the recommended value for UTF-related I/O errors.
                     // (This error is given when reading a non-UTF8 file into a String, for example.)
                     Err(e) => {
-                        let message = format!("Read invalid surrogate pair ({}, {}): {}", unicode_char, next_surrogate, e);
+                        let message = format!(
+                            "Read invalid surrogate pair ({}, {}): {}",
+                            unicode_char, next_surrogate, e
+                        );
                         Err(io::Error::new(io::ErrorKind::InvalidData, message))
                     }
                 }
-            },
+            }
 
             // Return an InvalidData error. This is the recommended value for UTF-related I/O errors.
             // (This error is given when reading a non-UTF8 file into a String, for example.)
@@ -250,7 +255,10 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
             return Err(io::Error::last_os_error());
         }
         if events_read == 0 {
-            return Err(io::Error::new(io::ErrorKind::Other, "ReadConsoleInput returned no events, instead of waiting for an event"));
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "ReadConsoleInput returned no events, instead of waiting for an event",
+            ));
         }
 
         if events_read == 1 && buffer.EventType != KEY_EVENT {

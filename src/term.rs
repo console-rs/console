@@ -168,15 +168,12 @@ impl Term {
     /// the terminal.  This is unnecessary for unbuffered terminals which
     /// will automatically flush.
     pub fn flush(&self) -> io::Result<()> {
-        match self.inner.buffer {
-            Some(ref buffer) => {
-                let mut buffer = buffer.lock();
-                if !buffer.is_empty() {
-                    self.write_through(&buffer[..])?;
-                    buffer.clear();
-                }
+        if let Some(ref buffer) = self.inner.buffer {
+            let mut buffer = buffer.lock();
+            if !buffer.is_empty() {
+                self.write_through(&buffer[..])?;
+                buffer.clear();
             }
-            None => {}
         }
         Ok(())
     }

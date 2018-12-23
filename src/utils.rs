@@ -64,8 +64,8 @@ pub enum Color {
 
 impl Color {
     #[inline]
-    fn ansi_num(&self) -> usize {
-        match *self {
+    fn ansi_num(self) -> usize {
+        match self {
             Color::Black => 0,
             Color::Red => 1,
             Color::Green => 2,
@@ -92,8 +92,8 @@ pub enum Attribute {
 
 impl Attribute {
     #[inline]
-    fn ansi_num(&self) -> usize {
-        match *self {
+    fn ansi_num(self) -> usize {
+        match self {
             Attribute::Bold => 1,
             Attribute::Dim => 2,
             Attribute::Italic => 3,
@@ -183,7 +183,7 @@ impl Style {
     pub fn apply_to<D>(&self, val: D) -> StyledObject<D> {
         StyledObject {
             style: self.clone(),
-            val: val,
+            val,
         }
     }
 
@@ -551,7 +551,7 @@ impl<'a> AnsiCodeIterator<'a> {
     /// Creates a new ansi code iterator.
     pub fn new(s: &'a str) -> AnsiCodeIterator<'a> {
         AnsiCodeIterator {
-            s: s,
+            s,
             pending_item: None,
             last_idx: 0,
             cur_idx: 0,

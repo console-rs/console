@@ -36,7 +36,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
 
         // FIXME: ".into()" used as a temporary fix for a libc bug
         // https://github.com/rust-lang/libc/pull/704
-        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut winsize);
+        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut winsize);
         if winsize.ws_row > 0 && winsize.ws_col > 0 {
             Some((winsize.ws_row as u16, winsize.ws_col as u16))
         } else {
@@ -60,7 +60,7 @@ pub fn read_secure() -> io::Result<String> {
     };
 
     let mut termios = termios::Termios::from_fd(fd)?;
-    let original = termios.clone();
+    let original = termios;
     termios.c_lflag &= !termios::ECHO;
     termios::tcsetattr(fd, termios::TCSAFLUSH, &termios)?;
     let mut rv = String::new();
@@ -92,7 +92,7 @@ pub fn read_single_key() -> io::Result<Key> {
     };
     let mut buf = [0u8; 20];
     let mut termios = termios::Termios::from_fd(fd)?;
-    let original = termios.clone();
+    let original = termios;
     termios::cfmakeraw(&mut termios);
     termios::tcsetattr(fd, termios::TCSADRAIN, &termios)?;
     let rv = unsafe {
