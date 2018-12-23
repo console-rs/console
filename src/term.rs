@@ -25,6 +25,17 @@ pub struct TermInner {
     buffer: Option<Mutex<Vec<u8>>>,
 }
 
+/// The family of the terminal.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TermFamily {
+    /// Redirected to a file or file like thing.
+    File,
+    /// A standard unix terminal.
+    UnixTerm,
+    /// A cmd.exe like windows console.
+    WindowsConsole,
+}
+
 /// Gives access to the terminal features.
 #[derive(Debug, Clone)]
 pub struct TermFeatures<'a>(&'a Term);
@@ -50,14 +61,33 @@ impl<'a> TermFeatures<'a> {
     /// This is sometimes useful to disable features that are known to not
     /// work on msys terminals or require special handling.
     #[inline]
-    pub fn is_msys(&self) -> bool {
-        msys_tty_on(&self.0)
+    pub fn is_msys_tty(&self) -> bool {
+        #[cfg(windows)] {
+            msys_tty_on(&self.0)
+        }
+        #[cfg(unix)] {
+            false
+        }
     }
 
     /// Checks if this terminal wants emojis.
     #[inline]
     pub fn wants_emoji(&self) -> bool {
-        self.0.is_term() && wants_emoji()
+        self.is_attended() && wants_emoji()
+    }
+
+    /// Returns the family of the terminal.
+    #[inline]
+    pub fn family(&self) -> TermFamily {
+        if !self.is_attended() {
+            return TermFamily::File
+        }
+        #[cfg(windows)] {
+            TermFamily::WindowsConsole
+        }
+        #[cfg(unix)] {
+            TermFamily::UnixTerm
+        }
     }
 }
 
