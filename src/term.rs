@@ -30,9 +30,9 @@ pub struct TermInner {
 pub struct TermFeatures<'a>(&'a Term);
 
 impl<'a> TermFeatures<'a> {
-    /// Checks if this is a real terminal (a tty)
+    /// Checks if this is a real user attended terminal (`isatty`)
     #[inline]
-    pub fn is_atty(&self) -> bool {
+    pub fn is_attended(&self) -> bool {
         is_a_terminal(self.0)
     }
 
@@ -217,9 +217,9 @@ impl Term {
 
     /// Checks if the terminal is indeed a terminal.
     ///
-    /// This is a shortcut for `features().is_atty()`.
+    /// This is a shortcut for `features().is_attended()`.
     pub fn is_term(&self) -> bool {
-        self.features().is_atty()
+        self.features().is_attended()
     }
 
     /// Checks for common terminal features.
@@ -300,9 +300,9 @@ impl Term {
 ///
 /// This means that stdout is connected to a terminal instead of a
 /// file or redirected by other means.  This is a shortcut for
-/// checking the `is_atty` flag on the stdout terminal.
+/// checking the `is_attended` flag on the stdout terminal.
 pub fn user_attended() -> bool {
-    Term::stdout().features().is_atty()
+    Term::stdout().features().is_attended()
 }
 
 #[cfg(unix)]
