@@ -41,7 +41,7 @@ impl Term {
     }
 
     /// Return a new unbuffered terminal
-    #[inline(always)]
+    #[inline]
     pub fn stdout() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
@@ -50,7 +50,7 @@ impl Term {
     }
 
     /// Return a new unbuffered terminal to stderr
-    #[inline(always)]
+    #[inline]
     pub fn stderr() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
@@ -195,7 +195,7 @@ impl Term {
     }
 
     /// Returns the terminal size or gets sensible defaults.
-    #[inline(always)]
+    #[inline]
     pub fn size(&self) -> (u16, u16) {
         self.size_checked().unwrap_or((24, DEFAULT_WIDTH))
     }
@@ -203,7 +203,7 @@ impl Term {
     /// Returns the terminal size in rows and columns.
     ///
     /// If the size cannot be reliably determined None is returned.
-    #[inline(always)]
+    #[inline]
     pub fn size_checked(&self) -> Option<(u16, u16)> {
         terminal_size()
     }
