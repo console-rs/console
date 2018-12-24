@@ -62,10 +62,12 @@ impl<'a> TermFeatures<'a> {
     /// work on msys terminals or require special handling.
     #[inline]
     pub fn is_msys_tty(&self) -> bool {
-        #[cfg(windows)] {
+        #[cfg(windows)]
+        {
             msys_tty_on(&self.0)
         }
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             false
         }
     }
@@ -80,12 +82,14 @@ impl<'a> TermFeatures<'a> {
     #[inline]
     pub fn family(&self) -> TermFamily {
         if !self.is_attended() {
-            return TermFamily::File
+            return TermFamily::File;
         }
-        #[cfg(windows)] {
+        #[cfg(windows)]
+        {
             TermFamily::WindowsConsole
         }
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             TermFamily::UnixTerm
         }
     }
