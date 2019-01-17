@@ -21,3 +21,7 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
 pub fn clear_line(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2K")
 }
+
+pub fn clear_screen(out: &Term) -> io::Result<()> {
+    out.write_str("\r\x1b[2J")
+}

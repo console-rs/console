@@ -313,6 +313,11 @@ impl Term {
         Ok(())
     }
 
+    /// Clears the entire screen.
+    pub fn clear_screen(&self) -> io::Result<()> {
+        clear_screen(self)
+    }
+
     // helpers
 
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
