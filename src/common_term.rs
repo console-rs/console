@@ -23,5 +23,5 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 }
 
 pub fn clear_screen(out: &Term) -> io::Result<()> {
-    out.write_str("\r\x1b[2J")
+    out.write_str("\r\x1b[2J\r\x1b[H")
 }
