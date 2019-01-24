@@ -117,10 +117,10 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
-            let cells = csbi.dwSize.X * csbi.dwSize.Y;
+            let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD; // as DWORD, or else this causes stack overflows.
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells as DWORD, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             SetConsoleCursorPosition(hand, pos);
         }
     }
