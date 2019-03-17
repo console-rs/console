@@ -117,7 +117,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
-            let cells = csbi.dwSize.X * csbi.dwSize.Y;
+            let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD;
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells as DWORD, pos, &mut written);
