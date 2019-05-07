@@ -10,7 +10,7 @@ use winapi;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
-use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputW, ReadConsoleInputA};
+use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputA, ReadConsoleInputW};
 use winapi::um::fileapi::FILE_NAME_INFO;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::minwinbase::FileNameInfo;
@@ -320,10 +320,20 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
 
         key_event = unsafe { mem::transmute(buffer.Event) };
 
-        // 1st case: This is a key being released; ignore it.
-        // 2nd case: Modifier keys do not have unicodes/ascii codes.
-        if key_event.bKeyDown == 0 || unsafe { *key_event.uChar.UnicodeChar() } == 0 {
+        // This is a key being released; ignore it.
+        if key_event.bKeyDown == 0 {
             continue;
+        }
+
+        // This is a shift; ignore it.
+        if unsafe { *key_event.uChar.UnicodeChar() } == 0 {
+            match key_event.wVirtualKeyCode as INT {
+                winapi::um::winuser::VK_LSHIFT | 
+                winapi::um::winuser::VK_RSHIFT => {
+                    continue;
+                }
+                _ => {}
+            }
         }
 
         return Ok(key_event);
