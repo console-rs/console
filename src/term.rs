@@ -292,6 +292,16 @@ impl Term {
         move_cursor_down(self, n)
     }
 
+    /// Moves the cursor right `n` lines
+    pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
+        move_cursor_right(self, n)
+    }
+
+    /// Move the cursor left `n` lines
+    pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
+        move_cursor_left(self, n)
+    }
+
     /// Clears the current line.
     ///
     /// The positions the cursor at the beginning of the line again.

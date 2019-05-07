@@ -65,7 +65,7 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
             SetConsoleCursorPosition(
                 hand,
                 COORD {
-                    X: 0,
+                    X: csbi.dwCursorPosition.X,
                     Y: csbi.dwCursorPosition.Y - n as i16,
                 },
             );
@@ -83,8 +83,44 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
             SetConsoleCursorPosition(
                 hand,
                 COORD {
-                    X: 0,
+                    X: csbi.dwCursorPosition.X,
                     Y: csbi.dwCursorPosition.Y + n as i16,
+                },
+            );
+        }
+    }
+    Ok(())
+}
+
+pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::move_cursor_right(out, n);
+    }
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        unsafe {
+            SetConsoleCursorPosition(
+                hand,
+                COORD {
+                    X: csbi.dwCursorPosition.X + n as i16,
+                    Y: csbi.dwCursorPosition.Y,
+                },
+            );
+        }
+    }
+    Ok(())
+}
+
+pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::move_cursor_left(out, n);
+    }
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        unsafe {
+            SetConsoleCursorPosition(
+                hand,
+                COORD {
+                    X: csbi.dwCursorPosition.X - n as i16,
+                    Y: csbi.dwCursorPosition.Y,
                 },
             );
         }

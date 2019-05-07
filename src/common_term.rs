@@ -18,6 +18,22 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
     }
 }
 
+pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
+    if n > 0 {
+        out.write_str(&format!("\x1b[{}C", n))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
+    if n > 0 {
+        out.write_str(&format!("\x1b[{}D", n))
+    } else {
+        Ok(())
+    }
+}
+
 pub fn clear_line(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2K")
 }
