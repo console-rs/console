@@ -328,8 +328,8 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
         // This is a shift; ignore it.
         if unsafe { *key_event.uChar.UnicodeChar() } == 0 {
             match key_event.wVirtualKeyCode as INT {
-                winapi::um::winuser::VK_LSHIFT | 
-                winapi::um::winuser::VK_RSHIFT => {
+                winapi::um::winuser::VK_SHIFT |
+                winapi::um::winuser::VK_CONTROL => {
                     continue;
                 }
                 _ => {}
