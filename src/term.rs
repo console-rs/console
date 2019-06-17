@@ -210,7 +210,7 @@ impl Term {
         }
         let mut rv = String::new();
         io::stdin().read_line(&mut rv)?;
-        let len = rv.trim_right_matches(&['\r', '\n'][..]).len();
+        let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
         rv.truncate(len);
         Ok(rv)
     }
@@ -347,7 +347,6 @@ pub fn user_attended() -> bool {
 #[cfg(unix)]
 impl AsRawFd for Term {
     fn as_raw_fd(&self) -> RawFd {
-        use libc;
         match self.inner.target {
             TermTarget::Stdout => libc::STDOUT_FILENO,
             TermTarget::Stderr => libc::STDERR_FILENO,
