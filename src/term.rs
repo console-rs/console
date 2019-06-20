@@ -380,7 +380,24 @@ impl io::Write for Term {
     }
 }
 
+impl<'a> io::Write for &'a Term {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.write_through(buf)?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 impl io::Read for Term {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        io::stdin().read(buf)
+    }
+}
+
+impl<'a> io::Read for &'a Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }

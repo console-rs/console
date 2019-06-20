@@ -1,6 +1,6 @@
 extern crate console;
 
-use std::io;
+use std::io::{self, Write};
 use std::thread;
 use std::time::Duration;
 
@@ -18,6 +18,7 @@ fn do_stuff() -> io::Result<()> {
     }
     term.clear_last_lines(1)?;
     term.write_line("Done counting!")?;
+    writeln!(&term, "Hello World!")?;
     Ok(())
 }
 
