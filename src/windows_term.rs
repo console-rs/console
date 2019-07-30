@@ -327,3 +327,5 @@ pub fn msys_tty_on(term: &Term) -> bool {
         is_msys && is_pty
     }
 }
+
+pub use common_term::{show_cursor, hide_cursor};
