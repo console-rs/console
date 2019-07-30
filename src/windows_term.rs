@@ -24,7 +24,7 @@ use winapi::um::wincon::{
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
 use atty;
-pub use common_term::{self, *};
+use common_term;
 use kb::Key;
 use term::{Term, TermTarget};
 
@@ -327,3 +327,5 @@ pub fn msys_tty_on(term: &Term) -> bool {
         is_msys && is_pty
     }
 }
+
+pub use common_term::{show_cursor, hide_cursor};
