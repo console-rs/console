@@ -24,7 +24,7 @@ use winapi::um::wincon::{
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
 use atty;
-pub use common_term::*;
+pub use common_term::{self, *};
 use kb::Key;
 use term::{Term, TermTarget};
 
