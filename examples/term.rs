@@ -8,6 +8,7 @@ use console::{style, Term};
 
 fn do_stuff() -> io::Result<()> {
     let term = Term::stdout();
+    term.set_title("Counting...");
     term.write_line("Going to do some counting now")?;
     for x in 0..10 {
         if x != 0 {

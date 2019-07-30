@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io;
 use std::io::Write;
 use std::sync::Arc;
@@ -316,6 +317,15 @@ impl Term {
     /// Clears the entire screen.
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
+    }
+
+    /// Set the terminal title
+    pub fn set_title<T: Display>(&self, title: T) {
+        if !self.is_term() {
+            return;
+        }
+
+        set_title(title);
     }
 
     // helpers

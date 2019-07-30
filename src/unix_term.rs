@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
@@ -143,4 +144,8 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
 
 pub fn wants_emoji() -> bool {
     cfg!(target_os = "macos")
+}
+
+pub fn set_title<T: Display>(title: T) {
+    print!("\x1b]0;{}\x07", title);
 }

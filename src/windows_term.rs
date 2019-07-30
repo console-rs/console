@@ -1,6 +1,10 @@
 use std::char;
+use std::ffi::OsStr;
+use std::fmt::Display;
 use std::io;
+use std::iter::once;
 use std::mem;
+use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::AsRawHandle;
 use std::slice;
 
@@ -19,7 +23,7 @@ use winapi::um::winbase::GetFileInformationByHandleEx;
 use winapi::um::winbase::{STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
 use winapi::um::wincon::{
     FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
-    CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
+    SetConsoleTitleW, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
@@ -325,5 +329,15 @@ pub fn msys_tty_on(term: &Term) -> bool {
         let is_msys = name.contains("msys-") || name.contains("cygwin-");
         let is_pty = name.contains("-pty");
         is_msys && is_pty
+    }
+}
+
+pub fn set_title<T: Display>(title: T) {
+    let buffer: Vec<u16> = OsStr::new(&format!("{}", title))
+        .encode_wide()
+        .chain(once(0))
+        .collect();
+    unsafe {
+        SetConsoleTitleW(buffer.as_ptr());
     }
 }
