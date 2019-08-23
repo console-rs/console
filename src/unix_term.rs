@@ -131,6 +131,7 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
         b"\x1b[B" => Key::ArrowDown,
         b"\n" | b"\r" => Key::Enter,
         b"\x1b" => Key::Escape,
+        b"\x7f" => Key::Backspace,
         buf => {
             if let Ok(s) = str::from_utf8(buf) {
                 if let Some(c) = s.chars().next() {

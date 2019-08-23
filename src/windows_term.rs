@@ -341,3 +341,5 @@ pub fn set_title<T: Display>(title: T) {
         SetConsoleTitleW(buffer.as_ptr());
     }
 }
+
+pub use common_term::{show_cursor, hide_cursor};
