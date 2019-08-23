@@ -71,7 +71,6 @@ extern crate winapi;
 extern crate lazy_static;
 extern crate atty;
 extern crate clicolors_control;
-extern crate parking_lot;
 extern crate regex;
 extern crate unicode_width;
 

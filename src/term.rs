@@ -1,6 +1,6 @@
 use std::io;
 use std::io::Write;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -10,7 +10,6 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 use kb::Key;
 
 use clicolors_control;
-use parking_lot::Mutex;
 
 /// Where the term is writing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -152,7 +151,7 @@ impl Term {
     #[doc(hidden)]
     pub fn write_str(&self, s: &str) -> io::Result<()> {
         match self.inner.buffer {
-            Some(ref buffer) => buffer.lock().write_all(s.as_bytes()),
+            Some(ref buffer) => buffer.lock().unwrap().write_all(s.as_bytes()),
             None => self.write_through(s.as_bytes()),
         }
     }
@@ -161,7 +160,7 @@ impl Term {
     pub fn write_line(&self, s: &str) -> io::Result<()> {
         match self.inner.buffer {
             Some(ref mutex) => {
-                let mut buffer = mutex.lock();
+                let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
                 buffer.push(b'\n');
                 Ok(())
@@ -240,7 +239,7 @@ impl Term {
     /// will automatically flush.
     pub fn flush(&self) -> io::Result<()> {
         if let Some(ref buffer) = self.inner.buffer {
-            let mut buffer = buffer.lock();
+            let mut buffer = buffer.lock().unwrap();
             if !buffer.is_empty() {
                 self.write_through(&buffer[..])?;
                 buffer.clear();
