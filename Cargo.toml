@@ -15,7 +15,6 @@ lazy_static = "1"
 libc = "0.2"
 regex = "1"
 unicode-width = "0.1"
-atty = "0.2.11"
 
 [target.'cfg(unix)'.dependencies]
 termios = "0.3"

@@ -69,7 +69,6 @@ extern crate termios;
 extern crate winapi;
 #[macro_use]
 extern crate lazy_static;
-extern crate atty;
 extern crate clicolors_control;
 extern crate regex;
 extern crate unicode_width;
