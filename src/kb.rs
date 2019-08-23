@@ -11,6 +11,7 @@ pub enum Key {
     ArrowDown,
     Enter,
     Escape,
+    Backspace,
     Char(char),
     #[doc(hidden)]
     __More,
