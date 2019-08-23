@@ -342,4 +342,4 @@ pub fn set_title<T: Display>(title: T) {
     }
 }
 
-pub use common_term::{show_cursor, hide_cursor};
+pub use common_term::{hide_cursor, show_cursor};
