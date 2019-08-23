@@ -16,14 +16,15 @@ use winapi::um::handleapi::INVALID_HANDLE_VALUE;
 use winapi::um::minwinbase::FileNameInfo;
 use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
-use winapi::um::winbase::{STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
+use winapi::um::winbase::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
+use winapi::um::consoleapi::GetConsoleMode;
 use winapi::um::wincon::{
-    FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
-    CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
+    FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo,
+    SetConsoleCursorPosition, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
+    KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
-use atty;
 use common_term;
 use kb::Key;
 use term::{Term, TermTarget};
@@ -37,11 +38,37 @@ pub fn as_handle(term: &Term) -> HANDLE {
 }
 
 pub fn is_a_terminal(out: &Term) -> bool {
-    let stream = match out.target() {
-        TermTarget::Stdout => atty::Stream::Stdout,
-        TermTarget::Stderr => atty::Stream::Stderr,
+    let (fd, others) = match out.target() {
+        TermTarget::Stdout => (STD_OUTPUT_HANDLE, [STD_INPUT_HANDLE, STD_ERROR_HANDLE]),
+        TermTarget::Stderr => (STD_ERROR_HANDLE, [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE]),
     };
-    atty::is(stream)
+
+    if unsafe { console_on_any(&[fd]) } {
+        // False positives aren't possible. If we got a console then
+        // we definitely have a tty on stdin.
+        return true;
+    }
+
+    // At this point, we *could* have a false negative. We can determine that
+    // this is true negative if we can detect the presence of a console on
+    // any of the other streams. If another stream has a console, then we know
+    // we're in a Windows console and can therefore trust the negative.
+    if unsafe { console_on_any(&others) } {
+        return false;
+    }
+
+    msys_tty_on(out)
+}
+
+unsafe fn console_on_any(fds: &[DWORD]) -> bool {
+    for &fd in fds {
+        let mut out = 0;
+        let handle = GetStdHandle(fd);
+        if GetConsoleMode(handle, &mut out) != 0 {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn terminal_size() -> Option<(u16, u16)> {
