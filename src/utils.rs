@@ -4,7 +4,7 @@ use std::fmt;
 
 use clicolors_control;
 use regex::{Matches, Regex};
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use term::wants_emoji;
 
@@ -614,14 +614,29 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
         match item {
             (s, false) => {
                 if rv.is_none() {
-                    if s.len() + length > width - tail.len() {
+                    if s.width() + length > width - tail.width() {
                         let ts = iter.current_slice();
-                        let idx = ts.len() - s.len() + (width - length - tail.len());
+
+                        let mut s_byte = 0;
+                        let mut s_width = 0;
+                        let mut rest_width = width - tail.width() - length;
+                        for c in s.chars() {
+                            s_byte += c.len_utf8();
+                            s_width += c.width().unwrap_or(0);
+                            if s_width == rest_width {
+                                break;
+                            } else if s_width > rest_width {
+                                s_byte -= c.len_utf8();
+                                break;
+                            }
+                        }
+
+                        let idx = ts.len() - s.len() + s_byte;
                         let mut buf = ts[..idx].to_string();
                         buf.push_str(tail);
                         rv = Some(buf);
                     }
-                    length += s.len();
+                    length += s.width();
                 }
             }
             (s, true) => {
@@ -721,6 +736,16 @@ fn test_truncate_str() {
     assert_eq!(
         &truncate_str(&s, 10, "..."),
         &format!("foo {}...", style("bar").red().force_styling(true))
+    );
+    let s = format!("foo {}", style("バー").red().force_styling(true));
+    assert_eq!(
+        &truncate_str(&s, 5, ""),
+        &format!("foo {}", style("").red().force_styling(true))
+    );
+    let s = format!("foo {}", style("バー").red().force_styling(true));
+    assert_eq!(
+        &truncate_str(&s, 6, ""),
+        &format!("foo {}", style("バ").red().force_styling(true))
     );
 }
 

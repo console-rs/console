@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
@@ -124,6 +125,7 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
         b"\x1b[B" => Key::ArrowDown,
         b"\n" | b"\r" => Key::Enter,
         b"\x1b" => Key::Escape,
+        b"\x7f" => Key::Backspace,
         buf => {
             if let Ok(s) = str::from_utf8(buf) {
                 if let Some(c) = s.chars().next() {
@@ -137,4 +139,8 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
 
 pub fn wants_emoji() -> bool {
     cfg!(target_os = "macos")
+}
+
+pub fn set_title<T: Display>(title: T) {
+    print!("\x1b]0;{}\x07", title);
 }

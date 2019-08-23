@@ -25,3 +25,13 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 pub fn clear_screen(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2J\r\x1b[H")
 }
+
+pub fn show_cursor(out: &Term) -> io::Result<()> {
+    let esc = "\u{001B}";
+    out.write_str(&format!("{}[0H{}[0J{}[?25h", esc, esc, esc))
+}
+
+pub fn hide_cursor(out: &Term) -> io::Result<()> {
+    let esc = "\u{001B}";
+    out.write_str(&format!("{}[?251", esc))
+}

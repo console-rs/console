@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
@@ -315,6 +316,24 @@ impl Term {
     /// Clears the entire screen.
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
+    }
+
+    /// Set the terminal title
+    pub fn set_title<T: Display>(&self, title: T) {
+        if !self.is_term() {
+            return;
+        }
+        set_title(title);
+    }
+
+    /// Makes cursor visible again
+    pub fn show_cursor(&self) -> io::Result<()> {
+        show_cursor(self)
+    }
+
+    /// Hides cursor
+    pub fn hide_cursor(&self) -> io::Result<()> {
+        hide_cursor(self)
     }
 
     // helpers
