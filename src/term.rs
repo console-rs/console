@@ -317,6 +317,16 @@ impl Term {
         clear_screen(self)
     }
 
+    /// Makes cursor visible again
+    pub fn show_cursor(&self) -> io::Result<()> {
+        show_cursor(self)
+    }
+
+    /// Hides cursor
+    pub fn hide_cursor(&self) -> io::Result<()> {
+        hide_cursor(self)
+    }
+
     // helpers
 
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
