@@ -10,6 +10,7 @@ use winapi;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
+use winapi::um::consoleapi::GetConsoleMode;
 use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputW};
 use winapi::um::fileapi::FILE_NAME_INFO;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
@@ -17,11 +18,9 @@ use winapi::um::minwinbase::FileNameInfo;
 use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
 use winapi::um::winbase::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
-use winapi::um::consoleapi::GetConsoleMode;
 use winapi::um::wincon::{
-    FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo,
-    SetConsoleCursorPosition, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
-    KEY_EVENT_RECORD,
+    FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
+    CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
