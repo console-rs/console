@@ -619,7 +619,7 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 
                         let mut s_byte = 0;
                         let mut s_width = 0;
-                        let mut rest_width = width - tail.width() - length;
+                        let rest_width = width - tail.width() - length;
                         for c in s.chars() {
                             s_byte += c.len_utf8();
                             s_width += c.width().unwrap_or(0);
