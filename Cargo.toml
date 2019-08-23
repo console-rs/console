@@ -12,7 +12,7 @@ readme = "README.md"
 [dependencies]
 clicolors-control = "1.0.0"
 lazy_static = "1"
-libc = "0"
+libc = "0.2"
 regex = "1"
 unicode-width = "0.1"
 atty = "0.2.11"
