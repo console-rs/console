@@ -8,6 +8,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
+use crate::common_term;
 use crate::kb::Key;
 
 /// Where the term is writing.
@@ -213,6 +214,41 @@ impl Term {
         Ok(rv)
     }
 
+    /// Read one line of input with initial text.
+    ///
+    /// This does not include the trailing newline.  If the terminal is not
+    /// user attended the return value will always be an empty string.
+    ///
+    pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
+        if !self.is_term() {
+            return Ok("".into());
+        }
+        self.write_str(initial)?;
+
+        let mut chars: Vec<char> = initial.chars().collect();
+
+        loop {
+            match self.read_key()? {
+                Key::Backspace => {
+                    if chars.pop().is_some() {
+                        self.clear_chars(1)?;
+                    }
+                    self.flush()?;
+                }
+                Key::Char(chr) => {
+                    chars.push(chr);
+                    let mut bytes_char = [0; 4];
+                    chr.encode_utf8(&mut bytes_char);
+                    self.write_str(chr.encode_utf8(&mut bytes_char))?;
+                    self.flush()?;
+                }
+                Key::Enter => break,
+                _ => (),
+            }
+        }
+        Ok(chars.iter().collect::<String>())
+    }
+
     /// Read securely a line of input.
     ///
     /// This is similar to `read_line` but will not echo the output.  This
@@ -319,6 +355,11 @@ impl Term {
     /// Clears the entire screen.
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
+    }
+
+    /// Clears the last char in the the current line.
+    pub fn clear_chars(&self, n: usize) -> io::Result<()> {
+        common_term::clear_chars(self, n)
     }
 
     /// Set the terminal title

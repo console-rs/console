@@ -22,6 +22,14 @@ pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
     out.write_str(&format!("\x1B[{};{}H", y + 1, x + 1))
 }
 
+pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
+    if n > 0 {
+        out.write_str(&format!("\x1b[{}D\x1b[0K", n))
+    } else {
+        Ok(())
+    }
+}
+
 pub fn clear_line(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2K")
 }
