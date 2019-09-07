@@ -10,7 +10,6 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use crate::kb::Key;
 
-use clicolors_control;
 
 /// Where the term is writing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

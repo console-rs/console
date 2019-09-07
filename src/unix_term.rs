@@ -6,9 +6,6 @@ use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::str;
 
-use libc;
-use termios;
-
 use crate::kb::Key;
 use crate::term::Term;
 

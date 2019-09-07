@@ -60,6 +60,12 @@
 //! from a string as well as `measure_text_width` to calculate the width of a
 //! string as it would be displayed by the terminal.  Both of those together
 //! are useful for more complex formatting.
+//!
+//! # Unicode Support
+//!
+//! By default this crate depends on the `unicode_width` crate to calculate
+//! the width of terminal characters.  If you do not need this you can disable
+//! the `unicode` feature which will cut down on dependencies.
 
 pub use crate::kb::Key;
 pub use crate::term::{user_attended, Term, TermFamily, TermFeatures, TermTarget};

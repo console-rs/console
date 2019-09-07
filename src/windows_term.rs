@@ -10,7 +10,6 @@ use std::slice;
 
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
-use winapi;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
@@ -28,9 +27,9 @@ use winapi::um::wincon::{
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
-use common_term;
-use kb::Key;
-use term::{Term, TermTarget};
+use crate::common_term;
+use crate::kb::Key;
+use crate::term::{Term, TermTarget};
 
 pub const DEFAULT_WIDTH: u16 = 79;
 
@@ -368,4 +367,4 @@ pub fn set_title<T: Display>(title: T) {
     }
 }
 
-pub use common_term::{hide_cursor, show_cursor};
+pub use crate::common_term::{hide_cursor, show_cursor};
