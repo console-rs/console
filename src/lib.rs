@@ -61,11 +61,11 @@
 //! string as it would be displayed by the terminal.  Both of those together
 //! are useful for more complex formatting.
 //!
-//! # Unicode Support
+//! # Unicode Width Support
 //!
-//! By default this crate depends on the `unicode_width` crate to calculate
+//! By default this crate depends on the `unicode-width` crate to calculate
 //! the width of terminal characters.  If you do not need this you can disable
-//! the `unicode` feature which will cut down on dependencies.
+//! the `unicode-width` feature which will cut down on dependencies.
 
 pub use crate::kb::Key;
 pub use crate::term::{user_attended, Term, TermFamily, TermFeatures, TermTarget};

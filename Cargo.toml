@@ -11,8 +11,7 @@ documentation = "https://docs.rs/console"
 readme = "README.md"
 
 [features]
-default = ["unicode"]
-unicode = ["unicode-width"]
+default = ["unicode-width"]
 
 [dependencies]
 clicolors-control = "1.0.0"
