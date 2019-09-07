@@ -282,6 +282,11 @@ impl Term {
         terminal_size()
     }
 
+    /// Moves the cursor to `x` and `y`
+    pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
+        move_cursor_to(self, x, y)
+    }
+
     /// Moves the cursor up `n` lines
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
