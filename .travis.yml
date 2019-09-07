@@ -6,5 +6,5 @@ rust:
   - nightly
 
 script:
-  - cargo test
-  - cargo test --no-default-features
+  - make test
+  - make lint

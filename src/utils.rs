@@ -598,21 +598,25 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
 }
 
 fn str_width(s: &str) -> usize {
-    #[cfg(feature = "unicode")] {
+    #[cfg(feature = "unicode")]
+    {
         use unicode_width::UnicodeWidthStr;
         s.width()
     }
-    #[cfg(not(feature = "unicode"))] {
+    #[cfg(not(feature = "unicode"))]
+    {
         s.chars().count()
     }
 }
 
 fn char_width(c: char) -> usize {
-    #[cfg(feature = "unicode")] {
+    #[cfg(feature = "unicode")]
+    {
         use unicode_width::UnicodeWidthChar;
         c.width().unwrap_or(0)
     }
-    #[cfg(not(feature = "unicode"))] {
+    #[cfg(not(feature = "unicode"))]
+    {
         let _c = c;
         1
     }

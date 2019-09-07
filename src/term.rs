@@ -10,7 +10,6 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use crate::kb::Key;
 
-
 /// Where the term is writing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TermTarget {

@@ -1,5 +1,3 @@
-
-
 use console::style;
 
 fn main() {
