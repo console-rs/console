@@ -7,4 +7,4 @@ rust:
 
 script:
   - make test
-  - make lint
+  - if [ "$TRAVIS_RUST_VERSION" = stable ]; then make lint; fi
