@@ -373,8 +373,8 @@ impl AsRawFd for Term {
 #[cfg(windows)]
 impl AsRawHandle for Term {
     fn as_raw_handle(&self) -> RawHandle {
-        use crate::winapi::um::processenv::GetStdHandle;
-        use crate::winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
+        use winapi::um::processenv::GetStdHandle;
+        use winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
 
         unsafe {
             GetStdHandle(match self.inner.target {
