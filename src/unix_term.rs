@@ -9,10 +9,10 @@ use std::str;
 use libc;
 use termios;
 
-use kb::Key;
-use term::Term;
+use crate::kb::Key;
+use crate::term::Term;
 
-pub use common_term::*;
+pub use crate::common_term::*;
 
 pub const DEFAULT_WIDTH: u16 = 80;
 

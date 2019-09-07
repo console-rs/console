@@ -6,7 +6,7 @@ use clicolors_control;
 use regex::{Matches, Regex};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use term::wants_emoji;
+use crate::term::wants_emoji;
 
 lazy_static! {
     static ref STRIP_ANSI_RE: Regex =

@@ -8,7 +8,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
-use kb::Key;
+use crate::kb::Key;
 
 use clicolors_control;
 
@@ -422,6 +422,6 @@ impl<'a> io::Read for &'a Term {
 }
 
 #[cfg(unix)]
-pub use unix_term::*;
+pub use crate::unix_term::*;
 #[cfg(windows)]
 pub use windows_term::*;

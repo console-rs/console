@@ -5,6 +5,7 @@ version = "0.8.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
+edition = "2018"
 homepage = "https://github.com/mitsuhiko/console"
 documentation = "https://docs.rs/console"
 readme = "README.md"
