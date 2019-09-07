@@ -1,4 +1,4 @@
-extern crate console;
+
 
 use console::style;
 

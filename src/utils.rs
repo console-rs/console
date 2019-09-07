@@ -4,11 +4,10 @@ use std::fmt;
 
 use clicolors_control;
 use regex::{Matches, Regex};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::term::wants_emoji;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref STRIP_ANSI_RE: Regex =
         Regex::new(r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]")
             .unwrap();
@@ -46,7 +45,7 @@ pub fn strip_ansi_codes(s: &str) -> Cow<str> {
 
 /// Measure the width of a string in terminal characters.
 pub fn measure_text_width(s: &str) -> usize {
-    strip_ansi_codes(s).width()
+    str_width(&strip_ansi_codes(s))
 }
 
 /// A terminal color.
@@ -599,6 +598,27 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
     }
 }
 
+fn str_width(s: &str) -> usize {
+    #[cfg(feature = "unicode")] {
+        use unicode_width::UnicodeWidthStr;
+        s.width()
+    }
+    #[cfg(not(feature = "unicode"))] {
+        s.chars().count()
+    }
+}
+
+fn char_width(c: char) -> usize {
+    #[cfg(feature = "unicode")] {
+        use unicode_width::UnicodeWidthChar;
+        c.width().unwrap_or(0)
+    }
+    #[cfg(not(feature = "unicode"))] {
+        let _c = c;
+        1
+    }
+}
+
 /// Truncates a string to a certain number of characters.
 ///
 /// This ensures that escape codes are not screwed up in the process.
@@ -614,15 +634,15 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
         match item {
             (s, false) => {
                 if rv.is_none() {
-                    if s.width() + length > width - tail.width() {
+                    if str_width(s) + length > width - str_width(tail) {
                         let ts = iter.current_slice();
 
                         let mut s_byte = 0;
                         let mut s_width = 0;
-                        let rest_width = width - tail.width() - length;
+                        let rest_width = width - str_width(tail) - length;
                         for c in s.chars() {
                             s_byte += c.len_utf8();
-                            s_width += c.width().unwrap_or(0);
+                            s_width += char_width(c);
                             if s_width == rest_width {
                                 break;
                             } else if s_width > rest_width {
@@ -636,7 +656,7 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
                         buf.push_str(tail);
                         rv = Some(buf);
                     }
-                    length += s.width();
+                    length += str_width(s);
                 }
             }
             (s, true) => {
@@ -721,6 +741,7 @@ fn test_text_width() {
 }
 
 #[test]
+#[cfg(feature = "unicode")]
 fn test_truncate_str() {
     let s = format!("foo {}", style("bar").red().force_styling(true));
     assert_eq!(

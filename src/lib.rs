@@ -60,18 +60,6 @@
 //! from a string as well as `measure_text_width` to calculate the width of a
 //! string as it would be displayed by the terminal.  Both of those together
 //! are useful for more complex formatting.
-#[cfg(windows)]
-extern crate encode_unicode;
-extern crate libc;
-#[cfg(unix)]
-extern crate termios;
-#[cfg(windows)]
-extern crate winapi;
-#[macro_use]
-extern crate lazy_static;
-extern crate clicolors_control;
-extern crate regex;
-extern crate unicode_width;
 
 pub use crate::kb::Key;
 pub use crate::term::{user_attended, Term, TermFamily, TermFeatures, TermTarget};
