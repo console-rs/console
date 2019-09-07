@@ -1,5 +1,3 @@
-extern crate console;
-
 use std::io::{self, Write};
 use std::thread;
 use std::time::Duration;

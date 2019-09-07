@@ -10,7 +10,6 @@ use std::slice;
 
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
-use winapi;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
@@ -28,9 +27,9 @@ use winapi::um::wincon::{
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
-use common_term;
-use kb::Key;
-use term::{Term, TermTarget};
+use crate::common_term;
+use crate::kb::Key;
+use crate::term::{Term, TermTarget};
 
 pub const DEFAULT_WIDTH: u16 = 79;
 
@@ -90,7 +89,7 @@ pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
     if msys_tty_on(out) {
         return common_term::move_cursor_to(out, x, y);
     }
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+    if let Some((hand, _)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
             SetConsoleCursorPosition(
                 hand,
@@ -109,8 +108,8 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
         return common_term::move_cursor_up(out, n);
     }
 
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
-        move_cursor_to(out, 0, csbi.dwCursorPosition.Y as usize - n);
+    if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        move_cursor_to(out, 0, csbi.dwCursorPosition.Y as usize - n)?;
     }
     Ok(())
 }
@@ -120,8 +119,8 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
         return common_term::move_cursor_down(out, n);
     }
 
-    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
-        move_cursor_to(out, 0, csbi.dwCursorPosition.Y as usize + n);
+    if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        move_cursor_to(out, 0, csbi.dwCursorPosition.Y as usize + n)?;
     }
     Ok(())
 }
@@ -372,4 +371,4 @@ pub fn set_title<T: Display>(title: T) {
     }
 }
 
-pub use common_term::{hide_cursor, show_cursor};
+pub use crate::common_term::{hide_cursor, show_cursor};

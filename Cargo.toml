@@ -5,16 +5,20 @@ version = "0.8.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
+edition = "2018"
 homepage = "https://github.com/mitsuhiko/console"
 documentation = "https://docs.rs/console"
 readme = "README.md"
+
+[features]
+default = ["unicode-width"]
 
 [dependencies]
 clicolors-control = "1.0.0"
 lazy_static = "1"
 libc = "0.2"
-regex = "1"
-unicode-width = "0.1"
+regex = { version = "1.3.1", default-features = false, features = ["std"] }
+unicode-width = { version = "0.1", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 termios = "0.3"

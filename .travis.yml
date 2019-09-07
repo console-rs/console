@@ -6,4 +6,5 @@ rust:
   - nightly
 
 script:
-  - cargo test
+  - make test
+  - if [ "$TRAVIS_RUST_VERSION" = stable ]; then make lint; fi

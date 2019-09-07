@@ -1,5 +1,3 @@
-extern crate console;
-
 use console::style;
 
 fn main() {

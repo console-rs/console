@@ -8,9 +8,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
-use kb::Key;
-
-use clicolors_control;
+use crate::kb::Key;
 
 /// Where the term is writing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -427,6 +425,6 @@ impl<'a> io::Read for &'a Term {
 }
 
 #[cfg(unix)]
-pub use unix_term::*;
+pub use crate::unix_term::*;
 #[cfg(windows)]
-pub use windows_term::*;
+pub use crate::windows_term::*;

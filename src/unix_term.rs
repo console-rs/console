@@ -6,13 +6,10 @@ use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::str;
 
-use libc;
-use termios;
+use crate::kb::Key;
+use crate::term::Term;
 
-use kb::Key;
-use term::Term;
-
-pub use common_term::*;
+pub use crate::common_term::*;
 
 pub const DEFAULT_WIDTH: u16 = 80;
 
@@ -31,6 +28,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
 
         // FIXME: ".into()" used as a temporary fix for a libc bug
         // https://github.com/rust-lang/libc/pull/704
+        #[allow(clippy::identity_conversion)]
         libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut winsize);
         if winsize.ws_row > 0 && winsize.ws_col > 0 {
             Some((winsize.ws_row as u16, winsize.ws_col as u16))

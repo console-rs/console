@@ -1,6 +1,6 @@
 use std::io;
 
-use term::Term;
+use crate::term::Term;
 
 pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
