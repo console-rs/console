@@ -18,7 +18,6 @@ lint:
 
 update-readme:
 	@cargo readme > README.md
-	@cd cargo-insta; cargo readme > README.md
 .PHONY: update-readme
 
 test:
