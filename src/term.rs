@@ -218,7 +218,6 @@ impl Term {
     ///
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
-    ///
     pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
         if !self.is_term() {
             return Ok("".into());
