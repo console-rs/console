@@ -18,6 +18,11 @@ fn do_stuff() -> io::Result<()> {
     term.clear_last_lines(1)?;
     term.write_line("Done counting!")?;
     writeln!(&term, "Hello World!")?;
+
+    write!(&term, "To edit: ")?;
+    let res = term.read_line_initial_text("default")?;
+    writeln!(&term, "\n{}", res)?;
+
     Ok(())
 }
 
