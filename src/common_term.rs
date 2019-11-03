@@ -37,5 +37,5 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
 
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
     let esc = "\u{001B}";
-    out.write_str(&format!("{}[?251", esc))
+    out.write_str(&format!("{}[?25l", esc))
 }
