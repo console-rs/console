@@ -598,24 +598,24 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
 }
 
 fn str_width(s: &str) -> usize {
-    #[cfg(feature = "unicode")]
+    #[cfg(feature = "unicode-width")]
     {
         use unicode_width::UnicodeWidthStr;
         s.width()
     }
-    #[cfg(not(feature = "unicode"))]
+    #[cfg(not(feature = "unicode-width"))]
     {
         s.chars().count()
     }
 }
 
 fn char_width(c: char) -> usize {
-    #[cfg(feature = "unicode")]
+    #[cfg(feature = "unicode-width")]
     {
         use unicode_width::UnicodeWidthChar;
         c.width().unwrap_or(0)
     }
-    #[cfg(not(feature = "unicode"))]
+    #[cfg(not(feature = "unicode-width"))]
     {
         let _c = c;
         1
@@ -744,7 +744,7 @@ fn test_text_width() {
 }
 
 #[test]
-#[cfg(feature = "unicode")]
+#[cfg(feature = "unicode-width")]
 fn test_truncate_str() {
     let s = format!("foo {}", style("bar").red().force_styling(true));
     assert_eq!(
