@@ -22,8 +22,9 @@ use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
 use winapi::um::winbase::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
 use winapi::um::wincon::{
-    FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo, SetConsoleCursorPosition,
-    SetConsoleTitleW, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT, KEY_EVENT_RECORD,
+    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo,
+    SetConsoleCursorPosition, SetConsoleTitleW, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD,
+    KEY_EVENT, KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 
@@ -138,6 +139,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
             };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
     }
@@ -154,6 +156,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
     }
