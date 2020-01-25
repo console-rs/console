@@ -40,7 +40,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
 
 pub fn show_cursor(out: &Term) -> io::Result<()> {
     let esc = "\u{001B}";
-    out.write_str(&format!("{}[0H{}[0J{}[?25h", esc, esc, esc))
+    out.write_str(&format!("{}[?25h", esc))
 }
 
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
