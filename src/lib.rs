@@ -80,5 +80,7 @@ mod term;
 #[cfg(unix)]
 mod unix_term;
 mod utils;
+#[cfg(target_arch = "wasm32")]
+mod wasm_term;
 #[cfg(windows)]
 mod windows_term;

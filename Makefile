@@ -23,4 +23,6 @@ update-readme:
 test:
 	@cargo test
 	@cargo test --no-default-features
+	@cargo check --target wasm32-unknown-unknown
+	@cargo check --target wasm32-wasi
 .PHONY: test

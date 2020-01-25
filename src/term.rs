@@ -33,6 +33,8 @@ pub enum TermFamily {
     UnixTerm,
     /// A cmd.exe like windows console.
     WindowsConsole,
+    /// A dummy terminal (for instance on wasm)
+    Dummy,
 }
 
 /// Gives access to the terminal features.
@@ -65,7 +67,7 @@ impl<'a> TermFeatures<'a> {
         {
             msys_tty_on(&self.0)
         }
-        #[cfg(unix)]
+        #[cfg(not(windows))]
         {
             false
         }
@@ -90,6 +92,10 @@ impl<'a> TermFeatures<'a> {
         #[cfg(unix)]
         {
             TermFamily::UnixTerm
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            TermFamily::Dummy
         }
     }
 }
@@ -466,5 +472,7 @@ impl<'a> io::Read for &'a Term {
 
 #[cfg(unix)]
 pub use crate::unix_term::*;
+#[cfg(target_arch = "wasm32")]
+pub use crate::wasm_term::*;
 #[cfg(windows)]
 pub use crate::windows_term::*;
