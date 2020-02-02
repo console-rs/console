@@ -1,5 +1,9 @@
 # console
 
+[![Build Status](https://travis-ci.org/mitsuhiko/console.svg?branch=master)](https://travis-ci.org/mitsuhiko/console)
+[![Latest Version](https://img.shields.io/crates/v/console.svg)](https://crates.io/crates/console)
+[![docs](https://docs.rs/console/badge.svg)](https://docs.rs/console)
+
 console is a library for Rust that provides access to various terminal
 features so you can build nicer looking command line interfaces.  It
 comes with various tools and utilities for working with Terminals and
