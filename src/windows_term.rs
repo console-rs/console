@@ -221,6 +221,10 @@ pub fn read_single_key() -> io::Result<Key> {
                 // a special keycode for `Enter`, while ReadConsoleInputW() prefers to use '\r'.
                 if c == '\r' {
                     Ok(Key::Enter)
+                } else if c == '\x08' {
+                    Ok(Key::Backspace)
+                } else if c == '\x1B' {
+                    Ok(Key::Escape)
                 } else {
                     Ok(Key::Char(c))
                 }
