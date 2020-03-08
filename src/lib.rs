@@ -66,13 +66,25 @@
 //! By default this crate depends on the `unicode-width` crate to calculate
 //! the width of terminal characters.  If you do not need this you can disable
 //! the `unicode-width` feature which will cut down on dependencies.
+//!
+//! # Features
+//!
+//! By default all features are enabled.  The following features exist:
+//!
+//! * `unicode-width`: adds support for unicode width calculations
+//! * `ansi-parsing`: adds support for parsing ansi codes (this adds support
+//!   for stripping and taking ansi escape codes into account for length
+//!   calculations).
 
 pub use crate::kb::Key;
 pub use crate::term::{user_attended, Term, TermFamily, TermFeatures, TermTarget};
 pub use crate::utils::{
-    colors_enabled, measure_text_width, pad_str, set_colors_enabled, strip_ansi_codes, style,
-    truncate_str, Alignment, AnsiCodeIterator, Attribute, Color, Emoji, Style, StyledObject,
+    colors_enabled, measure_text_width, pad_str, set_colors_enabled, style, truncate_str,
+    Alignment, Attribute, Color, Emoji, Style, StyledObject,
 };
+
+#[cfg(feature = "ansi-parsing")]
+pub use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
 
 mod common_term;
 mod kb;
@@ -84,3 +96,6 @@ mod utils;
 mod wasm_term;
 #[cfg(windows)]
 mod windows_term;
+
+#[cfg(feature = "ansi-parsing")]
+mod ansi;

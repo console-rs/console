@@ -2,14 +2,14 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt;
 
-use regex::{Matches, Regex};
-
 use crate::term::wants_emoji;
 
-lazy_static::lazy_static! {
-    static ref STRIP_ANSI_RE: Regex =
-        Regex::new(r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]")
-            .unwrap();
+#[cfg(feature = "ansi-parsing")]
+use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
+
+#[cfg(not(feature = "ansi-parsing"))]
+fn strip_ansi_codes(s: &str) -> &str {
+    s
 }
 
 /// Returns `true` if colors should be enabled.
@@ -35,11 +35,6 @@ pub fn colors_enabled() -> bool {
 #[inline]
 pub fn set_colors_enabled(val: bool) {
     clicolors_control::set_colors_enabled(val)
-}
-
-/// Helper function to strip ansi codes.
-pub fn strip_ansi_codes(s: &str) -> Cow<str> {
-    STRIP_ANSI_RE.replace_all(s, "")
 }
 
 /// Measure the width of a string in terminal characters.
@@ -531,72 +526,6 @@ impl<'a, 'b> fmt::Display for Emoji<'a, 'b> {
     }
 }
 
-/// An iterator over ansi codes in a string.
-///
-/// This type can be used to scan over ansi codes in a string.
-/// It yields tuples in the form `(s, is_ansi)` where `s` is a slice of
-/// the original string and `is_ansi` indicates if the slice contains
-/// ansi codes or string values.
-pub struct AnsiCodeIterator<'a> {
-    s: &'a str,
-    pending_item: Option<(&'a str, bool)>,
-    last_idx: usize,
-    cur_idx: usize,
-    iter: Matches<'static, 'a>,
-}
-
-impl<'a> AnsiCodeIterator<'a> {
-    /// Creates a new ansi code iterator.
-    pub fn new(s: &'a str) -> AnsiCodeIterator<'a> {
-        AnsiCodeIterator {
-            s,
-            pending_item: None,
-            last_idx: 0,
-            cur_idx: 0,
-            iter: STRIP_ANSI_RE.find_iter(s),
-        }
-    }
-
-    /// Returns the string slice up to the current match.
-    pub fn current_slice(&self) -> &str {
-        &self.s[..self.cur_idx]
-    }
-
-    /// Returns the string slice from the current match to the end.
-    pub fn rest_slice(&self) -> &str {
-        &self.s[self.cur_idx..]
-    }
-}
-
-impl<'a> Iterator for AnsiCodeIterator<'a> {
-    type Item = (&'a str, bool);
-
-    fn next(&mut self) -> Option<(&'a str, bool)> {
-        if let Some(pending_item) = self.pending_item.take() {
-            self.cur_idx += pending_item.0.len();
-            Some(pending_item)
-        } else if let Some(m) = self.iter.next() {
-            let s = &self.s[self.last_idx..m.start()];
-            self.last_idx = m.end();
-            if s.is_empty() {
-                self.cur_idx = m.end();
-                Some((m.as_str(), true))
-            } else {
-                self.cur_idx = m.start();
-                self.pending_item = Some((m.as_str(), true));
-                Some((s, false))
-            }
-        } else if self.last_idx < self.s.len() {
-            let rv = &self.s[self.last_idx..];
-            self.cur_idx = self.s.len();
-            self.last_idx = self.s.len();
-            Some((rv, false))
-        } else {
-            None
-        }
-    }
-}
-
 fn str_width(s: &str) -> usize {
     #[cfg(feature = "unicode-width")]
     {
@@ -609,6 +538,7 @@ fn str_width(s: &str) -> usize {
     }
 }
 
+#[cfg(feature = "ansi-parsing")]
 fn char_width(c: char) -> usize {
     #[cfg(feature = "unicode-width")]
     {
@@ -629,51 +559,67 @@ fn char_width(c: char) -> usize {
 /// escapes code will still be honored.  If truncation takes place
 /// the tail string will be appended.
 pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
-    let mut iter = AnsiCodeIterator::new(s);
-    let mut length = 0;
-    let mut rv = None;
+    #[cfg(feature = "ansi-parsing")]
+    {
+        let mut iter = AnsiCodeIterator::new(s);
+        let mut length = 0;
+        let mut rv = None;
 
-    while let Some(item) = iter.next() {
-        match item {
-            (s, false) => {
-                if rv.is_none() {
-                    if str_width(s) + length > width - str_width(tail) {
-                        let ts = iter.current_slice();
+        while let Some(item) = iter.next() {
+            match item {
+                (s, false) => {
+                    if rv.is_none() {
+                        if str_width(s) + length > width - str_width(tail) {
+                            let ts = iter.current_slice();
 
-                        let mut s_byte = 0;
-                        let mut s_width = 0;
-                        let rest_width = width - str_width(tail) - length;
-                        for c in s.chars() {
-                            s_byte += c.len_utf8();
-                            s_width += char_width(c);
-                            if s_width == rest_width {
-                                break;
-                            } else if s_width > rest_width {
-                                s_byte -= c.len_utf8();
-                                break;
+                            let mut s_byte = 0;
+                            let mut s_width = 0;
+                            let rest_width = width - str_width(tail) - length;
+                            for c in s.chars() {
+                                s_byte += c.len_utf8();
+                                s_width += char_width(c);
+                                if s_width == rest_width {
+                                    break;
+                                } else if s_width > rest_width {
+                                    s_byte -= c.len_utf8();
+                                    break;
+                                }
                             }
-                        }
 
-                        let idx = ts.len() - s.len() + s_byte;
-                        let mut buf = ts[..idx].to_string();
-                        buf.push_str(tail);
-                        rv = Some(buf);
+                            let idx = ts.len() - s.len() + s_byte;
+                            let mut buf = ts[..idx].to_string();
+                            buf.push_str(tail);
+                            rv = Some(buf);
+                        }
+                        length += str_width(s);
                     }
-                    length += str_width(s);
                 }
-            }
-            (s, true) => {
-                if rv.is_some() {
-                    rv.as_mut().unwrap().push_str(s);
+                (s, true) => {
+                    if rv.is_some() {
+                        rv.as_mut().unwrap().push_str(s);
+                    }
                 }
             }
         }
+
+        if let Some(buf) = rv {
+            Cow::Owned(buf)
+        } else {
+            Cow::Borrowed(s)
+        }
     }
 
-    if let Some(buf) = rv {
-        Cow::Owned(buf)
-    } else {
-        Cow::Borrowed(s)
+    #[cfg(not(feature = "ansi-parsing"))]
+    {
+        if s.len() <= width - tail.len() {
+            Cow::Borrowed(s)
+        } else {
+            Cow::Owned(format!(
+                "{}{}",
+                s.get(..width - tail.len()).unwrap_or_default(),
+                tail
+            ))
+        }
     }
 }
 
@@ -740,11 +686,18 @@ fn test_text_width() {
         .bold()
         .force_styling(true)
         .to_string();
-    assert_eq!(measure_text_width(&s), 3);
+    assert_eq!(
+        measure_text_width(&s),
+        if cfg!(feature = "ansi-parsing") {
+            3
+        } else {
+            21
+        }
+    );
 }
 
 #[test]
-#[cfg(feature = "unicode-width")]
+#[cfg(all(feature = "unicode-width", feature = "ansi-parsing"))]
 fn test_truncate_str() {
     let s = format!("foo {}", style("bar").red().force_styling(true));
     assert_eq!(
@@ -771,6 +724,13 @@ fn test_truncate_str() {
         &truncate_str(&s, 6, ""),
         &format!("foo {}", style("バ").red().force_styling(true))
     );
+}
+
+#[test]
+fn test_truncate_str_no_ansi() {
+    assert_eq!(&truncate_str("foo bar", 5, ""), "foo b");
+    assert_eq!(&truncate_str("foo bar", 5, "!"), "foo !");
+    assert_eq!(&truncate_str("foo bar baz", 10, "..."), "foo bar...");
 }
 
 #[test]
@@ -814,26 +774,4 @@ fn test_pad_str_with() {
         pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
         "foo..."
     );
-}
-
-#[test]
-fn test_ansi_iter_re() {
-    let s = format!("Hello {}!", style("World").red().force_styling(true));
-    let mut iter = AnsiCodeIterator::new(&s);
-    assert_eq!(iter.next(), Some(("Hello ", false)));
-    assert_eq!(iter.current_slice(), "Hello ");
-    assert_eq!(iter.rest_slice(), "\x1b[31mWorld\x1b[0m!");
-    assert_eq!(iter.next(), Some(("\x1b[31m", true)));
-    assert_eq!(iter.current_slice(), "Hello \x1b[31m");
-    assert_eq!(iter.rest_slice(), "World\x1b[0m!");
-    assert_eq!(iter.next(), Some(("World", false)));
-    assert_eq!(iter.current_slice(), "Hello \x1b[31mWorld");
-    assert_eq!(iter.rest_slice(), "\x1b[0m!");
-    assert_eq!(iter.next(), Some(("\x1b[0m", true)));
-    assert_eq!(iter.current_slice(), "Hello \x1b[31mWorld\x1b[0m");
-    assert_eq!(iter.rest_slice(), "!");
-    assert_eq!(iter.next(), Some(("!", false)));
-    assert_eq!(iter.current_slice(), "Hello \x1b[31mWorld\x1b[0m!");
-    assert_eq!(iter.rest_slice(), "");
-    assert_eq!(iter.next(), None);
 }
