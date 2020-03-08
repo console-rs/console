@@ -561,6 +561,7 @@ fn char_width(c: char) -> usize {
 pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
     #[cfg(feature = "ansi-parsing")]
     {
+        use std::cmp::Ordering;
         let mut iter = AnsiCodeIterator::new(s);
         let mut length = 0;
         let mut rv = None;
@@ -578,11 +579,13 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
                             for c in s.chars() {
                                 s_byte += c.len_utf8();
                                 s_width += char_width(c);
-                                if s_width == rest_width {
-                                    break;
-                                } else if s_width > rest_width {
-                                    s_byte -= c.len_utf8();
-                                    break;
+                                match s_width.cmp(&rest_width) {
+                                    Ordering::Equal => break,
+                                    Ordering::Greater => {
+                                        s_byte -= c.len_utf8();
+                                        break;
+                                    }
+                                    Ordering::Less => continue,
                                 }
                             }
 

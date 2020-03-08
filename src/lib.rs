@@ -28,7 +28,7 @@
 //! term.write_line("Hello World!")?;
 //! thread::sleep(Duration::from_millis(2000));
 //! term.clear_line()?;
-//! # Ok(()) } fn main() { test().unwrap(); }
+//! # Ok(()) } test().unwrap();
 //! ```
 //!
 //! # Colors and Styles
