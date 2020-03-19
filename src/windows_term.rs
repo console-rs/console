@@ -179,8 +179,11 @@ pub fn key_from_key_code(code: INT) -> Key {
         winapi::um::winuser::VK_DOWN => Key::ArrowDown,
         winapi::um::winuser::VK_RETURN => Key::Enter,
         winapi::um::winuser::VK_ESCAPE => Key::Escape,
-        winapi::um::winuser::VK_BACK => Key::Char('\x08'),
-        winapi::um::winuser::VK_TAB => Key::Char('\x09'),
+        winapi::um::winuser::VK_BACK => Key::Backspace,
+        winapi::um::winuser::VK_TAB => Key::Tab,
+        winapi::um::winuser::VK_HOME => Key::Home,
+        winapi::um::winuser::VK_END => Key::End,
+        winapi::um::winuser::VK_DELETE => Key::Del,
         _ => Key::Unknown,
     }
 }
