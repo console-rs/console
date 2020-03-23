@@ -1,4 +1,5 @@
 use std::char;
+use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::io;
@@ -334,7 +335,8 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
 }
 
 pub fn wants_emoji() -> bool {
-    false
+    // If WT_SESSION is set, we can assume we're running in the new Windows Terminal.
+    env::var("WT_SESSION").is_ok()
 }
 
 /// Returns true if there is an MSYS tty on the given handle.
