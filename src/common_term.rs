@@ -17,6 +17,21 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
         Ok(())
     }
 }
+pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
+    if n > 0 {
+        out.write_str(&format!("\x1b[{}D", n))
+    } else {
+        Ok(())
+    }
+}
+
+pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
+    if n > 0 {
+        out.write_str(&format!("\x1b[{}C", n))
+    } else {
+        Ok(())
+    }
+}
 
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
@@ -37,6 +52,10 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 
 pub fn clear_screen(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2J\r\x1b[H")
+}
+
+pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
+    out.write_str("\r\x1b[0J")
 }
 
 

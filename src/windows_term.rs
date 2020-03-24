@@ -126,6 +126,27 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
     Ok(())
 }
 
+pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::move_cursor_left(out, n);
+    }
+
+    if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        move_cursor_to(out, csbi.dwCursorPosition.X as usize - n, csbi.dwCursorPosition.Y as usize)?;
+    }
+    Ok(())
+}
+
+pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::move_cursor_right(out, n);
+    }
+
+    if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        move_cursor_to(out, csbi.dwCursorPosition.X as usize + n, csbi.dwCursorPosition.Y as usize)?;
+    }
+    Ok(())
+}
 pub fn clear_line(out: &Term) -> io::Result<()> {
     if msys_tty_on(out) {
         return common_term::clear_line(out);
@@ -154,6 +175,22 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
         unsafe {
             let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD; // as DWORD, or else this causes stack overflows.
             let pos = COORD { X: 0, Y: 0 };
+            let mut written = 0;
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
+            SetConsoleCursorPosition(hand, pos);
+        }
+    }
+    Ok(())
+}
+pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::clear_to_end_of_screen(out);
+    }
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        unsafe {
+            let cells = csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD; // as DWORD, or else this causes stack overflows.
+            let pos = COORD { X: csbi.dwCursorPosition.X, Y: 0 };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
