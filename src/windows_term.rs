@@ -189,8 +189,9 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
-            let cells = csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD; // as DWORD, or else this causes stack overflows.
-            let pos = COORD { X: csbi.dwCursorPosition.X, Y: 0 };
+            let bottom = csbi.srWindow.Right as DWORD * csbi.srWindow.Bottom as DWORD;
+            let cells = bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
+            let pos = COORD { X: 0, Y: csbi.dwCursorPosition.Y };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
