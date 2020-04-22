@@ -111,6 +111,8 @@ pub enum Alignment {
 pub struct Style {
     fg: Option<Color>,
     bg: Option<Color>,
+    fg_bright: bool,
+    bg_bright: bool,
     attrs: BTreeSet<Attribute>,
     force: Option<bool>,
 }
@@ -127,6 +129,8 @@ impl Style {
         Style {
             fg: None,
             bg: None,
+            fg_bright: false,
+            bg_bright: false,
             attrs: BTreeSet::new(),
             force: None,
         }
@@ -150,6 +154,7 @@ impl Style {
                 "magenta" => rv.magenta(),
                 "cyan" => rv.cyan(),
                 "white" => rv.white(),
+                "bright" => rv.bright(),
                 "on_black" => rv.on_black(),
                 "on_red" => rv.on_red(),
                 "on_green" => rv.on_green(),
@@ -158,6 +163,7 @@ impl Style {
                 "on_magenta" => rv.on_magenta(),
                 "on_cyan" => rv.on_cyan(),
                 "on_white" => rv.on_white(),
+                "on_bright" => rv.on_bright(),
                 "bold" => rv.bold(),
                 "dim" => rv.dim(),
                 "underlined" => rv.underlined(),
@@ -242,6 +248,13 @@ impl Style {
     pub fn white(self) -> Style {
         self.fg(Color::White)
     }
+
+    #[inline]
+    pub fn bright(mut self) -> Style {
+        self.fg_bright = true;
+        self
+    }
+
     #[inline]
     pub fn on_black(self) -> Style {
         self.bg(Color::Black)
@@ -274,6 +287,13 @@ impl Style {
     pub fn on_white(self) -> Style {
         self.bg(Color::White)
     }
+
+    #[inline]
+    pub fn on_bright(mut self) -> Style {
+        self.bg_bright = true;
+        self
+    }
+
     #[inline]
     pub fn bold(self) -> Style {
         self.attr(Attribute::Bold)
@@ -394,6 +414,13 @@ impl<D> StyledObject<D> {
     pub fn white(self) -> StyledObject<D> {
         self.fg(Color::White)
     }
+
+    #[inline]
+    pub fn bright(mut self) -> StyledObject<D> {
+        self.style = self.style.bright();
+        self
+    }
+
     #[inline]
     pub fn on_black(self) -> StyledObject<D> {
         self.bg(Color::Black)
@@ -426,6 +453,13 @@ impl<D> StyledObject<D> {
     pub fn on_white(self) -> StyledObject<D> {
         self.bg(Color::White)
     }
+
+    #[inline]
+    pub fn on_bright(mut self) -> StyledObject<D> {
+        self.style = self.style.on_bright();
+        self
+    }
+
     #[inline]
     pub fn bold(self) -> StyledObject<D> {
         self.attr(Attribute::Bold)
@@ -463,11 +497,19 @@ macro_rules! impl_fmt {
                 let mut reset = false;
                 if self.style.force.unwrap_or_else(colors_enabled) {
                     if let Some(fg) = self.style.fg {
-                        write!(f, "\x1b[{}m", fg.ansi_num() + 30)?;
+                        if self.style.fg_bright {
+                            write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;
+                        } else {
+                            write!(f, "\x1b[{}m", fg.ansi_num() + 30)?;
+                        }
                         reset = true;
                     }
                     if let Some(bg) = self.style.bg {
-                        write!(f, "\x1b[{}m", bg.ansi_num() + 40)?;
+                        if self.style.bg_bright {
+                            write!(f, "\x1b[48;5;{}m", bg.ansi_num() + 8)?;
+                        } else {
+                            write!(f, "\x1b[{}m", bg.ansi_num() + 40)?;
+                        }
                         reset = true;
                     }
                     for attr in &self.style.attrs {
