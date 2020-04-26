@@ -2,7 +2,6 @@ use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
-use std::mem;
 use std::os::unix::io::AsRawFd;
 use std::str;
 
@@ -18,24 +17,9 @@ pub fn is_a_terminal(out: &Term) -> bool {
     unsafe { libc::isatty(out.as_raw_fd()) != 0 }
 }
 
+#[inline]
 pub fn terminal_size() -> Option<(u16, u16)> {
-    unsafe {
-        if libc::isatty(libc::STDOUT_FILENO) != 1 {
-            return None;
-        }
-
-        let mut winsize: libc::winsize = mem::zeroed();
-
-        // FIXME: ".into()" used as a temporary fix for a libc bug
-        // https://github.com/rust-lang/libc/pull/704
-        #[allow(clippy::identity_conversion)]
-        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ.into(), &mut winsize);
-        if winsize.ws_row > 0 && winsize.ws_col > 0 {
-            Some((winsize.ws_row as u16, winsize.ws_col as u16))
-        } else {
-            None
-        }
-    }
+    terminal_size::terminal_size().map(|x| ((x.0).0, (x.1).0))
 }
 
 pub fn read_secure() -> io::Result<String> {
