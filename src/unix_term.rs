@@ -17,6 +17,11 @@ pub fn is_a_terminal(out: &Term) -> bool {
     unsafe { libc::isatty(out.as_raw_fd()) != 0 }
 }
 
+#[inline]
+pub fn terminal_size() -> Option<(u16, u16)> {
+    terminal_size::terminal_size().map(|x| ((x.0).0, (x.1).0))
+}
+
 pub fn read_secure() -> io::Result<String> {
     let f_tty;
     let fd = unsafe {

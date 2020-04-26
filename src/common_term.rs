@@ -2,11 +2,6 @@ use std::io;
 
 use crate::term::Term;
 
-#[inline]
-pub fn terminal_size() -> Option<(u16, u16)> {
-    terminal_size::terminal_size().map(|x| ((x.0).0, (x.1).0))
-}
-
 pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
         out.write_str(&format!("\x1b[{}B", n))
