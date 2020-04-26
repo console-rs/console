@@ -76,7 +76,7 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
 
 #[inline]
 pub fn terminal_size() -> Option<(u16, u16)> {
-    terminal_size::terminal_size().map(|x| ((x.0).0, (x.1).0))
+    common_term::terminal_size()
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
