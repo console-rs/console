@@ -290,10 +290,10 @@ impl Term {
         Ok(())
     }
 
-    #[inline]
     /// Checks if the terminal is indeed a terminal.
     ///
     /// This is a shortcut for `features().is_attended()`.
+    #[inline]
     pub fn is_term(&self) -> bool {
         self.features().is_attended()
     }
@@ -324,28 +324,28 @@ impl Term {
         terminal_size()
     }
 
-    #[inline]
     /// Moves the cursor to `x` and `y`
+    #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
     }
 
-    #[inline]
     /// Moves the cursor up `n` lines
+    #[inline]
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
     }
 
-    #[inline]
     /// Moves the cursor down `n` lines
+    #[inline]
     pub fn move_cursor_down(&self, n: usize) -> io::Result<()> {
         move_cursor_down(self, n)
     }
 
-    #[inline]
     /// Clears the current line.
     ///
     /// The positions the cursor at the beginning of the line again.
+    #[inline]
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
     }
@@ -364,14 +364,14 @@ impl Term {
         Ok(())
     }
 
-    #[inline]
     /// Clears the entire screen.
+    #[inline]
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
     }
 
-    #[inline]
     /// Clears the last char in the the current line.
+    #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         common_term::clear_chars(self, n)
     }
@@ -384,21 +384,40 @@ impl Term {
         set_title(title);
     }
 
-    #[inline]
     /// Makes cursor visible again
+    #[inline]
     pub fn show_cursor(&self) -> io::Result<()> {
         show_cursor(self)
     }
 
-    #[inline]
     /// Hides cursor
+    #[inline]
     pub fn hide_cursor(&self) -> io::Result<()> {
         hide_cursor(self)
     }
 
     // helpers
 
+    #[cfg(all(windows, features = "windows-console-colors"))]
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
+        if self.features().is_msys_tty() {
+            self.write_through_common(bytes)
+        } else {
+            use winapi_util::console::Console;
+
+            match self.inner.target {
+                TermTarget::Stdout => console_colors(self, Console::stdout(), bytes),
+                TermTarget::Stderr => console_colors(self, Console::stderr(), bytes),
+            }
+        }
+    }
+
+    #[cfg(not(all(windows, features = "windows-console-colors")))]
+    fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
+        self.write_through_common(bytes)
+    }
+
+    pub(crate) fn write_through_common(&self, bytes: &[u8]) -> io::Result<()> {
         match self.inner.target {
             TermTarget::Stdout => {
                 io::stdout().write_all(bytes)?;

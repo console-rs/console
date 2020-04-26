@@ -12,7 +12,8 @@ documentation = "https://docs.rs/console"
 readme = "README.md"
 
 [features]
-default = ["unicode-width", "ansi-parsing"]
+default = ["unicode-width", "ansi-parsing", "windows-console-colors"]
+windows-console-colors = ["ansi-parsing", "winapi-util"]
 ansi-parsing = ["regex"]
 
 [dependencies]
@@ -27,5 +28,6 @@ unicode-width = { version = "0.1", optional = true }
 termios = "0.3"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winbase","winuser","consoleapi","processenv","wincon"] }
+winapi = { version = "0.3", features = ["winbase", "winuser", "consoleapi", "processenv", "wincon"] }
+winapi-util = { version = "0.1", optional = true }
 encode_unicode = "0.3"
