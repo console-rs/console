@@ -24,9 +24,10 @@ use winapi::um::processenv::GetStdHandle;
 use winapi::um::winbase::GetFileInformationByHandleEx;
 use winapi::um::winbase::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
 use winapi::um::wincon::{
-    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleScreenBufferInfo,
-    SetConsoleCursorPosition, SetConsoleTitleW, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD,
-    KEY_EVENT, KEY_EVENT_RECORD,
+    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo,
+    GetConsoleScreenBufferInfo, SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleTitleW,
+    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
+    KEY_EVENT_RECORD,
 };
 use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
 #[cfg(feature = "windows-console-colors")]
@@ -136,7 +137,11 @@ pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
     }
 
     if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
-        move_cursor_to(out, csbi.dwCursorPosition.X as usize - n, csbi.dwCursorPosition.Y as usize)?;
+        move_cursor_to(
+            out,
+            csbi.dwCursorPosition.X as usize - n,
+            csbi.dwCursorPosition.Y as usize,
+        )?;
     }
     Ok(())
 }
@@ -147,10 +152,15 @@ pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
     }
 
     if let Some((_, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
-        move_cursor_to(out, csbi.dwCursorPosition.X as usize + n, csbi.dwCursorPosition.Y as usize)?;
+        move_cursor_to(
+            out,
+            csbi.dwCursorPosition.X as usize + n,
+            csbi.dwCursorPosition.Y as usize,
+        )?;
     }
     Ok(())
 }
+
 pub fn clear_line(out: &Term) -> io::Result<()> {
     if msys_tty_on(out) {
         return common_term::clear_line(out);
@@ -187,6 +197,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
     }
     Ok(())
 }
+
 pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
     if msys_tty_on(out) {
         return common_term::clear_to_end_of_screen(out);
@@ -194,8 +205,12 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
             let bottom = csbi.srWindow.Right as DWORD * csbi.srWindow.Bottom as DWORD;
-            let cells = bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
-            let pos = COORD { X: 0, Y: csbi.dwCursorPosition.Y };
+            let cells =
+                bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
+            let pos = COORD {
+                X: 0,
+                Y: csbi.dwCursorPosition.Y,
+            };
             let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
@@ -205,11 +220,47 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
     Ok(())
 }
 
+pub fn show_cursor(out: &Term) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::show_cursor(out);
+    }
+    if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
+        unsafe {
+            cci.bVisible = true;
+            SetConsoleCursorInfo(hand, &mut cci);
+        }
+    }
+    Ok(())
+}
+
+pub fn hide_cursor(out: &Term) -> io::Result<()> {
+    if msys_tty_on(out) {
+        return common_term::hide_cursor(out);
+    }
+    if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
+        unsafe {
+            cci.bVisible = false;
+            SetConsoleCursorInfo(hand, &mut cci);
+        }
+    }
+    Ok(())
+}
+
+// TODO: clear_chars
+
 fn get_console_screen_buffer_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_SCREEN_BUFFER_INFO)> {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe { mem::zeroed() };
     match unsafe { GetConsoleScreenBufferInfo(hand, &mut csbi) } {
         0 => None,
         _ => Some((hand, csbi)),
+    }
+}
+
+fn get_console_cursor_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_CURSOR_INFO)> {
+    let mut cci: CONSOLE_CURSOR_INFO = unsafe { mem::zeroed() };
+    match unsafe { GetConsoleCursorInfo(hand, &mut cci) } {
+        0 => None,
+        _ => Some((hand, cci)),
     }
 }
 
@@ -476,6 +527,3 @@ fn get_color_from_ansi(ansi: &str) -> Color {
         _ => unreachable!(),
     }
 }
-
-// TODO: Might not work on windows console, also clear_chars
-pub use crate::common_term::{hide_cursor, show_cursor};
