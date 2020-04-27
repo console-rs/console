@@ -18,7 +18,7 @@
 //! Example usage:
 //!
 //! ```
-//! # fn test() -> Result<(), Box<std::error::Error>> {
+//! # fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! use std::thread;
 //! use std::time::Duration;
 //!

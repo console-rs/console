@@ -1,4 +1,5 @@
 use std::char;
+use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
 use std::io;
@@ -15,7 +16,7 @@ use regex::Regex;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::MAX_PATH;
-use winapi::um::consoleapi::GetConsoleMode;
+use winapi::um::consoleapi::{GetConsoleMode, SetConsoleMode};
 use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputW};
 use winapi::um::fileapi::FILE_NAME_INFO;
 use winapi::um::handleapi::INVALID_HANDLE_VALUE;
@@ -44,6 +45,7 @@ lazy_static::lazy_static! {
     static ref ATTR_RE: Regex = Regex::new(r"\x1b\[([1-8])m").unwrap();
 }
 
+const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub const DEFAULT_WIDTH: u16 = 79;
 
 pub fn as_handle(term: &Term) -> HANDLE {
@@ -73,6 +75,37 @@ pub fn is_a_terminal(out: &Term) -> bool {
     }
 
     msys_tty_on(out)
+}
+
+pub fn is_a_color_terminal(out: &Term) -> bool {
+    if !is_a_terminal(out) {
+        return false;
+    }
+    if msys_tty_on(out) {
+        return match env::var("TERM") {
+            Ok(term) => term != "dumb",
+            Err(_) => true,
+        };
+    }
+    enable_ansi_on(out)
+}
+
+fn enable_ansi_on(out: &Term) -> bool {
+    unsafe {
+        let handle = as_handle(out);
+
+        let mut dw_mode = 0;
+        if GetConsoleMode(handle, &mut dw_mode) == 0 {
+            return false;
+        }
+
+        dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        if SetConsoleMode(handle, dw_mode) == 0 {
+            return false;
+        }
+
+        true
+    }
 }
 
 unsafe fn console_on_any(fds: &[DWORD]) -> bool {

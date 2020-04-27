@@ -1,8 +1,11 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
+use std::env;
 use std::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::term::wants_emoji;
+use crate::term::{wants_emoji, Term};
+use lazy_static::lazy_static;
 
 #[cfg(feature = "ansi-parsing")]
 use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
@@ -12,6 +15,16 @@ fn strip_ansi_codes(s: &str) -> &str {
     s
 }
 
+fn default_colors_enabled(out: &Term) -> bool {
+    (out.features().colors_supported() && &env::var("CLICOLOR").unwrap_or("1".into()) != "0")
+        || &env::var("CLICOLOR_FORCE").unwrap_or("0".into()) != "0"
+}
+
+lazy_static! {
+    static ref STDOUT_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stdout()));
+    static ref STDERR_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stderr()));
+}
+
 /// Returns `true` if colors should be enabled.
 ///
 /// This honors the [clicolors spec](http://bixense.com/clicolors/).
@@ -19,22 +32,18 @@ fn strip_ansi_codes(s: &str) -> &str {
 /// * `CLICOLOR != 0`: ANSI colors are supported and should be used when the program isn't piped.
 /// * `CLICOLOR == 0`: Don't output ANSI color escape codes.
 /// * `CLICOLOR_FORCE != 0`: ANSI colors should be enabled no matter what.
-///
-/// This internally uses `clicolors-control`.
 #[inline]
 pub fn colors_enabled() -> bool {
-    clicolors_control::colors_enabled()
+    STDOUT_COLORS.load(Ordering::Relaxed)
 }
 
 /// Forces colorization on or off.
 ///
 /// This overrides the default for the current process and changes the return value of the
 /// `colors_enabled` function.
-///
-/// This internally uses `clicolors-control`.
 #[inline]
 pub fn set_colors_enabled(val: bool) {
-    clicolors_control::set_colors_enabled(val)
+    STDOUT_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Measure the width of a string in terminal characters.

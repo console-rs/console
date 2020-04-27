@@ -14,6 +14,11 @@ pub fn is_a_terminal(_out: &Term) -> bool {
 }
 
 #[inline]
+pub fn is_a_color_terminal(out: &Term) -> bool {
+    false
+}
+
+#[inline]
 pub fn terminal_size() -> Option<(u16, u16)> {
     None
 }

@@ -54,7 +54,7 @@ impl<'a> TermFeatures<'a> {
     /// are considered to support colors
     #[inline]
     pub fn colors_supported(&self) -> bool {
-        clicolors_control::terminfo::supports_colors()
+        is_a_color_terminal(self.0)
     }
 
     /// Checks if this terminal is an msys terminal.
@@ -311,11 +311,9 @@ impl Term {
     }
 
     /// Checks if the terminal is indeed a terminal.
-    ///
-    /// This is a shortcut for `features().is_attended()`.
     #[inline]
     pub fn is_term(&self) -> bool {
-        self.features().is_attended()
+        self.is_tty
     }
 
     /// Checks for common terminal features.

@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt::Display;
 use std::fs;
 use std::io;
@@ -15,6 +16,17 @@ pub const DEFAULT_WIDTH: u16 = 80;
 #[inline]
 pub fn is_a_terminal(out: &Term) -> bool {
     unsafe { libc::isatty(out.as_raw_fd()) != 0 }
+}
+
+pub fn is_a_color_terminal(out: &Term) -> bool {
+    if !is_a_terminal(out) {
+        return false;
+    }
+
+    match env::var("TERM") {
+        Ok(term) => term != "dumb",
+        Err(_) => false,
+    }
 }
 
 #[inline]
