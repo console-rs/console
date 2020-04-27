@@ -502,7 +502,10 @@ impl AsRawHandle for Term {
 
 impl io::Write for Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.write_through(buf)?;
+        match self.inner.buffer {
+            Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
+            None => self.write_through(buf),
+        }?;
         Ok(buf.len())
     }
 
@@ -513,7 +516,10 @@ impl io::Write for Term {
 
 impl<'a> io::Write for &'a Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.write_through(buf)?;
+        match self.inner.buffer {
+            Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
+            None => self.write_through(buf),
+        }?;
         Ok(buf.len())
     }
 
