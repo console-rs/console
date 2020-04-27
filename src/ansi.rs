@@ -101,3 +101,23 @@ fn test_ansi_iter_re() {
     assert_eq!(iter.rest_slice(), "");
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn test_ansi_iter_re_on_multi() {
+    use crate::style;
+    let s = format!("{}", style("a").red().bold().force_styling(true));
+    let mut iter = AnsiCodeIterator::new(&s);
+    assert_eq!(iter.next(), Some(("\x1b[31m", true)));
+    assert_eq!(iter.current_slice(), "\x1b[31m");
+    assert_eq!(iter.rest_slice(), "\x1b[1ma\x1b[0m");
+    assert_eq!(iter.next(), Some(("\x1b[1m", true)));
+    assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1m");
+    assert_eq!(iter.rest_slice(), "a\x1b[0m");
+    assert_eq!(iter.next(), Some(("a", false)));
+    assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1ma");
+    assert_eq!(iter.rest_slice(), "\x1b[0m");
+    assert_eq!(iter.next(), Some(("\x1b[0m", true)));
+    assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1ma\x1b[0m");
+    assert_eq!(iter.rest_slice(), "");
+    assert_eq!(iter.next(), None);
+}
