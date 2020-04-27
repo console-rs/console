@@ -107,13 +107,18 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
+    is_msys_tty: bool,
 }
 
 impl Term {
     fn with_inner(inner: TermInner) -> Term {
-        Term {
+        let mut term = Term {
             inner: Arc::new(inner),
-        }
+            is_msys_tty: false,
+        };
+
+        term.is_msys_tty = term.features().is_msys_tty();
+        term
     }
 
     /// Return a new unbuffered terminal
@@ -400,7 +405,7 @@ impl Term {
 
     #[cfg(all(windows, features = "windows-console-colors"))]
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
-        if self.features().is_msys_tty() {
+        if self.is_msys_tty {
             self.write_through_common(bytes)
         } else {
             use winapi_util::console::Console;
