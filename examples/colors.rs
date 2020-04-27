@@ -7,4 +7,8 @@ fn main() {
     );
     println!("This is reversed: [{}]", style("whatever").reverse());
     println!("This is cyan: {}", style("whatever").cyan());
+    println!(
+        "This is black bright: {}",
+        style("whatever").bright().black()
+    );
 }

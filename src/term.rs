@@ -149,6 +149,8 @@ impl Term {
             buffer: Some(Mutex::new(vec![])),
         })
     }
+
+    #[inline]
     /// Returns the targert
     pub fn target(&self) -> TermTarget {
         self.inner.target
@@ -187,6 +189,12 @@ impl Term {
                 }
                 Key::Enter => {
                     return Ok('\n');
+                }
+                Key::Unknown => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotConnected,
+                        "Not a terminal",
+                    ))
                 }
                 _ => {}
             }
@@ -248,6 +256,12 @@ impl Term {
                     self.flush()?;
                 }
                 Key::Enter => break,
+                Key::Unknown => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotConnected,
+                        "Not a terminal",
+                    ))
+                }
                 _ => (),
             }
         }
@@ -288,6 +302,7 @@ impl Term {
         Ok(())
     }
 
+    #[inline]
     /// Checks if the terminal is indeed a terminal.
     ///
     /// This is a shortcut for `features().is_attended()`.
@@ -321,31 +336,37 @@ impl Term {
         terminal_size()
     }
 
+    #[inline]
     /// Moves the cursor to `x` and `y`
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
     }
 
+    #[inline]
     /// Moves the cursor up `n` lines
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
     }
 
+    #[inline]
     /// Moves the cursor down `n` lines
     pub fn move_cursor_down(&self, n: usize) -> io::Result<()> {
         move_cursor_down(self, n)
     }
 
+    #[inline]
     /// Moves the cursor left `n` lines
     pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
         move_cursor_left(self, n)
     }
 
+    #[inline]
     /// Moves the cursor down `n` lines
     pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
         move_cursor_right(self, n)
     }
 
+    #[inline]
     /// Clears the current line.
     ///
     /// The positions the cursor at the beginning of the line again.
@@ -367,6 +388,7 @@ impl Term {
         Ok(())
     }
 
+    #[inline]
     /// Clears the entire screen.
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
@@ -376,6 +398,7 @@ impl Term {
         clear_to_end_of_screen(self)
     }
 
+    #[inline]
     /// Clears the last char in the the current line.
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         common_term::clear_chars(self, n)
@@ -389,11 +412,13 @@ impl Term {
         set_title(title);
     }
 
+    #[inline]
     /// Makes cursor visible again
     pub fn show_cursor(&self) -> io::Result<()> {
         show_cursor(self)
     }
 
+    #[inline]
     /// Hides cursor
     pub fn hide_cursor(&self) -> io::Result<()> {
         hide_cursor(self)

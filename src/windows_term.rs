@@ -74,16 +74,9 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
     false
 }
 
+#[inline]
 pub fn terminal_size() -> Option<(u16, u16)> {
-    let hand = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
-    if let Some((_, csbi)) = get_console_screen_buffer_info(hand) {
-        Some((
-            (csbi.srWindow.Bottom - csbi.srWindow.Top) as u16,
-            (csbi.srWindow.Right - csbi.srWindow.Left) as u16,
-        ))
-    } else {
-        None
-    }
+    terminal_size::terminal_size().map(|x| ((x.0).0, (x.1).0))
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
