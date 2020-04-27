@@ -403,7 +403,7 @@ impl Term {
 
     // helpers
 
-    #[cfg(all(windows, features = "windows-console-colors"))]
+    #[cfg(all(windows, feature = "windows-console-colors"))]
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
         if self.is_msys_tty {
             self.write_through_common(bytes)
@@ -411,13 +411,13 @@ impl Term {
             use winapi_util::console::Console;
 
             match self.inner.target {
-                TermTarget::Stdout => console_colors(self, Console::stdout(), bytes),
-                TermTarget::Stderr => console_colors(self, Console::stderr(), bytes),
+                TermTarget::Stdout => console_colors(self, Console::stdout()?, bytes),
+                TermTarget::Stderr => console_colors(self, Console::stderr()?, bytes),
             }
         }
     }
 
-    #[cfg(not(all(windows, features = "windows-console-colors")))]
+    #[cfg(not(all(windows, feature = "windows-console-colors")))]
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
         self.write_through_common(bytes)
     }

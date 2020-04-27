@@ -382,7 +382,7 @@ pub fn set_title<T: Display>(title: T) {
     }
 }
 
-#[cfg(feature = "windows-console-colors")]
+#[cfg(all(windows, feature = "windows-console-colors"))]
 pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<()> {
     use crate::ansi::AnsiCodeIterator;
     use std::str::from_utf8;
