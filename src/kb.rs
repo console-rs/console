@@ -12,6 +12,10 @@ pub enum Key {
     Enter,
     Escape,
     Backspace,
+    Home,
+    End,
+    Tab,
+    Del,
     Char(char),
     #[doc(hidden)]
     __More,

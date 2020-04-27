@@ -355,6 +355,18 @@ impl Term {
     }
 
     #[inline]
+    /// Moves the cursor left `n` lines
+    pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
+        move_cursor_left(self, n)
+    }
+
+    #[inline]
+    /// Moves the cursor down `n` lines
+    pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
+        move_cursor_right(self, n)
+    }
+
+    #[inline]
     /// Clears the current line.
     ///
     /// The positions the cursor at the beginning of the line again.
@@ -380,6 +392,10 @@ impl Term {
     /// Clears the entire screen.
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
+    }
+    /// Clears the entire screen.
+    pub fn clear_to_end_of_screen(&self) -> io::Result<()> {
+        clear_to_end_of_screen(self)
     }
 
     #[inline]

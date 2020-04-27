@@ -108,6 +108,10 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
         b"\n" | b"\r" => Key::Enter,
         b"\x1b" => Key::Escape,
         b"\x7f" => Key::Backspace,
+        b"\x1b[H" => Key::Home,
+        b"\x1b[F" => Key::End,
+        b"\t" => Key::Tab,
+        b"\x1b[3~" => Key::Del,
         buf => {
             if let Ok(s) = str::from_utf8(buf) {
                 if let Some(c) = s.chars().next() {
