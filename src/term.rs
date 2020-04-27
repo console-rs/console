@@ -433,7 +433,7 @@ impl Term {
 
     #[cfg(all(windows, feature = "windows-console-colors"))]
     fn write_through(&self, bytes: &[u8]) -> io::Result<()> {
-        if self.is_msys_tty {
+        if self.is_msys_tty || !self.is_term() {
             self.write_through_common(bytes)
         } else {
             use winapi_util::console::Console;
