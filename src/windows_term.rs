@@ -92,7 +92,7 @@ pub fn terminal_size() -> Option<(u16, u16)> {
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::move_cursor_to(out, x, y);
     }
     if let Some((hand, _)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -110,7 +110,7 @@ pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::move_cursor_up(out, n);
     }
 
@@ -121,7 +121,7 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::move_cursor_down(out, n);
     }
 
@@ -132,7 +132,7 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::move_cursor_left(out, n);
     }
 
@@ -147,7 +147,7 @@ pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::move_cursor_right(out, n);
     }
 
@@ -162,7 +162,7 @@ pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn clear_line(out: &Term) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::clear_line(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -182,7 +182,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 }
 
 pub fn clear_screen(out: &Term) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::clear_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -199,7 +199,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
 }
 
 pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::clear_to_end_of_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -221,12 +221,12 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
 }
 
 pub fn show_cursor(out: &Term) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::show_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
         unsafe {
-            cci.bVisible = true;
+            cci.bVisible = 1;
             SetConsoleCursorInfo(hand, &mut cci);
         }
     }
@@ -234,12 +234,12 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
 }
 
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
-    if msys_tty_on(out) {
+    if out.is_msys_tty {
         return common_term::hide_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
         unsafe {
-            cci.bVisible = false;
+            cci.bVisible = 0;
             SetConsoleCursorInfo(hand, &mut cci);
         }
     }
