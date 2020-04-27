@@ -25,7 +25,7 @@ lazy_static! {
     static ref STDERR_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stderr()));
 }
 
-/// Returns `true` if colors should be enabled.
+/// Returns `true` if colors should be enabled for stdout.
 ///
 /// This honors the [clicolors spec](http://bixense.com/clicolors/).
 ///
@@ -37,13 +37,34 @@ pub fn colors_enabled() -> bool {
     STDOUT_COLORS.load(Ordering::Relaxed)
 }
 
-/// Forces colorization on or off.
+/// Forces colorization on or off for stdout.
 ///
 /// This overrides the default for the current process and changes the return value of the
 /// `colors_enabled` function.
 #[inline]
 pub fn set_colors_enabled(val: bool) {
     STDOUT_COLORS.store(val, Ordering::Relaxed)
+}
+
+/// Returns `true` if colors should be enabled for stderr.
+///
+/// This honors the [clicolors spec](http://bixense.com/clicolors/).
+///
+/// * `CLICOLOR != 0`: ANSI colors are supported and should be used when the program isn't piped.
+/// * `CLICOLOR == 0`: Don't output ANSI color escape codes.
+/// * `CLICOLOR_FORCE != 0`: ANSI colors should be enabled no matter what.
+#[inline]
+pub fn colors_enabled_stderr() -> bool {
+    STDERR_COLORS.load(Ordering::Relaxed)
+}
+
+/// Forces colorization on or off for stderr.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `colors_enabled` function.
+#[inline]
+pub fn set_colors_enabled_stderr(val: bool) {
+    STDERR_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Measure the width of a string in terminal characters.
@@ -124,6 +145,7 @@ pub struct Style {
     bg_bright: bool,
     attrs: BTreeSet<Attribute>,
     force: Option<bool>,
+    for_stderr: bool,
 }
 
 impl Default for Style {
@@ -142,6 +164,7 @@ impl Style {
             bg_bright: false,
             attrs: BTreeSet::new(),
             force: None,
+            for_stderr: false,
         }
     }
 
@@ -201,6 +224,22 @@ impl Style {
     #[inline]
     pub fn force_styling(mut self, value: bool) -> Style {
         self.force = Some(value);
+        self
+    }
+
+    /// Specifies that style is applying to something being written on stderr.
+    #[inline]
+    pub fn for_stderr(mut self) -> Style {
+        self.for_stderr = true;
+        self
+    }
+
+    /// Specifies that style is applying to something being written on stdout.
+    ///
+    /// This is the default behaviour.
+    #[inline]
+    pub fn for_stdout(mut self) -> Style {
+        self.for_stderr = false;
         self
     }
 
@@ -370,6 +409,22 @@ impl<D> StyledObject<D> {
         self
     }
 
+    /// Specifies that style is applying to something being written on stderr
+    #[inline]
+    pub fn for_stderr(mut self) -> StyledObject<D> {
+        self.style = self.style.for_stderr();
+        self
+    }
+
+    /// Specifies that style is applying to something being written on stdout
+    ///
+    /// This is the default
+    #[inline]
+    pub fn for_stdout(mut self) -> StyledObject<D> {
+        self.style = self.style.for_stdout();
+        self
+    }
+
     /// Sets a foreground color.
     #[inline]
     pub fn fg(mut self, color: Color) -> StyledObject<D> {
@@ -504,7 +559,14 @@ macro_rules! impl_fmt {
         impl<D: fmt::$name> fmt::$name for StyledObject<D> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 let mut reset = false;
-                if self.style.force.unwrap_or_else(colors_enabled) {
+                if self
+                    .style
+                    .force
+                    .unwrap_or_else(|| match self.style.for_stderr {
+                        true => colors_enabled_stderr(),
+                        false => colors_enabled(),
+                    })
+                {
                     if let Some(fg) = self.style.fg {
                         if self.style.fg_bright {
                             write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;

@@ -79,8 +79,9 @@
 pub use crate::kb::Key;
 pub use crate::term::{user_attended, Term, TermFamily, TermFeatures, TermTarget};
 pub use crate::utils::{
-    colors_enabled, measure_text_width, pad_str, set_colors_enabled, style, truncate_str,
-    Alignment, Attribute, Color, Emoji, Style, StyledObject,
+    colors_enabled, colors_enabled_stderr, measure_text_width, pad_str, set_colors_enabled,
+    set_colors_enabled_stderr, style, truncate_str, Alignment, Attribute, Color, Emoji, Style,
+    StyledObject,
 };
 
 #[cfg(feature = "ansi-parsing")]
