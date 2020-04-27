@@ -190,6 +190,12 @@ impl Term {
                 Key::Enter => {
                     return Ok('\n');
                 }
+                Key::Unknown => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotConnected,
+                        "Not a terminal",
+                    ))
+                }
                 _ => {}
             }
         }
@@ -250,6 +256,12 @@ impl Term {
                     self.flush()?;
                 }
                 Key::Enter => break,
+                Key::Unknown => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::NotConnected,
+                        "Not a terminal",
+                    ))
+                }
                 _ => (),
             }
         }
