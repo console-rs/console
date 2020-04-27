@@ -8,7 +8,6 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
-use crate::common_term;
 use crate::kb::Key;
 
 /// Where the term is writing.
@@ -407,7 +406,7 @@ impl Term {
     /// Clears the last char in the the current line.
     #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
-        common_term::clear_chars(self, n)
+        clear_chars(self, n)
     }
 
     /// Set the terminal title

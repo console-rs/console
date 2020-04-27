@@ -1,4 +1,5 @@
 use std::char;
+use std::cmp;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
@@ -214,6 +215,26 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
     Ok(())
 }
 
+pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
+    if out.is_msys_tty {
+        return common_term::clear_chars(out, n);
+    }
+    if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        unsafe {
+            let width = cmp::min(csbi.dwCursorPosition.X, n as i16);
+            let pos = COORD {
+                X: csbi.dwCursorPosition.X - width,
+                Y: csbi.dwCursorPosition.Y,
+            };
+            let mut written = 0;
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
+            SetConsoleCursorPosition(hand, pos);
+        }
+    }
+    Ok(())
+}
+
 pub fn clear_screen(out: &Term) -> io::Result<()> {
     if out.is_msys_tty {
         return common_term::clear_screen(out);
@@ -278,8 +299,6 @@ pub fn hide_cursor(out: &Term) -> io::Result<()> {
     }
     Ok(())
 }
-
-// TODO: clear_chars
 
 fn get_console_screen_buffer_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_SCREEN_BUFFER_INFO)> {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe { mem::zeroed() };
