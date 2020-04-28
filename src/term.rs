@@ -509,7 +509,7 @@ impl io::Write for Term {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+        Term::flush(self)
     }
 }
 
@@ -523,7 +523,7 @@ impl<'a> io::Write for &'a Term {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+        Term::flush(self)
     }
 }
 
