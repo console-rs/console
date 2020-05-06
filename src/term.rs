@@ -8,7 +8,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
-use crate::kb::Key;
+use crate::{kb::Key, utils::Style};
 
 /// Where the term is writing.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -157,8 +157,17 @@ impl Term {
         })
     }
 
+    /// Returns the style for the term
     #[inline]
+    pub fn style(&self) -> Style {
+        match self.target() {
+            TermTarget::Stderr => Style::new().for_stderr(),
+            TermTarget::Stdout => Style::new().for_stdout(),
+        }
+    }
+
     /// Returns the targert
+    #[inline]
     pub fn target(&self) -> TermTarget {
         self.inner.target
     }
@@ -398,7 +407,9 @@ impl Term {
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
     }
+
     /// Clears the entire screen.
+    #[inline]
     pub fn clear_to_end_of_screen(&self) -> io::Result<()> {
         clear_to_end_of_screen(self)
     }
@@ -470,8 +481,9 @@ impl Term {
 /// This means that stdout is connected to a terminal instead of a
 /// file or redirected by other means.  This is a shortcut for
 /// checking the `is_attended` flag on the stdout terminal.
+#[inline]
 pub fn user_attended() -> bool {
-    Term::stdout().features().is_attended()
+    Term::stdout().is_term()
 }
 
 #[cfg(unix)]
