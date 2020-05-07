@@ -85,9 +85,22 @@ pub fn read_single_key() -> io::Result<Key> {
     termios::cfmakeraw(&mut termios);
     termios::tcsetattr(fd, termios::TCSADRAIN, &termios)?;
     let rv = unsafe {
-        let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 20);
+        let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1);
         if read < 0 {
             Err(io::Error::last_os_error())
+        } else if buf[0] == b'\x1b' {
+            // read more bytes if the first byte was the ESC code
+            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 19);
+            if read < 0 {
+                Err(io::Error::last_os_error())
+            } else if buf[1] == b'\x03' {
+                Err(io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    "read interrupted",
+                ))
+            } else {
+                Ok(key_from_escape_codes(&buf[..(read+1) as usize]))
+            }
         } else if buf[0] == b'\x03' {
             Err(io::Error::new(
                 io::ErrorKind::Interrupted,
