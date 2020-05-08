@@ -89,7 +89,7 @@ pub fn read_single_key() -> io::Result<Key> {
         if read < 0 {
             Err(io::Error::last_os_error())
         } else if buf[0] == b'\x1b' {
-            // read more bytes if the first byte was the ESC code
+            // read 19 more bytes if the first byte was the ESC code
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 19);
             if read < 0 {
                 Err(io::Error::last_os_error())
@@ -100,6 +100,45 @@ pub fn read_single_key() -> io::Result<Key> {
                 ))
             } else {
                 Ok(key_from_escape_codes(&buf[..(read+1) as usize]))
+            }
+        } else if buf[0] & 224u8 == 192u8 { 
+            // a two byte unicode character
+            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1);
+            if read < 0 {
+                Err(io::Error::last_os_error())
+            } else if buf[1] == b'\x03' {
+                Err(io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    "read interrupted",
+                ))
+            } else {
+                Ok(key_from_escape_codes(&buf[..2 as usize]))
+            }
+        } else if buf[0] & 240u8 == 224u8 { 
+            // a three byte unicode character
+            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2);
+            if read < 0 {
+                Err(io::Error::last_os_error())
+            } else if buf[1] == b'\x03' {
+                Err(io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    "read interrupted",
+                ))
+            } else {
+                Ok(key_from_escape_codes(&buf[..3 as usize]))
+            }
+        } else if buf[0] & 248u8 == 240u8 { 
+            // a four byte unicode character
+            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3);
+            if read < 0 {
+                Err(io::Error::last_os_error())
+            } else if buf[1] == b'\x03' {
+                Err(io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    "read interrupted",
+                ))
+            } else {
+                Ok(key_from_escape_codes(&buf[..4 as usize]))
             }
         } else if buf[0] == b'\x03' {
             Err(io::Error::new(
