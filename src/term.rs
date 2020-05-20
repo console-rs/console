@@ -440,6 +440,18 @@ impl Term {
         hide_cursor(self)
     }
 
+    /// Enter alternate screen
+    #[inline]
+    pub fn enter_alternate_screen(&self) -> io::Result<()> {
+        enter_alternate_screen(self)
+    }
+
+    /// Exit alternate screen
+    #[inline]
+    pub fn exit_alternate_screen(&self) -> io::Result<()> {
+        exit_alternate_screen(self)
+    }
+
     // helpers
 
     #[cfg(all(windows, feature = "windows-console-colors"))]
