@@ -187,8 +187,24 @@ pub fn key_from_escape_codes(buf: &[u8]) -> Key {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
+lazy_static::lazy_static! {
+    static ref IS_LANG_UTF8: bool = {
+        match std::env::var("LANG") {
+            Ok(lang) => lang.to_uppercase().ends_with("UTF-8"),
+            _ => false,
+        }
+    };
+}
+
+#[cfg(target_os = "macos")]
 pub fn wants_emoji() -> bool {
-    cfg!(target_os = "macos")
+    true
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn wants_emoji() -> bool {
+    *IS_LANG_UTF8
 }
 
 pub fn set_title<T: Display>(title: T) {
