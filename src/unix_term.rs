@@ -50,7 +50,7 @@ pub fn read_secure() -> io::Result<String> {
 
     let mut termios = core::mem::MaybeUninit::uninit();
     if unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) } != 0 {
-		return Err(io::Error::last_os_error());
+        return Err(io::Error::last_os_error());
     }
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
@@ -90,7 +90,7 @@ pub fn read_single_key() -> io::Result<Key> {
     let mut buf = [0u8; 20];
     let mut termios = core::mem::MaybeUninit::uninit();
     if unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) } != 0 {
-		return Err(io::Error::last_os_error());
+        return Err(io::Error::last_os_error());
     }
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
@@ -113,9 +113,9 @@ pub fn read_single_key() -> io::Result<Key> {
                     "read interrupted",
                 ))
             } else {
-                Ok(key_from_escape_codes(&buf[..(read+1) as usize]))
+                Ok(key_from_escape_codes(&buf[..(read + 1) as usize]))
             }
-        } else if buf[0] & 224u8 == 192u8 { 
+        } else if buf[0] & 224u8 == 192u8 {
             // a two byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1);
             if read < 0 {
@@ -128,7 +128,7 @@ pub fn read_single_key() -> io::Result<Key> {
             } else {
                 Ok(key_from_escape_codes(&buf[..2 as usize]))
             }
-        } else if buf[0] & 240u8 == 224u8 { 
+        } else if buf[0] & 240u8 == 224u8 {
             // a three byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2);
             if read < 0 {
@@ -141,7 +141,7 @@ pub fn read_single_key() -> io::Result<Key> {
             } else {
                 Ok(key_from_escape_codes(&buf[..3 as usize]))
             }
-        } else if buf[0] & 248u8 == 240u8 { 
+        } else if buf[0] & 248u8 == 240u8 {
             // a four byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3);
             if read < 0 {
