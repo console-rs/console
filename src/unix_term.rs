@@ -48,10 +48,16 @@ pub fn read_secure() -> io::Result<String> {
         }
     };
 
-    let mut termios = termios::Termios::from_fd(fd)?;
+    let mut termios = core::mem::MaybeUninit::uninit();
+    if unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) } != 0 {
+		return Err(io::Error::last_os_error());
+    }
+    let mut termios = unsafe { termios.assume_init() };
     let original = termios;
-    termios.c_lflag &= !termios::ECHO;
-    termios::tcsetattr(fd, termios::TCSAFLUSH, &termios)?;
+    termios.c_lflag &= !libc::ECHO;
+    if unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &termios) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
     let mut rv = String::new();
 
     let read_rv = if let Some(mut f) = f_tty {
@@ -60,7 +66,9 @@ pub fn read_secure() -> io::Result<String> {
         io::stdin().read_line(&mut rv)
     };
 
-    termios::tcsetattr(fd, termios::TCSAFLUSH, &original)?;
+    if unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &original) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
 
     read_rv.map(|_| {
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
@@ -80,10 +88,16 @@ pub fn read_single_key() -> io::Result<Key> {
         }
     };
     let mut buf = [0u8; 20];
-    let mut termios = termios::Termios::from_fd(fd)?;
+    let mut termios = core::mem::MaybeUninit::uninit();
+    if unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) } != 0 {
+		return Err(io::Error::last_os_error());
+    }
+    let mut termios = unsafe { termios.assume_init() };
     let original = termios;
-    termios::cfmakeraw(&mut termios);
-    termios::tcsetattr(fd, termios::TCSADRAIN, &termios)?;
+    unsafe { libc::cfmakeraw(&mut termios) };
+    if unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
     let rv = unsafe {
         let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1);
         if read < 0 {
@@ -149,7 +163,9 @@ pub fn read_single_key() -> io::Result<Key> {
             Ok(key_from_escape_codes(&buf[..read as usize]))
         }
     };
-    termios::tcsetattr(fd, termios::TCSADRAIN, &original)?;
+    if unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
 
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
