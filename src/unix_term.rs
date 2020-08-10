@@ -29,6 +29,15 @@ pub fn is_a_color_terminal(out: &Term) -> bool {
     }
 }
 
+pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
+    let res = f();
+    if res != 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
 #[inline]
 pub fn terminal_size() -> Option<(u16, u16)> {
     terminal_size::terminal_size().map(|x| ((x.1).0, (x.0).0))
@@ -48,10 +57,12 @@ pub fn read_secure() -> io::Result<String> {
         }
     };
 
-    let mut termios = termios::Termios::from_fd(fd)?;
+    let mut termios = core::mem::MaybeUninit::uninit();
+    c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
+    let mut termios = unsafe { termios.assume_init() };
     let original = termios;
-    termios.c_lflag &= !termios::ECHO;
-    termios::tcsetattr(fd, termios::TCSAFLUSH, &termios)?;
+    termios.c_lflag &= !libc::ECHO;
+    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &termios) })?;
     let mut rv = String::new();
 
     let read_rv = if let Some(mut f) = f_tty {
@@ -60,7 +71,7 @@ pub fn read_secure() -> io::Result<String> {
         io::stdin().read_line(&mut rv)
     };
 
-    termios::tcsetattr(fd, termios::TCSAFLUSH, &original)?;
+    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &original) })?;
 
     read_rv.map(|_| {
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
@@ -80,10 +91,12 @@ pub fn read_single_key() -> io::Result<Key> {
         }
     };
     let mut buf = [0u8; 20];
-    let mut termios = termios::Termios::from_fd(fd)?;
+    let mut termios = core::mem::MaybeUninit::uninit();
+	c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
+    let mut termios = unsafe { termios.assume_init() };
     let original = termios;
-    termios::cfmakeraw(&mut termios);
-    termios::tcsetattr(fd, termios::TCSADRAIN, &termios)?;
+    unsafe { libc::cfmakeraw(&mut termios) };
+    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
     let rv = unsafe {
         let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1);
         if read < 0 {
@@ -99,9 +112,9 @@ pub fn read_single_key() -> io::Result<Key> {
                     "read interrupted",
                 ))
             } else {
-                Ok(key_from_escape_codes(&buf[..(read+1) as usize]))
+                Ok(key_from_escape_codes(&buf[..(read + 1) as usize]))
             }
-        } else if buf[0] & 224u8 == 192u8 { 
+        } else if buf[0] & 224u8 == 192u8 {
             // a two byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1);
             if read < 0 {
@@ -114,7 +127,7 @@ pub fn read_single_key() -> io::Result<Key> {
             } else {
                 Ok(key_from_escape_codes(&buf[..2 as usize]))
             }
-        } else if buf[0] & 240u8 == 224u8 { 
+        } else if buf[0] & 240u8 == 224u8 {
             // a three byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2);
             if read < 0 {
@@ -127,7 +140,7 @@ pub fn read_single_key() -> io::Result<Key> {
             } else {
                 Ok(key_from_escape_codes(&buf[..3 as usize]))
             }
-        } else if buf[0] & 248u8 == 240u8 { 
+        } else if buf[0] & 248u8 == 240u8 {
             // a four byte unicode character
             let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3);
             if read < 0 {
@@ -149,7 +162,7 @@ pub fn read_single_key() -> io::Result<Key> {
             Ok(key_from_escape_codes(&buf[..read as usize]))
         }
     };
-    termios::tcsetattr(fd, termios::TCSADRAIN, &original)?;
+    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) })?;
 
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
