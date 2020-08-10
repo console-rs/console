@@ -83,6 +83,7 @@ pub enum Color {
     Magenta,
     Cyan,
     White,
+    Color256(u8),
 }
 
 impl Color {
@@ -97,6 +98,15 @@ impl Color {
             Color::Magenta => 5,
             Color::Cyan => 6,
             Color::White => 7,
+            Color::Color256(x) => x as usize,
+        }
+    }
+
+    #[inline]
+    fn is_color256(self) -> bool {
+        match self {
+            Color::Color256(_) => true,
+            _ => false,
         }
     }
 }
@@ -296,6 +306,10 @@ impl Style {
     pub fn white(self) -> Style {
         self.fg(Color::White)
     }
+    #[inline]
+    pub fn color256(self, color: u8) -> Style {
+        self.fg(Color::Color256(color))
+    }
 
     #[inline]
     pub fn bright(mut self) -> Style {
@@ -334,6 +348,10 @@ impl Style {
     #[inline]
     pub fn on_white(self) -> Style {
         self.bg(Color::White)
+    }
+    #[inline]
+    pub fn on_color256(self, color: u8) -> Style {
+        self.bg(Color::Color256(color))
     }
 
     #[inline]
@@ -478,6 +496,10 @@ impl<D> StyledObject<D> {
     pub fn white(self) -> StyledObject<D> {
         self.fg(Color::White)
     }
+    #[inline]
+    pub fn color256(self, color: u8) -> StyledObject<D> {
+        self.fg(Color::Color256(color))
+    }
 
     #[inline]
     pub fn bright(mut self) -> StyledObject<D> {
@@ -516,6 +538,10 @@ impl<D> StyledObject<D> {
     #[inline]
     pub fn on_white(self) -> StyledObject<D> {
         self.bg(Color::White)
+    }
+    #[inline]
+    pub fn on_color256(self, color: u8) -> StyledObject<D> {
+        self.bg(Color::Color256(color))
     }
 
     #[inline]
@@ -568,7 +594,9 @@ macro_rules! impl_fmt {
                     })
                 {
                     if let Some(fg) = self.style.fg {
-                        if self.style.fg_bright {
+                        if fg.is_color256() {
+                            write!(f, "\x1b[38;5;{}m", fg.ansi_num())?;
+                        } else if self.style.fg_bright {
                             write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;
                         } else {
                             write!(f, "\x1b[{}m", fg.ansi_num() + 30)?;
@@ -576,7 +604,9 @@ macro_rules! impl_fmt {
                         reset = true;
                     }
                     if let Some(bg) = self.style.bg {
-                        if self.style.bg_bright {
+                        if bg.is_color256() {
+                            write!(f, "\x1b[48;5;{}m", bg.ansi_num())?;
+                        } else if self.style.bg_bright {
                             write!(f, "\x1b[48;5;{}m", bg.ansi_num() + 8)?;
                         } else {
                             write!(f, "\x1b[{}m", bg.ansi_num() + 40)?;
