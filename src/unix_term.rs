@@ -80,6 +80,60 @@ pub fn read_secure() -> io::Result<String> {
     })
 }
 
+fn read_single_byte(fd: i32) -> io::Result<Option<u8>> {
+    let mut readfds = core::mem::MaybeUninit::uninit();
+    unsafe {
+        libc::FD_SET(fd, readfds.as_mut_ptr());
+    };
+    let mut readfds = unsafe { readfds.assume_init() };
+
+    // zero timeout, i.e check if there is something to be read right now
+    let mut timeout = libc::timeval {
+        tv_sec: 0,
+        tv_usec: 0,
+    };
+
+    let ret = unsafe {
+        libc::select(
+            fd + 1,
+            &mut readfds as *mut _,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut timeout,
+        )
+    };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    let is_ready = unsafe { libc::FD_ISSET(fd, &mut readfds as *mut _) };
+
+    if is_ready {
+        //there is something to be read
+
+        // let mut buf: [u8; 1] = [0];
+        // let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1) };
+
+        //read only 1 byte
+        let mut byte: u8 = 0;
+        let read = unsafe { libc::read(fd, &mut byte as *mut u8 as _, 1) };
+
+        if read < 0 {
+            Err(io::Error::last_os_error())
+        } else if byte == b'\x03' {
+            Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "read interrupted",
+            ))
+        } else {
+            Ok(Some(byte))
+        }
+    } else {
+        //there is nothing to be read
+        Ok(None)
+    }
+}
+
 pub fn read_single_key() -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
@@ -92,74 +146,118 @@ pub fn read_single_key() -> io::Result<Key> {
     };
     let mut buf = [0u8; 20];
     let mut termios = core::mem::MaybeUninit::uninit();
-	c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
+    c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
     unsafe { libc::cfmakeraw(&mut termios) };
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
-    let rv = unsafe {
-        let read = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1);
-        if read < 0 {
-            Err(io::Error::last_os_error())
-        } else if buf[0] == b'\x1b' {
-            // read 19 more bytes if the first byte was the ESC code
-            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 19);
-            if read < 0 {
-                Err(io::Error::last_os_error())
-            } else if buf[1] == b'\x03' {
-                Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "read interrupted",
-                ))
+
+    let byte = read_single_byte(fd)?;
+    let rv = match byte {
+        Some(b'\x1b') => {
+            // Escape was read, keep reading in case we find a familiar key
+            if let Some(b1) = read_single_byte(fd)? {
+                if b1 == b'[' {
+                    if let Some(b2) = read_single_byte(fd)? {
+                        match b2 {
+                            b'A' => Ok(Key::ArrowUp),
+                            b'B' => Ok(Key::ArrowDown),
+                            b'C' => Ok(Key::ArrowRight),
+                            b'D' => Ok(Key::ArrowLeft),
+                            b'H' => Ok(Key::Home),
+                            b'F' => Ok(Key::End),
+                            b'3' => {
+                                if let Some(b'~') = read_single_byte(fd)? {
+                                    Ok(Key::Del)
+                                } else {
+                                    Ok(Key::Escape)
+                                }
+                            }
+                            _ => Ok(Key::Escape),
+                        }
+                    } else {
+                        // \x1b[ and no more input
+                        Ok(Key::Escape)
+                    }
+                } else {
+                    // char after escape is not [
+                    Ok(Key::Escape)
+                }
             } else {
-                Ok(key_from_escape_codes(&buf[..(read + 1) as usize]))
+                //nothing after escape
+                Ok(Key::Escape)
             }
-        } else if buf[0] & 224u8 == 192u8 {
-            // a two byte unicode character
-            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1);
-            if read < 0 {
-                Err(io::Error::last_os_error())
-            } else if buf[1] == b'\x03' {
-                Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "read interrupted",
-                ))
+        }
+        Some(byte) => {
+            buf[0] = byte;
+            if byte & 224u8 == 192u8 {
+                // a two byte unicode character
+                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1) };
+                if read < 0 {
+                    Err(io::Error::last_os_error())
+                } else if buf[1] == b'\x03' {
+                    Err(io::Error::new(
+                        io::ErrorKind::Interrupted,
+                        "read interrupted",
+                    ))
+                } else {
+                    Ok(key_from_escape_codes(&buf[..2 as usize]))
+                }
+            } else if byte & 240u8 == 224u8 {
+                // a three byte unicode character
+                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2) };
+                if read < 0 {
+                    Err(io::Error::last_os_error())
+                } else if buf[1] == b'\x03' {
+                    Err(io::Error::new(
+                        io::ErrorKind::Interrupted,
+                        "read interrupted",
+                    ))
+                } else {
+                    Ok(key_from_escape_codes(&buf[..3 as usize]))
+                }
+            } else if byte & 248u8 == 240u8 {
+                // a four byte unicode character
+                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3) };
+                if read < 0 {
+                    Err(io::Error::last_os_error())
+                } else if buf[1] == b'\x03' {
+                    Err(io::Error::new(
+                        io::ErrorKind::Interrupted,
+                        "read interrupted",
+                    ))
+                } else {
+                    Ok(key_from_escape_codes(&buf[..4 as usize]))
+                }
             } else {
-                Ok(key_from_escape_codes(&buf[..2 as usize]))
+                Ok(key_from_escape_codes(&[byte]))
             }
-        } else if buf[0] & 240u8 == 224u8 {
-            // a three byte unicode character
-            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2);
-            if read < 0 {
-                Err(io::Error::last_os_error())
-            } else if buf[1] == b'\x03' {
-                Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "read interrupted",
-                ))
-            } else {
-                Ok(key_from_escape_codes(&buf[..3 as usize]))
+        }
+        None => {
+            //there is no subsequent byte ready to be read, block and wait for input
+
+            let mut readfds = core::mem::MaybeUninit::uninit();
+            unsafe {
+                libc::FD_SET(fd, readfds.as_mut_ptr());
+            };
+            let mut readfds = unsafe { readfds.assume_init() };
+
+            // block until there is something to be read
+            let ret = unsafe {
+                libc::select(
+                    fd + 1,
+                    &mut readfds as *mut _,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    // null timeout pointer means that it will block indefinitely
+                    std::ptr::null_mut(),
+                )
+            };
+            if ret < 0 {
+                return Err(io::Error::last_os_error());
             }
-        } else if buf[0] & 248u8 == 240u8 {
-            // a four byte unicode character
-            let read = libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3);
-            if read < 0 {
-                Err(io::Error::last_os_error())
-            } else if buf[1] == b'\x03' {
-                Err(io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    "read interrupted",
-                ))
-            } else {
-                Ok(key_from_escape_codes(&buf[..4 as usize]))
-            }
-        } else if buf[0] == b'\x03' {
-            Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                "read interrupted",
-            ))
-        } else {
-            Ok(key_from_escape_codes(&buf[..read as usize]))
+
+            read_single_key()
         }
     };
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) })?;
@@ -178,17 +276,17 @@ pub fn read_single_key() -> io::Result<Key> {
 
 pub fn key_from_escape_codes(buf: &[u8]) -> Key {
     match buf {
-        b"\x1b[D" => Key::ArrowLeft,
-        b"\x1b[C" => Key::ArrowRight,
+        b"\x1b" => Key::Escape,
         b"\x1b[A" => Key::ArrowUp,
         b"\x1b[B" => Key::ArrowDown,
-        b"\n" | b"\r" => Key::Enter,
-        b"\x1b" => Key::Escape,
-        b"\x7f" => Key::Backspace,
+        b"\x1b[C" => Key::ArrowRight,
+        b"\x1b[D" => Key::ArrowLeft,
         b"\x1b[H" => Key::Home,
         b"\x1b[F" => Key::End,
-        b"\t" => Key::Tab,
         b"\x1b[3~" => Key::Del,
+        b"\n" | b"\r" => Key::Enter,
+        b"\x7f" => Key::Backspace,
+        b"\t" => Key::Tab,
         buf => {
             if let Ok(s) = str::from_utf8(buf) {
                 if let Some(c) = s.chars().next() {
