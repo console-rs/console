@@ -144,7 +144,6 @@ pub fn read_single_key() -> io::Result<Key> {
             tty_f.as_raw_fd()
         }
     };
-    let mut buf = [0u8; 20];
     let mut termios = core::mem::MaybeUninit::uninit();
     c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
     let mut termios = unsafe { termios.assume_init() };
@@ -166,14 +165,21 @@ pub fn read_single_key() -> io::Result<Key> {
                             b'D' => Ok(Key::ArrowLeft),
                             b'H' => Ok(Key::Home),
                             b'F' => Ok(Key::End),
-                            b'3' => {
+                            b'Z' => Ok(Key::BackTab),
+                            _ => {
                                 if let Some(b'~') = read_single_byte(fd)? {
-                                    Ok(Key::Del)
+                                    match b2 {
+                                        b'2' => Ok(Key::Insert),
+                                        b'3' => Ok(Key::Del),
+                                        b'5' => Ok(Key::PageUp),
+                                        b'6' => Ok(Key::PageDown),
+                                        _ => Ok(Key::UnknownEscSeq),
+                                    }
                                 } else {
+                                    // \x1b[ and 1 more char
                                     Ok(Key::Escape)
                                 }
                             }
-                            _ => Ok(Key::Escape),
                         }
                     } else {
                         // \x1b[ and no more input
@@ -189,6 +195,7 @@ pub fn read_single_key() -> io::Result<Key> {
             }
         }
         Some(byte) => {
+            let mut buf = [0u8; 4];
             buf[0] = byte;
             if byte & 224u8 == 192u8 {
                 // a two byte unicode character

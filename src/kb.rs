@@ -5,6 +5,8 @@
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Key {
     Unknown,
+    // Escape followed by an unrecognized sequence
+    UnknownEscSeq,
     ArrowLeft,
     ArrowRight,
     ArrowUp,
@@ -15,7 +17,11 @@ pub enum Key {
     Home,
     End,
     Tab,
+    BackTab,
     Del,
+    Insert,
+    PageUp,
+    PageDown,
     Char(char),
     #[doc(hidden)]
     __More,
