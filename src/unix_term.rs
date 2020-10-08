@@ -81,32 +81,19 @@ pub fn read_secure() -> io::Result<String> {
 }
 
 fn read_single_byte(fd: i32) -> io::Result<Option<u8>> {
-    let mut readfds = core::mem::MaybeUninit::uninit();
-    unsafe {
-        libc::FD_SET(fd, readfds.as_mut_ptr());
-    };
-    let mut readfds = unsafe { readfds.assume_init() };
-
-    // zero timeout, i.e check if there is something to be read right now
-    let mut timeout = libc::timeval {
-        tv_sec: 0,
-        tv_usec: 0,
+    let mut pollfd = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
     };
 
-    let ret = unsafe {
-        libc::select(
-            fd + 1,
-            &mut readfds as *mut _,
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
-            &mut timeout,
-        )
-    };
+    // timeout of zero means that it will not block
+    let ret = unsafe { libc::poll(&mut pollfd as *mut _, 1, 0) };
     if ret < 0 {
         return Err(io::Error::last_os_error());
     }
 
-    let is_ready = unsafe { libc::FD_ISSET(fd, &mut readfds as *mut _) };
+    let is_ready = pollfd.revents & libc::POLLIN != 0;
 
     if is_ready {
         //there is something to be read
@@ -243,23 +230,14 @@ pub fn read_single_key() -> io::Result<Key> {
         None => {
             //there is no subsequent byte ready to be read, block and wait for input
 
-            let mut readfds = core::mem::MaybeUninit::uninit();
-            unsafe {
-                libc::FD_SET(fd, readfds.as_mut_ptr());
+            let mut pollfd = libc::pollfd {
+                fd,
+                events: libc::POLLIN,
+                revents: 0,
             };
-            let mut readfds = unsafe { readfds.assume_init() };
 
-            // block until there is something to be read
-            let ret = unsafe {
-                libc::select(
-                    fd + 1,
-                    &mut readfds as *mut _,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                    // null timeout pointer means that it will block indefinitely
-                    std::ptr::null_mut(),
-                )
-            };
+            // negative timeout means that it will block indefinitely
+            let ret = unsafe { libc::poll(&mut pollfd as *mut _, 1, -1) };
             if ret < 0 {
                 return Err(io::Error::last_os_error());
             }
