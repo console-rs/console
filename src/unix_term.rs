@@ -164,17 +164,17 @@ pub fn read_single_key() -> io::Result<Key> {
                                     }
                                 } else {
                                     // \x1b[ and 1 more char
-                                    Ok(Key::Escape)
+                                    Ok(Key::UnknownEscSeq)
                                 }
                             }
                         }
                     } else {
                         // \x1b[ and no more input
-                        Ok(Key::Escape)
+                        Ok(Key::UnknownEscSeq)
                     }
                 } else {
                     // char after escape is not [
-                    Ok(Key::Escape)
+                    Ok(Key::UnknownEscSeq)
                 }
             } else {
                 //nothing after escape
