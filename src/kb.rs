@@ -2,6 +2,7 @@
 ///
 /// This is an incomplete mapping of keys that are supported for reading
 /// from the keyboard.
+#[non_exhaustive]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Key {
     Unknown,
@@ -23,6 +24,4 @@ pub enum Key {
     PageUp,
     PageDown,
     Char(char),
-    #[doc(hidden)]
-    __More,
 }
