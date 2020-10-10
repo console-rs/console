@@ -80,7 +80,7 @@ pub fn read_secure() -> io::Result<String> {
     })
 }
 
-fn read_single_byte(fd: i32) -> io::Result<Option<u8>> {
+fn read_single_char(fd: i32) -> io::Result<Option<char>> {
     let mut pollfd = libc::pollfd {
         fd,
         events: libc::POLLIN,
@@ -113,7 +113,7 @@ fn read_single_byte(fd: i32) -> io::Result<Option<u8>> {
                 "read interrupted",
             ))
         } else {
-            Ok(Some(byte))
+            Ok(Some(byte as char))
         }
     } else {
         //there is nothing to be read
@@ -138,28 +138,28 @@ pub fn read_single_key() -> io::Result<Key> {
     unsafe { libc::cfmakeraw(&mut termios) };
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
 
-    let byte = read_single_byte(fd)?;
+    let byte = read_single_char(fd)?;
     let rv = match byte {
-        Some(b'\x1b') => {
+        Some('\x1b') => {
             // Escape was read, keep reading in case we find a familiar key
-            if let Some(b1) = read_single_byte(fd)? {
-                if b1 == b'[' {
-                    if let Some(b2) = read_single_byte(fd)? {
+            if let Some(b1) = read_single_char(fd)? {
+                if b1 == '[' {
+                    if let Some(b2) = read_single_char(fd)? {
                         match b2 {
-                            b'A' => Ok(Key::ArrowUp),
-                            b'B' => Ok(Key::ArrowDown),
-                            b'C' => Ok(Key::ArrowRight),
-                            b'D' => Ok(Key::ArrowLeft),
-                            b'H' => Ok(Key::Home),
-                            b'F' => Ok(Key::End),
-                            b'Z' => Ok(Key::BackTab),
+                            'A' => Ok(Key::ArrowUp),
+                            'B' => Ok(Key::ArrowDown),
+                            'C' => Ok(Key::ArrowRight),
+                            'D' => Ok(Key::ArrowLeft),
+                            'H' => Ok(Key::Home),
+                            'F' => Ok(Key::End),
+                            'Z' => Ok(Key::BackTab),
                             _ => {
-                                if let Some(b'~') = read_single_byte(fd)? {
+                                if let Some('~') = read_single_char(fd)? {
                                     match b2 {
-                                        b'2' => Ok(Key::Insert),
-                                        b'3' => Ok(Key::Del),
-                                        b'5' => Ok(Key::PageUp),
-                                        b'6' => Ok(Key::PageDown),
+                                        '2' => Ok(Key::Insert),
+                                        '3' => Ok(Key::Del),
+                                        '5' => Ok(Key::PageUp),
+                                        '6' => Ok(Key::PageDown),
                                         _ => Ok(Key::UnknownEscSeq),
                                     }
                                 } else {
@@ -181,7 +181,8 @@ pub fn read_single_key() -> io::Result<Key> {
                 Ok(Key::Escape)
             }
         }
-        Some(byte) => {
+        Some(c) => {
+            let byte = c as u8;
             let mut buf = [0u8; 4];
             buf[0] = byte;
             if byte & 224u8 == 192u8 {
