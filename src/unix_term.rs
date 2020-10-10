@@ -96,12 +96,7 @@ fn read_single_char(fd: i32) -> io::Result<Option<char>> {
     let is_ready = pollfd.revents & libc::POLLIN != 0;
 
     if is_ready {
-        //there is something to be read
-
-        // let mut buf: [u8; 1] = [0];
-        // let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 1) };
-
-        //read only 1 byte
+        // if there is something to be read, take 1 byte from it
         let mut byte: u8 = 0;
         let read = unsafe { libc::read(fd, &mut byte as *mut u8 as _, 1) };
 
