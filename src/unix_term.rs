@@ -133,8 +133,7 @@ pub fn read_single_key() -> io::Result<Key> {
     unsafe { libc::cfmakeraw(&mut termios) };
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
 
-    let byte = read_single_char(fd)?;
-    let rv = match byte {
+    let rv = match read_single_char(fd)? {
         Some('\x1b') => {
             // Escape was read, keep reading in case we find a familiar key
             if let Some(c1) = read_single_char(fd)? {
