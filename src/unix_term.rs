@@ -162,20 +162,20 @@ pub fn read_single_key() -> io::Result<Key> {
                                             '3' => Ok(Key::Del),
                                             '5' => Ok(Key::PageUp),
                                             '6' => Ok(Key::PageDown),
-                                            _ => Ok(Key::UnknownEscSeq(vec![c2])),
+                                            _ => Ok(Key::UnknownEscSeq(vec![c1, c2, c3])),
                                         }
                                     } else {
-                                        Ok(Key::UnknownEscSeq(vec![c2, c3]))
+                                        Ok(Key::UnknownEscSeq(vec![c1, c2, c3]))
                                     }
                                 } else {
                                     // \x1b[ and 1 more char
-                                    Ok(Key::UnknownEscSeq(vec![c2]))
+                                    Ok(Key::UnknownEscSeq(vec![c1, c2]))
                                 }
                             }
                         }
                     } else {
                         // \x1b[ and no more input
-                        Ok(Key::UnknownEscSeq(vec![]))
+                        Ok(Key::UnknownEscSeq(vec![c1]))
                     }
                 } else {
                     // char after escape is not [
