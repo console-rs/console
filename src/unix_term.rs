@@ -142,10 +142,10 @@ pub fn read_single_key() -> io::Result<Key> {
     let rv = match byte {
         Some('\x1b') => {
             // Escape was read, keep reading in case we find a familiar key
-            if let Some(b1) = read_single_char(fd)? {
-                if b1 == '[' {
-                    if let Some(b2) = read_single_char(fd)? {
-                        match b2 {
+            if let Some(c1) = read_single_char(fd)? {
+                if c1 == '[' {
+                    if let Some(c2) = read_single_char(fd)? {
+                        match c2 {
                             'A' => Ok(Key::ArrowUp),
                             'B' => Ok(Key::ArrowDown),
                             'C' => Ok(Key::ArrowRight),
@@ -154,27 +154,32 @@ pub fn read_single_key() -> io::Result<Key> {
                             'F' => Ok(Key::End),
                             'Z' => Ok(Key::BackTab),
                             _ => {
-                                if let Some('~') = read_single_char(fd)? {
-                                    match b2 {
-                                        '2' => Ok(Key::Insert),
-                                        '3' => Ok(Key::Del),
-                                        '5' => Ok(Key::PageUp),
-                                        '6' => Ok(Key::PageDown),
-                                        _ => Ok(Key::UnknownEscSeq),
+                                let c3 = read_single_char(fd)?;
+                                if let Some(c3) = c3 {
+                                    if c3 == '~' {
+                                        match c2 {
+                                            '2' => Ok(Key::Insert),
+                                            '3' => Ok(Key::Del),
+                                            '5' => Ok(Key::PageUp),
+                                            '6' => Ok(Key::PageDown),
+                                            _ => Ok(Key::UnknownEscSeq(vec![c2])),
+                                        }
+                                    } else {
+                                        Ok(Key::UnknownEscSeq(vec![c2, c3]))
                                     }
                                 } else {
                                     // \x1b[ and 1 more char
-                                    Ok(Key::UnknownEscSeq)
+                                    Ok(Key::UnknownEscSeq(vec![c2]))
                                 }
                             }
                         }
                     } else {
                         // \x1b[ and no more input
-                        Ok(Key::UnknownEscSeq)
+                        Ok(Key::UnknownEscSeq(vec![]))
                     }
                 } else {
                     // char after escape is not [
-                    Ok(Key::UnknownEscSeq)
+                    Ok(Key::UnknownEscSeq(vec![c1]))
                 }
             } else {
                 //nothing after escape
@@ -185,6 +190,7 @@ pub fn read_single_key() -> io::Result<Key> {
             let byte = c as u8;
             let mut buf = [0u8; 4];
             buf[0] = byte;
+
             if byte & 224u8 == 192u8 {
                 // a two byte unicode character
                 let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1) };
@@ -262,14 +268,6 @@ pub fn read_single_key() -> io::Result<Key> {
 
 pub fn key_from_escape_codes(buf: &[u8]) -> Key {
     match buf {
-        b"\x1b" => Key::Escape,
-        b"\x1b[A" => Key::ArrowUp,
-        b"\x1b[B" => Key::ArrowDown,
-        b"\x1b[C" => Key::ArrowRight,
-        b"\x1b[D" => Key::ArrowLeft,
-        b"\x1b[H" => Key::Home,
-        b"\x1b[F" => Key::End,
-        b"\x1b[3~" => Key::Del,
         b"\n" | b"\r" => Key::Enter,
         b"\x7f" => Key::Backspace,
         b"\t" => Key::Tab,

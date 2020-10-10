@@ -2,11 +2,11 @@
 ///
 /// This is an incomplete mapping of keys that are supported for reading
 /// from the keyboard.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Key {
     Unknown,
-    // Escape followed by an unrecognized sequence
-    UnknownEscSeq,
+    /// Unrecognized sequence containing Esc and a list of chars
+    UnknownEscSeq(Vec<char>),
     ArrowLeft,
     ArrowRight,
     ArrowUp,
