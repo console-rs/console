@@ -183,8 +183,7 @@ pub fn read_single_key() -> io::Result<Key> {
         }
         Some(c) => {
             let byte = c as u8;
-            let mut buf = [0u8; 4];
-            buf[0] = byte;
+            let mut buf: [u8; 4] = [byte, 0, 0, 0];
 
             if byte & 224u8 == 192u8 {
                 // a two byte unicode character
