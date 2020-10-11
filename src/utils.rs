@@ -16,8 +16,9 @@ fn strip_ansi_codes(s: &str) -> &str {
 }
 
 fn default_colors_enabled(out: &Term) -> bool {
-    (out.features().colors_supported() && &env::var("CLICOLOR").unwrap_or("1".into()) != "0")
-        || &env::var("CLICOLOR_FORCE").unwrap_or("0".into()) != "0"
+    (out.features().colors_supported()
+        && &env::var("CLICOLOR").unwrap_or_else(|_| "1".into()) != "0")
+        || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
 lazy_static! {
