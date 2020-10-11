@@ -2,9 +2,12 @@
 ///
 /// This is an incomplete mapping of keys that are supported for reading
 /// from the keyboard.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Key {
     Unknown,
+    /// Unrecognized sequence containing Esc and a list of chars
+    UnknownEscSeq(Vec<char>),
     ArrowLeft,
     ArrowRight,
     ArrowUp,
@@ -15,8 +18,10 @@ pub enum Key {
     Home,
     End,
     Tab,
+    BackTab,
     Del,
+    Insert,
+    PageUp,
+    PageDown,
     Char(char),
-    #[doc(hidden)]
-    __More,
 }
