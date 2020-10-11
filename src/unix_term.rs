@@ -97,22 +97,35 @@ fn read_single_char(fd: i32) -> io::Result<Option<char>> {
 
     if is_ready {
         // if there is something to be read, take 1 byte from it
-        let mut byte: u8 = 0;
-        let read = unsafe { libc::read(fd, &mut byte as *mut u8 as _, 1) };
+        let mut buf: [u8; 1] = [0];
 
-        if read < 0 {
-            Err(io::Error::last_os_error())
-        } else if byte == b'\x03' {
-            Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                "read interrupted",
-            ))
-        } else {
-            Ok(Some(byte as char))
-        }
+        read_bytes(fd, &mut buf, 1)?;
+        Ok(Some(buf[0] as char))
     } else {
         //there is nothing to be read
         Ok(None)
+    }
+}
+
+// Similar to libc::read. Read count bytes into slice buf from descriptor fd.
+// If successful, return the number of bytes read.
+// Will return an error if nothing was read, i.e when called at end of file.
+fn read_bytes(fd: i32, buf: &mut [u8], count: u8) -> io::Result<u8> {
+    let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, count as usize) };
+    if read < 0 {
+        Err(io::Error::last_os_error())
+    } else if read == 0 {
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "Reached end of file",
+        ))
+    } else if buf[0] == b'\x03' {
+        Err(io::Error::new(
+            io::ErrorKind::Interrupted,
+            "read interrupted",
+        ))
+    } else {
+        Ok(read as u8)
     }
 }
 
@@ -186,45 +199,23 @@ pub fn read_single_key() -> io::Result<Key> {
 
             if byte & 224u8 == 192u8 {
                 // a two byte unicode character
-                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 1) };
-                if read < 0 {
-                    Err(io::Error::last_os_error())
-                } else if buf[1] == b'\x03' {
-                    Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "read interrupted",
-                    ))
-                } else {
-                    Ok(key_from_escape_codes(&buf[..2 as usize]))
-                }
+                read_bytes(fd, &mut buf[1..], 1)?;
+                Ok(key_from_utf8(&buf[..2]))
             } else if byte & 240u8 == 224u8 {
                 // a three byte unicode character
-                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 2) };
-                if read < 0 {
-                    Err(io::Error::last_os_error())
-                } else if buf[1] == b'\x03' {
-                    Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "read interrupted",
-                    ))
-                } else {
-                    Ok(key_from_escape_codes(&buf[..3 as usize]))
-                }
+                read_bytes(fd, &mut buf[1..], 2)?;
+                Ok(key_from_utf8(&buf[..3]))
             } else if byte & 248u8 == 240u8 {
                 // a four byte unicode character
-                let read = unsafe { libc::read(fd, buf[1..].as_mut_ptr() as *mut libc::c_void, 3) };
-                if read < 0 {
-                    Err(io::Error::last_os_error())
-                } else if buf[1] == b'\x03' {
-                    Err(io::Error::new(
-                        io::ErrorKind::Interrupted,
-                        "read interrupted",
-                    ))
-                } else {
-                    Ok(key_from_escape_codes(&buf[..4 as usize]))
-                }
+                read_bytes(fd, &mut buf[1..], 3)?;
+                Ok(key_from_utf8(&buf[..4]))
             } else {
-                Ok(key_from_escape_codes(&[byte]))
+                Ok(match c {
+                    '\n' | '\r' => Key::Enter,
+                    '\x7f' => Key::Backspace,
+                    '\t' => Key::Tab,
+                    _ => Key::Char(c),
+                })
             }
         }
         None => {
@@ -259,20 +250,13 @@ pub fn read_single_key() -> io::Result<Key> {
     rv
 }
 
-pub fn key_from_escape_codes(buf: &[u8]) -> Key {
-    match buf {
-        b"\n" | b"\r" => Key::Enter,
-        b"\x7f" => Key::Backspace,
-        b"\t" => Key::Tab,
-        buf => {
-            if let Ok(s) = str::from_utf8(buf) {
-                if let Some(c) = s.chars().next() {
-                    return Key::Char(c);
-                }
-            }
-            Key::Unknown
+pub fn key_from_utf8(buf: &[u8]) -> Key {
+    if let Ok(s) = str::from_utf8(buf) {
+        if let Some(c) = s.chars().next() {
+            return Key::Char(c);
         }
     }
+    Key::Unknown
 }
 
 #[cfg(not(target_os = "macos"))]
