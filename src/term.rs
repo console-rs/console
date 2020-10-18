@@ -222,7 +222,7 @@ impl Term {
     /// This does not echo anything.  If the terminal is not user attended
     /// the return value will always be the unknown key.
     pub fn read_key(&self) -> io::Result<Key> {
-        if !self.is_term() {
+        if !self.is_tty {
             Ok(Key::Unknown)
         } else {
             read_single_key()
@@ -234,7 +234,7 @@ impl Term {
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line(&self) -> io::Result<String> {
-        if !self.is_term() {
+        if !self.is_tty {
             return Ok("".into());
         }
         let mut rv = String::new();
@@ -249,7 +249,7 @@ impl Term {
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
-        if !self.is_term() {
+        if !self.is_tty {
             return Ok("".into());
         }
         self.write_str(initial)?;
@@ -290,7 +290,7 @@ impl Term {
     /// also switches the terminal into a different mode where not all
     /// characters might be accepted.
     pub fn read_secure_line(&self) -> io::Result<String> {
-        if !self.is_term() {
+        if !self.is_tty {
             return Ok("".into());
         }
         match read_secure() {
@@ -319,6 +319,7 @@ impl Term {
     }
 
     /// Checks if the terminal is indeed a terminal.
+    #[deprecated(note = "Use features().is_attended() instead", since = "0.13.0")]
     #[inline]
     pub fn is_term(&self) -> bool {
         self.is_tty
@@ -328,12 +329,6 @@ impl Term {
     #[inline]
     pub fn features(&self) -> TermFeatures<'_> {
         TermFeatures(self)
-    }
-
-    /// Checks if this terminal wants emoji output.
-    #[deprecated(note = "Use features().wants_emoji() instead", since = "0.8.0")]
-    pub fn want_emoji(&self) -> bool {
-        self.features().wants_emoji()
     }
 
     /// Returns the terminal size or gets sensible defaults.
@@ -422,7 +417,7 @@ impl Term {
 
     /// Set the terminal title
     pub fn set_title<T: Display>(&self, title: T) {
-        if !self.is_term() {
+        if !self.is_tty {
             return;
         }
         set_title(title);
@@ -480,20 +475,20 @@ impl Term {
 ///
 /// This means that stdout is connected to a terminal instead of a
 /// file or redirected by other means. This is a shortcut for
-/// checking the `is_term` flag on the stdout terminal.
+/// checking the `is_attended` feature on the stdout terminal.
 #[inline]
 pub fn user_attended() -> bool {
-    Term::stdout().is_term()
+    Term::stdout().features().is_attended()
 }
 
 /// A fast way to check if the application has a user attended for stderr.
 ///
 /// This means that stderr is connected to a terminal instead of a
 /// file or redirected by other means. This is a shortcut for
-/// checking the `is_term` flag on the stderr terminal.
+/// checking the `is_attended` feature on the stderr terminal.
 #[inline]
 pub fn user_attended_stderr() -> bool {
-    Term::stderr().is_term()
+    Term::stderr().features().is_attended()
 }
 
 #[cfg(unix)]
