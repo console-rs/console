@@ -10,6 +10,7 @@
 ### Bug Fixes
 
 * Better handling of key recognition on unix
+* `Term::terminal_size()` on stderr terms correctly returns stderr term info
 
 ### Deprecated
 

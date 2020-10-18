@@ -39,8 +39,8 @@ pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
 }
 
 #[inline]
-pub fn terminal_size() -> Option<(u16, u16)> {
-    terminal_size::terminal_size().map(|x| ((x.1).0, (x.0).0))
+pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
+    terminal_size::terminal_size_using_fd(out.as_raw_fd()).map(|x| ((x.1).0, (x.0).0))
 }
 
 pub fn read_secure() -> io::Result<String> {

@@ -342,7 +342,7 @@ impl Term {
     /// If the size cannot be reliably determined None is returned.
     #[inline]
     pub fn size_checked(&self) -> Option<(u16, u16)> {
-        terminal_size()
+        terminal_size(self)
     }
 
     /// Moves the cursor to `x` and `y`

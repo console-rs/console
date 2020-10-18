@@ -121,7 +121,8 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
 }
 
 #[inline]
-pub fn terminal_size() -> Option<(u16, u16)> {
+pub fn terminal_size(_out: &Term) -> Option<(u16, u16)> {
+    // TODO: Use term target for getting size
     terminal_size::terminal_size().map(|x| ((x.1).0, (x.0).0))
 }
 
