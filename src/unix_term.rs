@@ -219,7 +219,7 @@ pub fn read_single_key() -> io::Result<Key> {
             }
         }
         None => {
-            //there is no subsequent byte ready to be read, block and wait for input
+            // there is no subsequent byte ready to be read, block and wait for input
 
             let mut pollfd = libc::pollfd {
                 fd,

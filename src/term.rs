@@ -476,14 +476,24 @@ impl Term {
     }
 }
 
-/// A fast way to check if the application has a user attended.
+/// A fast way to check if the application has a user attended for stdout.
 ///
 /// This means that stdout is connected to a terminal instead of a
-/// file or redirected by other means.  This is a shortcut for
-/// checking the `is_attended` flag on the stdout terminal.
+/// file or redirected by other means. This is a shortcut for
+/// checking the `is_term` flag on the stdout terminal.
 #[inline]
 pub fn user_attended() -> bool {
     Term::stdout().is_term()
+}
+
+/// A fast way to check if the application has a user attended for stderr.
+///
+/// This means that stderr is connected to a terminal instead of a
+/// file or redirected by other means. This is a shortcut for
+/// checking the `is_term` flag on the stderr terminal.
+#[inline]
+pub fn user_attended_stderr() -> bool {
+    Term::stderr().is_term()
 }
 
 #[cfg(unix)]
