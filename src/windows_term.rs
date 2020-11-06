@@ -282,7 +282,7 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
         unsafe {
             cci.bVisible = 1;
-            SetConsoleCursorInfo(hand, &mut cci);
+            SetConsoleCursorInfo(hand, &cci);
         }
     }
     Ok(())
@@ -295,7 +295,7 @@ pub fn hide_cursor(out: &Term) -> io::Result<()> {
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
         unsafe {
             cci.bVisible = 0;
-            SetConsoleCursorInfo(hand, &mut cci);
+            SetConsoleCursorInfo(hand, &cci);
         }
     }
     Ok(())
@@ -342,7 +342,7 @@ pub fn read_secure() -> io::Result<String> {
                 break;
             }
             Key::Char('\x08') => {
-                if rv.len() > 0 {
+                if !rv.is_empty() {
                     let new_len = rv.len() - 1;
                     rv.truncate(new_len);
                 }
@@ -361,7 +361,7 @@ pub fn read_single_key() -> io::Result<Key> {
 
     let unicode_char = unsafe { *key_event.uChar.UnicodeChar() };
     if unicode_char == 0 {
-        return Ok(key_from_key_code(key_event.wVirtualKeyCode as INT));
+        Ok(key_from_key_code(key_event.wVirtualKeyCode as INT))
     } else {
         // This is a unicode character, in utf-16. Try to decode it by itself.
         match char::from_utf16_tuple((unicode_char, None)) {
