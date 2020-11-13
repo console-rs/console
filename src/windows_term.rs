@@ -122,8 +122,7 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
 
 #[inline]
 pub fn terminal_size(_out: &Term) -> Option<(u16, u16)> {
-    // TODO: Use term target for getting size
-    terminal_size::terminal_size().map(|x| ((x.1).0, (x.0).0))
+    terminal_size::terminal_size_using_handle(out.as_raw_handle()).map(|x| ((x.1).0, (x.0).0))
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
