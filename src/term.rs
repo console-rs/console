@@ -331,7 +331,7 @@ impl Term {
         TermFeatures(self)
     }
 
-    /// Returns the terminal size or gets sensible defaults.
+    /// Returns the terminal size in rows and columns or gets sensible defaults.
     #[inline]
     pub fn size(&self) -> (u16, u16) {
         self.size_checked().unwrap_or((24, DEFAULT_WIDTH))
