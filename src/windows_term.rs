@@ -121,7 +121,7 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
 }
 
 #[inline]
-pub fn terminal_size(_out: &Term) -> Option<(u16, u16)> {
+pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     terminal_size::terminal_size_using_handle(out.as_raw_handle()).map(|x| ((x.1).0, (x.0).0))
 }
 
