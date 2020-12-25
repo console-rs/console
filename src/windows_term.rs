@@ -482,7 +482,10 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
 }
 
 pub fn wants_emoji() -> bool {
-    false
+    // If WT_SESSION is set, we can assume we're running in the nne
+    // Windows Terminal.  The correct way to detect this is not available
+    // yet.  See https://github.com/microsoft/terminal/issues/1040
+    env::var("WT_SESSION").is_ok()
 }
 
 /// Returns true if there is an MSYS tty on the given handle.
