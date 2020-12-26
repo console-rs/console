@@ -1,7 +1,7 @@
 [package]
 name = "console"
 description = "A terminal and console abstraction for Rust"
-version = "0.13.0"
+version = "0.14.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
@@ -20,7 +20,7 @@ ansi-parsing = ["regex"]
 lazy_static = "1"
 libc = "0.2"
 terminal_size = "0.1.14"
-regex = { version = "1.3.1", optional = true, default-features = false, features = ["std"] }
+regex = { version = "1.4.2", optional = true, default-features = false, features = ["std"] }
 unicode-width = { version = "0.1", optional = true }
 
 [target.'cfg(windows)'.dependencies]
