@@ -52,7 +52,7 @@ pub const DEFAULT_WIDTH: u16 = 79;
 pub fn as_handle(term: &Term) -> HANDLE {
     // convert between winapi::um::winnt::HANDLE and std::os::windows::raw::HANDLE
     // which are both c_void. would be nice to find a better way to do this
-    unsafe { ::std::mem::transmute(term.as_raw_handle()) }
+    term.as_raw_handle() as HANDLE
 }
 
 pub fn is_a_terminal(out: &Term) -> bool {
