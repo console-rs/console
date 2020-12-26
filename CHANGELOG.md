@@ -5,6 +5,7 @@
 ### Enhancements
 
 * Added emoji support for newer Windows terminals.
+* Made the windows terminal emulation a non default feature (`windows-console-colors`)
 
 ## 0.13.0
 

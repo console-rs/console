@@ -12,7 +12,7 @@ documentation = "https://docs.rs/console"
 readme = "README.md"
 
 [features]
-default = ["unicode-width", "ansi-parsing", "windows-console-colors"]
+default = ["unicode-width", "ansi-parsing"]
 windows-console-colors = ["ansi-parsing", "winapi-util"]
 ansi-parsing = ["regex"]
 
