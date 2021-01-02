@@ -494,10 +494,11 @@ pub fn msys_tty_on(term: &Term) -> bool {
     unsafe {
         // Check whether the Windows 10 native pty is enabled
         {
-            let mut out: DWORD = MaybeUninit::uninit().assume_init(); // This is read iff res is true, which means that GetConsoleMode initialized it.
-            let res = GetConsoleMode(handle as *mut _, &mut out as *mut _);
-            if res != 0
-                && (out & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == ENABLE_VIRTUAL_TERMINAL_PROCESSING
+            let mut out = MaybeUninit::uninit();
+            let res = GetConsoleMode(handle as *mut _, out.as_mut_ptr());
+            if res != 0 // If res is true then out was initialized.
+                && (out.assume_init() & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+                    == ENABLE_VIRTUAL_TERMINAL_PROCESSING
             {
                 return true;
             }
