@@ -166,7 +166,7 @@ impl Term {
         }
     }
 
-    /// Returns the targert
+    /// Returns the target
     #[inline]
     pub fn target(&self) -> TermTarget {
         self.inner.target
