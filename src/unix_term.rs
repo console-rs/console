@@ -165,10 +165,14 @@ pub fn read_single_key() -> io::Result<Key> {
                                 if let Some(c3) = c3 {
                                     if c3 == '~' {
                                         match c2 {
+                                            '1' => Ok(Key::Home), // tmux
                                             '2' => Ok(Key::Insert),
                                             '3' => Ok(Key::Del),
+                                            '4' => Ok(Key::End), // tmux
                                             '5' => Ok(Key::PageUp),
                                             '6' => Ok(Key::PageDown),
+                                            '7' => Ok(Key::Home), // xrvt
+                                            '8' => Ok(Key::End),  // xrvt
                                             _ => Ok(Key::UnknownEscSeq(vec![c1, c2, c3])),
                                         }
                                     } else {
