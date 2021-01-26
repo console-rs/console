@@ -218,6 +218,9 @@ pub fn read_single_key() -> io::Result<Key> {
                     '\n' | '\r' => Key::Enter,
                     '\x7f' => Key::Backspace,
                     '\t' => Key::Tab,
+                    '\x01' => Key::Home,      // Control-A (home)
+                    '\x05' => Key::End,       // Control-E (end)
+                    '\x08' => Key::Backspace, // Control-H (8) (Identical to '\b')
                     _ => Key::Char(c),
                 })
             }
