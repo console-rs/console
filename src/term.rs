@@ -319,7 +319,6 @@ impl Term {
     }
 
     /// Checks if the terminal is indeed a terminal.
-    #[deprecated(note = "Use features().is_attended() instead", since = "0.13.0")]
     #[inline]
     pub fn is_term(&self) -> bool {
         self.is_tty
