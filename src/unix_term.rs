@@ -23,6 +23,10 @@ pub fn is_a_color_terminal(out: &Term) -> bool {
         return false;
     }
 
+    if let Ok(_) = env::var("NO_COLOR") {
+        return false;
+    }
+    
     match env::var("TERM") {
         Ok(term) => term != "dumb",
         Err(_) => false,
