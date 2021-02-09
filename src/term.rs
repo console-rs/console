@@ -10,11 +10,30 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use crate::{kb::Key, utils::Style};
 
+#[cfg(unix)]
+trait TermWrite: Write + std::fmt::Debug + AsRawFd + Send {}
+#[cfg(unix)]
+impl<T: Write + std::fmt::Debug + AsRawFd + Send> TermWrite for T {}
+
+#[cfg(unix)]
+trait TermRead: io::Read + std::fmt::Debug + AsRawFd + Send {}
+#[cfg(unix)]
+impl<T: io::Read + std::fmt::Debug + AsRawFd + Send> TermRead for T {}
+
+#[cfg(unix)]
+#[derive(Debug, Clone)]
+pub struct ReadWritePair {
+    read: Arc<Mutex<dyn TermRead>>,
+    write: Arc<Mutex<dyn TermWrite>>,
+}
+
 /// Where the term is writing.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum TermTarget {
     Stdout,
     Stderr,
+    #[cfg(unix)]
+    ReadWritePair(ReadWritePair),
 }
 
 #[derive(Debug)]
@@ -157,19 +176,38 @@ impl Term {
         })
     }
 
+    /// Return a terminal for the given Read/Write pair.
+    #[cfg(unix)]
+    pub fn read_write_pair<R, W>(read: R, write: W) -> Term
+    where
+        R: io::Read + std::fmt::Debug + AsRawFd + Send + 'static,
+        W: Write + std::fmt::Debug + AsRawFd + Send + 'static,
+    {
+        Term::with_inner(TermInner {
+            target: TermTarget::ReadWritePair(ReadWritePair {
+                read: Arc::new(Mutex::new(read)),
+                write: Arc::new(Mutex::new(write)),
+            }),
+            buffer: None,
+        })
+    }
+
     /// Returns the style for the term
     #[inline]
     pub fn style(&self) -> Style {
-        match self.target() {
+        match self.inner.target {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
+            // TODO: Needs an implementation. But also: not Copy.
+            #[cfg(unix)]
+            TermTarget::ReadWritePair(_) => Style::new().for_stderr(),
         }
     }
 
     /// Returns the target
     #[inline]
-    pub fn target(&self) -> TermTarget {
-        self.inner.target
+    pub fn target(&self) -> &TermTarget {
+        &self.inner.target
     }
 
     #[doc(hidden)]
@@ -465,6 +503,12 @@ impl Term {
                 io::stderr().write_all(bytes)?;
                 io::stderr().flush()?;
             }
+            #[cfg(unix)]
+            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
+                let mut write = write.lock().unwrap();
+                write.write_all(bytes)?;
+                write.flush()?;
+            }
         }
         Ok(())
     }
@@ -496,6 +540,9 @@ impl AsRawFd for Term {
         match self.inner.target {
             TermTarget::Stdout => libc::STDOUT_FILENO,
             TermTarget::Stderr => libc::STDERR_FILENO,
+            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
+                write.lock().unwrap().as_raw_fd()
+            }
         }
     }
 }
