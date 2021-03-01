@@ -198,7 +198,7 @@ impl Term {
         match self.inner.target {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
-            // TODO: Needs an implementation. But also: not Copy.
+            // TODO: Needs an implementation. But also: is not Copy.
             #[cfg(unix)]
             TermTarget::ReadWritePair(_) => Style::new().for_stderr(),
         }
