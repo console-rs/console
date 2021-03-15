@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.1
+
+### Enhancements
+
+* Added `NO_COLOR` support
+* Added some more key recognitions
+* Undeprecate `Term::is_term`
+
 ## 0.14.0
 
 ### Enhancements
