@@ -25,6 +25,7 @@ impl<T: io::Read + std::fmt::Debug + AsRawFd + Send> TermRead for T {}
 pub struct ReadWritePair {
     read: Arc<Mutex<dyn TermRead>>,
     write: Arc<Mutex<dyn TermWrite>>,
+    style: Style,
 }
 
 /// Where the term is writing.
@@ -176,9 +177,19 @@ impl Term {
         })
     }
 
-    /// Return a terminal for the given Read/Write pair.
+    /// Return a terminal for the given Read/Write pair styled-like Stderr.
     #[cfg(unix)]
     pub fn read_write_pair<R, W>(read: R, write: W) -> Term
+    where
+        R: io::Read + std::fmt::Debug + AsRawFd + Send + 'static,
+        W: Write + std::fmt::Debug + AsRawFd + Send + 'static,
+    {
+        Self::read_write_pair_with_style(read, write, Style::new().for_stderr())
+    }
+
+    /// Return a terminal for the given Read/Write pair.
+    #[cfg(unix)]
+    pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Term
     where
         R: io::Read + std::fmt::Debug + AsRawFd + Send + 'static,
         W: Write + std::fmt::Debug + AsRawFd + Send + 'static,
@@ -187,6 +198,7 @@ impl Term {
             target: TermTarget::ReadWritePair(ReadWritePair {
                 read: Arc::new(Mutex::new(read)),
                 write: Arc::new(Mutex::new(write)),
+                style,
             }),
             buffer: None,
         })
@@ -198,9 +210,8 @@ impl Term {
         match self.inner.target {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
-            // TODO: Needs an implementation. But also: is not Copy.
             #[cfg(unix)]
-            TermTarget::ReadWritePair(_) => Style::new().for_stderr(),
+            TermTarget::ReadWritePair(ReadWritePair { ref style, .. }) => style.clone(),
         }
     }
 
