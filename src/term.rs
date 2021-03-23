@@ -1,6 +1,5 @@
-use std::fmt::Display;
-use std::io;
-use std::io::Write;
+use std::fmt::{Debug, Display};
+use std::io::{self, Read, Write};
 use std::sync::{Arc, Mutex};
 
 #[cfg(unix)]
@@ -10,11 +9,31 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use crate::{kb::Key, utils::Style};
 
+#[cfg(unix)]
+trait TermWrite: Write + Debug + AsRawFd + Send {}
+#[cfg(unix)]
+impl<T: Write + Debug + AsRawFd + Send> TermWrite for T {}
+
+#[cfg(unix)]
+trait TermRead: Read + Debug + AsRawFd + Send {}
+#[cfg(unix)]
+impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
+
+#[cfg(unix)]
+#[derive(Debug, Clone)]
+pub struct ReadWritePair {
+    read: Arc<Mutex<dyn TermRead>>,
+    write: Arc<Mutex<dyn TermWrite>>,
+    style: Style,
+}
+
 /// Where the term is writing.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum TermTarget {
     Stdout,
     Stderr,
+    #[cfg(unix)]
+    ReadWritePair(ReadWritePair),
 }
 
 #[derive(Debug)]
@@ -157,19 +176,48 @@ impl Term {
         })
     }
 
+    /// Return a terminal for the given Read/Write pair styled-like Stderr.
+    #[cfg(unix)]
+    pub fn read_write_pair<R, W>(read: R, write: W) -> Term
+    where
+        R: Read + Debug + AsRawFd + Send + 'static,
+        W: Write + Debug + AsRawFd + Send + 'static,
+    {
+        Self::read_write_pair_with_style(read, write, Style::new().for_stderr())
+    }
+
+    /// Return a terminal for the given Read/Write pair.
+    #[cfg(unix)]
+    pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Term
+    where
+        R: Read + Debug + AsRawFd + Send + 'static,
+        W: Write + Debug + AsRawFd + Send + 'static,
+    {
+        Term::with_inner(TermInner {
+            target: TermTarget::ReadWritePair(ReadWritePair {
+                read: Arc::new(Mutex::new(read)),
+                write: Arc::new(Mutex::new(write)),
+                style,
+            }),
+            buffer: None,
+        })
+    }
+
     /// Returns the style for the term
     #[inline]
     pub fn style(&self) -> Style {
-        match self.target() {
+        match self.inner.target {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
+            #[cfg(unix)]
+            TermTarget::ReadWritePair(ReadWritePair { ref style, .. }) => style.clone(),
         }
     }
 
     /// Returns the target
     #[inline]
     pub fn target(&self) -> TermTarget {
-        self.inner.target
+        self.inner.target.clone()
     }
 
     #[doc(hidden)]
@@ -465,6 +513,12 @@ impl Term {
                 io::stderr().write_all(bytes)?;
                 io::stderr().flush()?;
             }
+            #[cfg(unix)]
+            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
+                let mut write = write.lock().unwrap();
+                write.write_all(bytes)?;
+                write.flush()?;
+            }
         }
         Ok(())
     }
@@ -496,6 +550,9 @@ impl AsRawFd for Term {
         match self.inner.target {
             TermTarget::Stdout => libc::STDOUT_FILENO,
             TermTarget::Stderr => libc::STDERR_FILENO,
+            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
+                write.lock().unwrap().as_raw_fd()
+            }
         }
     }
 }
@@ -515,7 +572,7 @@ impl AsRawHandle for Term {
     }
 }
 
-impl io::Write for Term {
+impl Write for Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.inner.buffer {
             Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
@@ -529,7 +586,7 @@ impl io::Write for Term {
     }
 }
 
-impl<'a> io::Write for &'a Term {
+impl<'a> Write for &'a Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.inner.buffer {
             Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
@@ -543,13 +600,13 @@ impl<'a> io::Write for &'a Term {
     }
 }
 
-impl io::Read for Term {
+impl Read for Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }
 }
 
-impl<'a> io::Read for &'a Term {
+impl<'a> Read for &'a Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }
