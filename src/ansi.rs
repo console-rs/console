@@ -4,7 +4,7 @@ use regex::{Matches, Regex};
 
 lazy_static::lazy_static! {
     static ref STRIP_ANSI_RE: Regex =
-        Regex::new(r"[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><]")
+        Regex::new(r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><])")
             .unwrap();
 }
 
@@ -77,6 +77,16 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
             None
         }
     }
+}
+
+#[test]
+fn test_ansi_iter_re_vt100() {
+    let s = "\x1b(0lpq\x1b)Benglish";
+    let mut iter = AnsiCodeIterator::new(s);
+    assert_eq!(iter.next(), Some(("\x1b(0", true)));
+    assert_eq!(iter.next(), Some(("lpq", false)));
+    assert_eq!(iter.next(), Some(("\x1b)B", true)));
+    assert_eq!(iter.next(), Some(("english", false)));
 }
 
 #[test]
