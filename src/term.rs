@@ -1,6 +1,5 @@
-use std::fmt::Display;
-use std::io;
-use std::io::Write;
+use std::fmt::{Debug, Display};
+use std::io::{self, Read, Write};
 use std::sync::{Arc, Mutex};
 
 #[cfg(unix)]
@@ -11,14 +10,14 @@ use std::os::windows::io::{AsRawHandle, RawHandle};
 use crate::{kb::Key, utils::Style};
 
 #[cfg(unix)]
-trait TermWrite: Write + std::fmt::Debug + AsRawFd + Send {}
+trait TermWrite: Write + Debug + AsRawFd + Send {}
 #[cfg(unix)]
-impl<T: Write + std::fmt::Debug + AsRawFd + Send> TermWrite for T {}
+impl<T: Write + Debug + AsRawFd + Send> TermWrite for T {}
 
 #[cfg(unix)]
-trait TermRead: io::Read + std::fmt::Debug + AsRawFd + Send {}
+trait TermRead: Read + Debug + AsRawFd + Send {}
 #[cfg(unix)]
-impl<T: io::Read + std::fmt::Debug + AsRawFd + Send> TermRead for T {}
+impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
 
 #[cfg(unix)]
 #[derive(Debug, Clone)]
@@ -181,8 +180,8 @@ impl Term {
     #[cfg(unix)]
     pub fn read_write_pair<R, W>(read: R, write: W) -> Term
     where
-        R: io::Read + std::fmt::Debug + AsRawFd + Send + 'static,
-        W: Write + std::fmt::Debug + AsRawFd + Send + 'static,
+        R: Read + Debug + AsRawFd + Send + 'static,
+        W: Write + Debug + AsRawFd + Send + 'static,
     {
         Self::read_write_pair_with_style(read, write, Style::new().for_stderr())
     }
@@ -191,8 +190,8 @@ impl Term {
     #[cfg(unix)]
     pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Term
     where
-        R: io::Read + std::fmt::Debug + AsRawFd + Send + 'static,
-        W: Write + std::fmt::Debug + AsRawFd + Send + 'static,
+        R: Read + Debug + AsRawFd + Send + 'static,
+        W: Write + Debug + AsRawFd + Send + 'static,
     {
         Term::with_inner(TermInner {
             target: TermTarget::ReadWritePair(ReadWritePair {
@@ -217,8 +216,8 @@ impl Term {
 
     /// Returns the target
     #[inline]
-    pub fn target(&self) -> &TermTarget {
-        &self.inner.target
+    pub fn target(&self) -> TermTarget {
+        self.inner.target.clone()
     }
 
     #[doc(hidden)]
@@ -573,7 +572,7 @@ impl AsRawHandle for Term {
     }
 }
 
-impl io::Write for Term {
+impl Write for Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.inner.buffer {
             Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
@@ -587,7 +586,7 @@ impl io::Write for Term {
     }
 }
 
-impl<'a> io::Write for &'a Term {
+impl<'a> Write for &'a Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.inner.buffer {
             Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
@@ -601,13 +600,13 @@ impl<'a> io::Write for &'a Term {
     }
 }
 
-impl io::Read for Term {
+impl Read for Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }
 }
 
-impl<'a> io::Read for &'a Term {
+impl<'a> Read for &'a Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }
