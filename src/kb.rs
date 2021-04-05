@@ -20,6 +20,7 @@ pub enum Key {
     Tab,
     BackTab,
     Del,
+    Shift,
     Insert,
     PageUp,
     PageDown,
