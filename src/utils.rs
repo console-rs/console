@@ -184,8 +184,9 @@ impl Style {
     ///
     /// Effectively the string is split at each dot and then the
     /// terms in between are applied.  For instance `red.on_blue` will
-    /// create a string that is red on blue background.  Unknown terms
-    /// are ignored.
+    /// create a string that is red on blue background. `9.on_12` is
+    /// the same, but using 256 color numbers. Unknown terms are
+    /// ignored.
     pub fn from_dotted_str(s: &str) -> Style {
         let mut rv = Style::new();
         for part in s.split('.') {
@@ -214,9 +215,16 @@ impl Style {
                 "blink" => rv.blink(),
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
-                _ => {
+                on_c if on_c.starts_with("on_") => if let Some(n) = on_c[3..].parse::<u8>().ok() {
+                    rv.on_color256(n)
+                } else {
                     continue;
-                }
+                },
+                c => if let Some(n) = c.parse::<u8>().ok() {
+                    rv.color256(n)
+                } else {
+                    continue;
+                },
             };
         }
         rv
