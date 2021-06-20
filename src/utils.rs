@@ -5,7 +5,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::term::{wants_emoji, Term};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 #[cfg(feature = "ansi-parsing")]
 use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
@@ -21,10 +21,10 @@ fn default_colors_enabled(out: &Term) -> bool {
         || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
-lazy_static! {
-    static ref STDOUT_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stdout()));
-    static ref STDERR_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stderr()));
-}
+static STDOUT_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stdout())));
+static STDERR_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stderr())));
 
 /// Returns `true` if colors should be enabled for stdout.
 ///
@@ -215,16 +215,20 @@ impl Style {
                 "blink" => rv.blink(),
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
-                on_c if on_c.starts_with("on_") => if let Some(n) = on_c[3..].parse::<u8>().ok() {
-                    rv.on_color256(n)
-                } else {
-                    continue;
-                },
-                c => if let Some(n) = c.parse::<u8>().ok() {
-                    rv.color256(n)
-                } else {
-                    continue;
-                },
+                on_c if on_c.starts_with("on_") => {
+                    if let Ok(n) = on_c[3..].parse::<u8>() {
+                        rv.on_color256(n)
+                    } else {
+                        continue;
+                    }
+                }
+                c => {
+                    if let Ok(n) = c.parse::<u8>() {
+                        rv.color256(n)
+                    } else {
+                        continue;
+                    }
+                }
             };
         }
         rv

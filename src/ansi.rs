@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 
+use once_cell::sync::Lazy;
 use regex::{Matches, Regex};
 
-lazy_static::lazy_static! {
-    static ref STRIP_ANSI_RE: Regex =
-        Regex::new(r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><])")
-            .unwrap();
-}
+static STRIP_ANSI_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><])",
+    )
+    .unwrap()
+});
 
 /// Helper function to strip ansi codes.
 pub fn strip_ansi_codes(s: &str) -> Cow<str> {

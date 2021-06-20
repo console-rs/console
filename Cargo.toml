@@ -17,7 +17,7 @@ windows-console-colors = ["ansi-parsing", "winapi-util"]
 ansi-parsing = ["regex"]
 
 [dependencies]
-lazy_static = "1"
+once_cell = "1"
 libc = "0.2"
 terminal_size = "0.1.14"
 regex = { version = "1.4.2", optional = true, default-features = false, features = ["std"] }

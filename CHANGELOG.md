@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Replace `lazy_static` with `once_cell`
+
 ## 0.14.1
 
 ### Enhancements

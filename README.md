@@ -1,6 +1,6 @@
-# console
+# `console`
 
-console is a library for Rust that provides access to various terminal
+**console** is a library for Rust that provides access to various terminal
 features so you can build nicer looking command line interfaces.  It
 comes with various tools and utilities for working with Terminals and
 formatting text.
