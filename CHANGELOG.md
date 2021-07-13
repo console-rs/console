@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-* Replace `lazy_static` with `once_cell`
+### Enhancements
+
+* Addeed more key recognitions
+* Exposed `pad_str_with` to public API
+
+### BREAKING
+
+*
 
 ## 0.14.1
 
@@ -17,6 +24,9 @@
 ### Enhancements
 
 * Added emoji support for newer Windows terminals.
+
+### BREAKING
+
 * Made the windows terminal emulation a non default feature (`windows-console-colors`)
 
 ## 0.13.0
