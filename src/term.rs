@@ -396,6 +396,18 @@ impl Term {
         terminal_size(self)
     }
 
+    /// Save cursor position
+    #[inline]
+    pub fn save_cursor_pos(&self) -> io::Result<()> {
+        save_cursor_pos(self)
+    }
+
+    /// Save cursor position
+    #[inline]
+    pub fn restore_cursor_pos(&self) -> io::Result<()> {
+        restore_cursor_pos(self)
+    }
+
     /// Move the cursor to row `x` and column `y`. Values are 0-based.
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {

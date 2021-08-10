@@ -70,3 +70,13 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
     out.write_str("\x1b[?25l")
 }
+
+#[inline]
+pub fn save_cursor_pos(out: &Term) -> io::Result<()> {
+    out.write_str("\x1b[s")
+}
+
+#[inline]
+pub fn restore_cursor_pos(out: &Term) -> io::Result<()> {
+    out.write_str("\x1b[u")
+}
