@@ -408,7 +408,11 @@ impl Term {
         restore_cursor_pos(self)
     }
 
+<<<<<<< HEAD
     /// Move the cursor to row `x` and column `y`. Values are 0-based.
+=======
+    /// Moves the cursor to `x` and `y`
+>>>>>>> 79b3db7 (add initial support for save/restore cursor)
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
