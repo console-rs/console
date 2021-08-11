@@ -512,6 +512,16 @@ impl Term {
         hide_cursor(self)
     }
 
+    /// Scroll the whole page up by x lines
+    pub fn scroll_up(&self, x: usize) -> io::Result<()> {
+        scroll_up(self, x)
+    }
+
+    /// Scroll the whole page down by x lines
+    pub fn scroll_down(&self, x: usize) -> io::Result<()> {
+        scroll_down(self, x)
+    }
+
     // helpers
 
     #[cfg(all(windows, feature = "windows-console-colors"))]
