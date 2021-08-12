@@ -154,8 +154,6 @@ pub fn scroll_down(out: &Term, x: usize) -> io::Result<()> {
     Ok(())
 }
 
-pub fn scroll_down(out: &Term) -> io::Result<()> {}
-
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
     if out.is_msys_tty {
         return common_term::move_cursor_to(out, x, y);
