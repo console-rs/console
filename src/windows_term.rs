@@ -333,7 +333,7 @@ pub fn key_from_key_code(code: INT) -> Key {
         winapi::um::winuser::VK_END => Key::End,
         winapi::um::winuser::VK_DELETE => Key::Del,
         winapi::um::winuser::VK_SHIFT => Key::Shift,
-        winapi::um::winuser::VK_MENU => Key::Composite,
+        winapi::um::winuser::VK_MENU => Key::Alt,
         _ => Key::Unknown,
     }
 }
