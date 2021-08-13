@@ -19,6 +19,7 @@ pub enum Key {
     End,
     Tab,
     BackTab,
+    Composite,
     Del,
     Shift,
     Insert,
