@@ -850,6 +850,8 @@ fn test_text_width() {
         measure_text_width(&s),
         if cfg!(feature = "ansi-parsing") {
             3
+        } else if cfg!(feature = "unicode-width") {
+            17
         } else {
             21
         }
