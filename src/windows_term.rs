@@ -128,14 +128,14 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
 
 pub fn save_cursor_pos(out: &Term) -> io::Result<()> {
     if out.is_msys_tty || is_a_color_terminal(out) {
-        return common_term::save_cursor_pos();
+        return common_term::save_cursor_pos(out);
     }
     Ok(())
 }
 
 pub fn restore_cursor_pos(out: &Term) -> io::Result<()> {
     if out.is_msys_tty || is_a_color_terminal(out) {
-        return common_term::restore_cursor_pos();
+        return common_term::restore_cursor_pos(out);
     }
     Ok(())
 }
