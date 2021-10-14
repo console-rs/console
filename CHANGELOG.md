@@ -2,14 +2,19 @@
 
 ## Unreleased
 
+## 0.15.0
+
 ### Enhancements
 
 * Addeed more key recognitions
 * Exposed `pad_str_with` to public API
+* Added `ReadWritePair`
+* Support `color256` in `Style::from_dotted_str`
 
 ### BREAKING
 
-*
+* Added `ReadWritePair` to `TermTarget` to allow arbitrary read write pairs behave as a term
+* Removed `Copy` and `PartialEq` from `TermTarget`
 
 ## 0.14.1
 
