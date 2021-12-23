@@ -56,7 +56,7 @@ println!("This is {} neat", cyan.apply_to("quite"));
 
 ## Working with ANSI Codes
 
-The crate provids the function `strip_ansi_codes` to remove ANSI codes
+The crate provides the function `strip_ansi_codes` to remove ANSI codes
 from a string as well as `measure_text_width` to calculate the width of a
 string as it would be displayed by the terminal.  Both of those together
 are useful for more complex formatting.
