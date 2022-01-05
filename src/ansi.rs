@@ -89,7 +89,6 @@ impl<'a> Matches<'a> {
     }
 }
 
-// This purposfully mimics regex's `Match`
 #[derive(Debug)]
 struct Match<'a> {
     text: &'a str,
@@ -99,23 +98,8 @@ struct Match<'a> {
 
 impl<'a> Match<'a> {
     #[inline]
-    pub fn start(&self) -> usize {
-        self.start
-    }
-
-    #[inline]
-    pub fn end(&self) -> usize {
-        self.end
-    }
-
-    #[inline]
-    pub fn range(&self) -> Range<usize> {
-        self.start..self.end
-    }
-
-    #[inline]
     pub fn as_str(&self) -> &'a str {
-        &self.text[self.range()]
+        &self.text[self.start..self.end]
     }
 }
 
@@ -235,13 +219,13 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
             self.cur_idx += pending_item.0.len();
             Some(pending_item)
         } else if let Some(m) = self.iter.next() {
-            let s = &self.s[self.last_idx..m.start()];
-            self.last_idx = m.end();
+            let s = &self.s[self.last_idx..m.start];
+            self.last_idx = m.end;
             if s.is_empty() {
-                self.cur_idx = m.end();
+                self.cur_idx = m.end;
                 Some((m.as_str(), true))
             } else {
-                self.cur_idx = m.start();
+                self.cur_idx = m.start;
                 self.pending_item = Some((m.as_str(), true));
                 Some((s, false))
             }
@@ -263,22 +247,49 @@ impl<'a> FusedIterator for AnsiCodeIterator<'a> {}
 mod tests {
     use super::*;
 
-    mod old_regex_based {
-        use std::borrow::Cow;
+    use once_cell::sync::Lazy;
+    use proptest::prelude::*;
+    use regex::Regex;
 
-        use once_cell::sync::Lazy;
-        use regex::Regex;
-
-        pub static STRIP_ANSI_RE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(
+    // The manual dfa `State` is a handwritten translation from the previously used regex. That
+    // regex is kept here and used to ensure that the new matches are the same as the old
+    static STRIP_ANSI_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
         r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><])",
             )
             .unwrap()
-        });
+    });
 
-        pub fn strip_ansi_codes(s: &str) -> Cow<str> {
-            STRIP_ANSI_RE.replace_all(s, "")
+    impl<'a, 'b> PartialEq<Match<'a>> for regex::Match<'b> {
+        fn eq(&self, other: &Match<'a>) -> bool {
+            self.start() == other.start
+                && self.end() == other.end
+                && self.as_str() == other.as_str()
         }
+    }
+
+    proptest! {
+        #[test]
+        fn dfa_matches_old_regex(s: String) {
+            let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(&s).collect();
+            let new_matches: Vec<_> = Matches::new(&s).collect();
+            assert_eq!(old_matches, new_matches);
+        }
+    }
+
+    #[test]
+    fn state_machine() {
+        let ansi_code = "\x1b)B";
+        let mut state = State::default();
+        assert!(!state.is_final());
+
+        for c in ansi_code.chars() {
+            state.transition(c);
+        }
+        assert!(state.is_final());
+
+        state.transition('A');
+        assert!(state.is_trapped());
     }
 
     #[test]
@@ -332,35 +343,5 @@ mod tests {
         assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1ma\x1b[0m");
         assert_eq!(iter.rest_slice(), "");
         assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn state_machine() {
-        let ansi_code = "\x1b)B";
-        let mut state = State::default();
-        assert!(!state.is_final());
-
-        for c in ansi_code.chars() {
-            state.transition(c);
-        }
-        assert!(state.is_final());
-
-        state.transition('A');
-        assert!(state.is_trapped());
-    }
-
-    #[test]
-    fn blah() {
-        use crate::style;
-        // let s = &format!("{}", style("a").red().bold().force_styling(true));
-        let s = "a\x1b[0m";
-        let mut it = s.char_indices().peekable();
-        panic!("{:?}", find_ansi_code_exclusive(&mut it));
-        let new_matches: Vec<_> = Matches::new(s).collect();
-        let old_matches: Vec<_> = old_regex_based::STRIP_ANSI_RE.find_iter(s).collect();
-        println!("{:#?}", new_matches);
-        println!("{:#?}", old_matches);
-
-        panic!();
     }
 }
