@@ -30,4 +30,4 @@ encode_unicode = "0.3"
 
 [dev-dependencies]
 proptest = "1.0.0"
-regex = { version = "1.4.2", default-features = false, features = ["std"] }
+regex = "1.4.2"

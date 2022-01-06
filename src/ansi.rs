@@ -105,7 +105,7 @@ impl<'a> Iterator for Matches<'a> {
 
 impl<'a> FusedIterator for Matches<'a> {}
 
-fn find_ansi_code_exclusive<'a>(it: &mut Peekable<CharIndices<'a>>) -> Option<(usize, usize)> {
+fn find_ansi_code_exclusive(it: &mut Peekable<CharIndices>) -> Option<(usize, usize)> {
     'outer: loop {
         if let (start, '\u{1b}' | '\u{9b}') = it.peek()? {
             let start = *start;
@@ -148,13 +148,16 @@ fn find_ansi_code_exclusive<'a>(it: &mut Peekable<CharIndices<'a>>) -> Option<(u
 
 /// Helper function to strip ansi codes.
 pub fn strip_ansi_codes(s: &str) -> Cow<str> {
-    // TODO: we can create the iterator and peek to see if it's `Borrowed`. If not then things will
-    // be a bit more expensive
-    todo!()
-    // match find_ansi_code(s) {
-    //     Some(_) => todo!(),
-    //     None => Cow::Borrowed(s),
-    // }
+    let mut char_it = s.char_indices().peekable();
+    match find_ansi_code_exclusive(&mut char_it) {
+        Some(_) => {
+            let stripped: String = AnsiCodeIterator::new(s)
+                .filter_map(|(text, is_ansi)| if is_ansi { None } else { Some(text) })
+                .collect();
+            Cow::Owned(stripped)
+        }
+        None => Cow::Borrowed(s),
+    }
 }
 
 /// An iterator over ansi codes in a string.
@@ -271,8 +274,8 @@ mod tests {
         fn _check_all_strings_of_len(len: usize, chunk: &mut Vec<u8>) {
             if len == 0 {
                 if let Ok(s) = std::str::from_utf8(chunk) {
-                    let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(&s).collect();
-                    let new_matches: Vec<_> = Matches::new(&s).collect();
+                    let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(s).collect();
+                    let new_matches: Vec<_> = Matches::new(s).collect();
                     assert_eq!(old_matches, new_matches);
                 }
 
@@ -289,6 +292,20 @@ mod tests {
         for str_len in 0..=6 {
             check_all_strings_of_len(str_len);
         }
+    }
+
+    #[test]
+    fn complex_data() {
+        let s = std::fs::read_to_string(
+            std::path::Path::new("tests")
+                .join("data")
+                .join("sample_zellij_session.log"),
+        )
+        .unwrap();
+
+        let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(&s).collect();
+        let new_matches: Vec<_> = Matches::new(&s).collect();
+        assert_eq!(old_matches, new_matches);
     }
 
     #[test]
