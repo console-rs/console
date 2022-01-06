@@ -1,13 +1,9 @@
 use std::{
     borrow::Cow,
     iter::{FusedIterator, Peekable},
-    ops::Range,
     str::CharIndices,
 };
 
-// TODO: make a diagram for this state machine to make it easier to get an overview
-// TODO: can we combine the numeric stuff to reduce the number of states or does it have to be
-// separate?
 #[derive(Debug, Clone, Copy)]
 enum State {
     Start,
@@ -22,9 +18,6 @@ enum State {
     S9,
     S10,
     S11,
-    S12,
-    S13,
-    S14,
     Trap,
 }
 
@@ -38,10 +31,7 @@ impl State {
     fn is_final(&self) -> bool {
         use State::*;
 
-        matches!(
-            self,
-            S3 | S5 | S6 | S7 | S8 | S9 | S10 | S11 | S12 | S13 | S14
-        )
+        matches!(self, S3 | S5 | S6 | S7 | S8 | S9 | S11)
     }
 
     fn is_trapped(&self) -> bool {
@@ -51,26 +41,24 @@ impl State {
     fn transition(&mut self, c: char) {
         use State::*;
 
-        let prev_state = *self;
-        *self = match (prev_state, c) {
+        *self = match (*self, c) {
             (Start, '\u{1b}' | '\u{9b}') => S1,
             (S1, '(' | ')') => S2,
             (S1, '[' | '#' | ';' | '?') => S4,
             (S1 | S4, '0'..='9') => S5,
             (
-                S1 | S4 | S5 | S6 | S7 | S8 | S9 | S10 | S11 | S12 | S13,
+                S1 | S2 | S4 | S5 | S6 | S7 | S8 | S10,
                 'A'..='P' | 'R' | 'Z' | 'c' | 'f'..='n' | 'q' | 'r' | 'y' | '=' | '>' | '<',
-            ) => S14,
-            (S2, '0'..='2' | 'A' | 'B') => S3,
+            ) => S11,
+            (S2, '0'..='2') => S3,
+            (S2, '3'..='9') => S5,
             (S2 | S4, '[' | '(' | ')' | '#' | ';' | '?') => S4,
             (S5, '0'..='9') => S6,
-            (S5 | S6 | S7 | S8 | S9 | S10 | S11 | S12 | S13, ';') => S9,
+            (S5 | S6 | S7 | S8 | S10, ';') => S10,
             (S6, '0'..='9') => S7,
             (S7, '0'..='9') => S8,
-            (S9, '0'..='9') => S10,
-            (S10, '0'..='9') => S11,
-            (S11, '0'..='9') => S12,
-            (S12, '0'..='9') => S13,
+            (S8, '0'..='9') => S9,
+            (S10, '0'..='9') => S5,
             _ => Trap,
         }
     }
@@ -118,44 +106,39 @@ impl<'a> Iterator for Matches<'a> {
 impl<'a> FusedIterator for Matches<'a> {}
 
 fn find_ansi_code_exclusive<'a>(it: &mut Peekable<CharIndices<'a>>) -> Option<(usize, usize)> {
-    loop {
+    'outer: loop {
         if let (start, '\u{1b}' | '\u{9b}') = it.peek()? {
             let start = *start;
             let mut state = State::default();
             let mut maybe_end = None;
 
             loop {
-                // TODO: store the peeked value and then special case some actions on being none
-                // and then end based off it being `None` or it being trapped
-                match it.peek() {
-                    Some((idx, c)) => {
-                        state.transition(*c);
+                let item = it.peek();
 
-                        // The match is greedy so run till we hit the trap state no matter what. A valid
-                        // match is just one that was final at some point
-                        if state.is_final() {
-                            maybe_end = Some(*idx);
-                        } else if state.is_trapped() {
-                            match maybe_end {
-                                Some(end) => {
-                                    // All possible final characters are a single byte so it's safe to make
-                                    // the end exclusive by just adding one
-                                    return Some((start, end + 1));
-                                }
-                                None => break,
-                            }
-                        }
+                if let Some((idx, c)) = item {
+                    state.transition(*c);
 
-                        it.next();
+                    if state.is_final() {
+                        maybe_end = Some(*idx);
                     }
-                    // Can this be deduped from the above
-                    None => match maybe_end {
+                }
+
+                // The match is greedy so run till we hit the trap state no matter what. A valid
+                // match is just one that was final at some point
+                if state.is_trapped() || item.is_none() {
+                    match maybe_end {
                         Some(end) => {
+                            // All possible final characters are a single byte so it's safe to make
+                            // the end exclusive by just adding one
                             return Some((start, end + 1));
                         }
-                        None => break,
-                    },
+                        // The character we are peeking right now might be the start of a match so
+                        // we want to continue the loop without popping off that char
+                        None => continue 'outer,
+                    }
                 }
+
+                it.next();
             }
         }
 
@@ -242,7 +225,6 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
 
 impl<'a> FusedIterator for AnsiCodeIterator<'a> {}
 
-// TODO: add a proptest test to make sure that our `Matches` implementation matches the regex
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,18 +244,50 @@ mod tests {
 
     impl<'a, 'b> PartialEq<Match<'a>> for regex::Match<'b> {
         fn eq(&self, other: &Match<'a>) -> bool {
-            self.start() == other.start
-                && self.end() == other.end
-                && self.as_str() == other.as_str()
+            self.start() == other.start && self.end() == other.end
         }
     }
 
     proptest! {
         #[test]
-        fn dfa_matches_old_regex(s: String) {
+        fn dfa_matches_old_regex(s in r"([\x1b\x9b]?.*){0,5}") {
             let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(&s).collect();
             let new_matches: Vec<_> = Matches::new(&s).collect();
             assert_eq!(old_matches, new_matches);
+        }
+    }
+
+    #[test]
+    fn dfa_matches_regex_on_small_strings() {
+        // To make sure the test runs in a reasonable time this is a slimmed down list of
+        // characters to reduce the groups that are only used with each other along with one
+        // arbitrarily chosen character not used in the regex (' ')
+        const POSSIBLE_BYTES: &[u8] = &[b' ', 0x1b, 0x9b, b'(', b'0', b'[', b';', b'3', b'C'];
+
+        fn check_all_strings_of_len(len: usize) {
+            _check_all_strings_of_len(len, &mut Vec::with_capacity(len));
+        }
+
+        fn _check_all_strings_of_len(len: usize, chunk: &mut Vec<u8>) {
+            if len == 0 {
+                if let Ok(s) = std::str::from_utf8(chunk) {
+                    let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(&s).collect();
+                    let new_matches: Vec<_> = Matches::new(&s).collect();
+                    assert_eq!(old_matches, new_matches);
+                }
+
+                return;
+            }
+
+            for b in POSSIBLE_BYTES {
+                chunk.push(*b);
+                _check_all_strings_of_len(len - 1, chunk);
+                chunk.pop();
+            }
+        }
+
+        for str_len in 0..=6 {
+            check_all_strings_of_len(str_len);
         }
     }
 
@@ -290,6 +304,27 @@ mod tests {
 
         state.transition('A');
         assert!(state.is_trapped());
+    }
+
+    #[test]
+    fn back_to_back_entry_char() {
+        let s = "\x1b\x1bf";
+        let matches: Vec<_> = Matches::new(s).map(|m| m.as_str()).collect();
+        assert_eq!(&["\x1bf"], matches.as_slice());
+    }
+
+    #[test]
+    fn early_paren_can_use_many_chars() {
+        let s = "\x1b(C";
+        let matches: Vec<_> = Matches::new(s).map(|m| m.as_str()).collect();
+        assert_eq!(&[s], matches.as_slice());
+    }
+
+    #[test]
+    fn long_run_of_digits() {
+        let s = "\u{1b}00000";
+        let matches: Vec<_> = Matches::new(s).map(|m| m.as_str()).collect();
+        assert_eq!(&[s], matches.as_slice());
     }
 
     #[test]
