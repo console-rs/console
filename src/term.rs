@@ -410,13 +410,13 @@ impl Term {
         move_cursor_down(self, n)
     }
 
-    /// Move the cursor left `n` lines
+    /// Move the cursor `n` characters to the left
     #[inline]
     pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
         move_cursor_left(self, n)
     }
 
-    /// Move the cursor down `n` lines
+    /// Move the cursor `n` characters to the right
     #[inline]
     pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
         move_cursor_right(self, n)
