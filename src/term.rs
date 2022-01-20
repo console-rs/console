@@ -203,7 +203,7 @@ impl Term {
         })
     }
 
-    /// Return the style for the term
+    /// Return the style for this terminal
     #[inline]
     pub fn style(&self) -> Style {
         match self.inner.target {
@@ -214,7 +214,7 @@ impl Term {
         }
     }
 
-    /// Return the target
+    /// Return the target of this terminal
     #[inline]
     pub fn target(&self) -> TermTarget {
         self.inner.target.clone()
