@@ -332,7 +332,7 @@ impl Term {
         Ok(chars.iter().collect::<String>())
     }
 
-    /// Read securely a line of input.
+    /// Read a line of input securely.
     ///
     /// This is similar to `read_line` but will not echo the output.  This
     /// also switches the terminal into a different mode where not all
@@ -386,7 +386,7 @@ impl Term {
 
     /// Return the terminal size in rows and columns.
     ///
-    /// If the size cannot be reliably determined None is returned.
+    /// If the size cannot be reliably determined `None` is returned.
     #[inline]
     pub fn size_checked(&self) -> Option<(u16, u16)> {
         terminal_size(self)
@@ -424,7 +424,7 @@ impl Term {
 
     /// Clear the current line.
     ///
-    /// The positions the cursor at the beginning of the line again.
+    /// This positions the cursor at the beginning of the current line.
     #[inline]
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
@@ -456,7 +456,7 @@ impl Term {
         clear_to_end_of_screen(self)
     }
 
-    /// Clear the last `n` chars in the current line.
+    /// Clear the last `n` chars of the current line.
     #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         clear_chars(self, n)
