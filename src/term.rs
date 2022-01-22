@@ -22,6 +22,7 @@ impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct ReadWritePair {
+    #[allow(unused)]
     read: Arc<Mutex<dyn TermRead>>,
     write: Arc<Mutex<dyn TermWrite>>,
     style: Style,
