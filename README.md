@@ -1,6 +1,6 @@
 # `console`
 
-[![Build Status](https://github.com/mitsuhiko/console/workflows/Tests/badge.svg?branch=master)](https://github.com/mitsuhiko/console/actions?query=workflow%3ATests)
+[![Build Status](https://github.com/mitsuhiko/console/workflows/CI/badge.svg?branch=master)](https://github.com/mitsuhiko/console/actions?query=workflow%3ACI)
 [![Crates.io](https://img.shields.io/crates/d/console.svg)](https://crates.io/crates/console)
 [![License](https://img.shields.io/github/license/mitsuhiko/console)](https://github.com/mitsuhiko/console/blob/master/LICENSE)
 [![rustc 1.40.0](https://img.shields.io/badge/rust-1.40%2B-orange.svg)](https://img.shields.io/badge/rust-1.40%2B-orange.svg)
