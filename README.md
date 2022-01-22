@@ -1,5 +1,11 @@
 # `console`
 
+[![Build Status](https://github.com/mitsuhiko/console/workflows/Tests/badge.svg?branch=master)](https://github.com/mitsuhiko/console/actions?query=workflow%3ATests)
+[![Crates.io](https://img.shields.io/crates/d/console.svg)](https://crates.io/crates/console)
+[![License](https://img.shields.io/github/license/mitsuhiko/console)](https://github.com/mitsuhiko/console/blob/master/LICENSE)
+[![rustc 1.40.0](https://img.shields.io/badge/rust-1.40%2B-orange.svg)](https://img.shields.io/badge/rust-1.40%2B-orange.svg)
+[![Documentation](https://docs.rs/console/badge.svg)](https://docs.rs/console)
+
 **console** is a library for Rust that provides access to various terminal
 features so you can build nicer looking command line interfaces.  It
 comes with various tools and utilities for working with Terminals and
