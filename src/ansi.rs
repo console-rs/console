@@ -29,9 +29,10 @@ impl Default for State {
 
 impl State {
     fn is_final(&self) -> bool {
-        use State::*;
-
-        matches!(self, S3 | S5 | S6 | S7 | S8 | S9 | S11)
+        matches!(
+            self,
+            Self::S3 | Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S9 | Self::S11
+        )
     }
 
     fn is_trapped(&self) -> bool {
@@ -39,27 +40,32 @@ impl State {
     }
 
     fn transition(&mut self, c: char) {
-        use State::*;
-
         *self = match (*self, c) {
-            (Start, '\u{1b}' | '\u{9b}') => S1,
-            (S1, '(' | ')') => S2,
-            (S1, '[' | '#' | ';' | '?') => S4,
-            (S1 | S4, '0'..='9') => S5,
+            (Self::Start, '\u{1b}' | '\u{9b}') => Self::S1,
+            (Self::S1, '(' | ')') => Self::S2,
+            (Self::S1, '[' | '#' | ';' | '?') => Self::S4,
+            (Self::S1 | Self::S4, '0'..='9') => Self::S5,
             (
-                S1 | S2 | S4 | S5 | S6 | S7 | S8 | S10,
+                Self::S1
+                | Self::S2
+                | Self::S4
+                | Self::S5
+                | Self::S6
+                | Self::S7
+                | Self::S8
+                | Self::S10,
                 'A'..='P' | 'R' | 'Z' | 'c' | 'f'..='n' | 'q' | 'r' | 'y' | '=' | '>' | '<',
-            ) => S11,
-            (S2, '0'..='2') => S3,
-            (S2, '3'..='9') => S5,
-            (S2 | S4, '[' | '(' | ')' | '#' | ';' | '?') => S4,
-            (S5, '0'..='9') => S6,
-            (S5 | S6 | S7 | S8 | S10, ';') => S10,
-            (S6, '0'..='9') => S7,
-            (S7, '0'..='9') => S8,
-            (S8, '0'..='9') => S9,
-            (S10, '0'..='9') => S5,
-            _ => Trap,
+            ) => Self::S11,
+            (Self::S2, '0'..='2') => Self::S3,
+            (Self::S2, '3'..='9') => Self::S5,
+            (Self::S2 | Self::S4, '[' | '(' | ')' | '#' | ';' | '?') => Self::S4,
+            (Self::S5, '0'..='9') => Self::S6,
+            (Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S10, ';') => Self::S10,
+            (Self::S6, '0'..='9') => Self::S7,
+            (Self::S7, '0'..='9') => Self::S8,
+            (Self::S8, '0'..='9') => Self::S9,
+            (Self::S10, '0'..='9') => Self::S5,
+            _ => Self::Trap,
         }
     }
 }
