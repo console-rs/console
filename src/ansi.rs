@@ -29,38 +29,75 @@ impl Default for State {
 
 impl State {
     fn is_final(&self) -> bool {
-        use State::*;
-
-        matches!(self, S3 | S5 | S6 | S7 | S8 | S9 | S11)
+        match self {
+            Self::S3 | Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S9 | Self::S11 => true,
+            _ => false,
+        }
     }
 
     fn is_trapped(&self) -> bool {
-        matches!(self, Self::Trap)
+        match self {
+            Self::Trap => true,
+            _ => false,
+        }
     }
 
     fn transition(&mut self, c: char) {
-        use State::*;
+        *self = match c {
+            '\u{1b}' | '\u{9b}' => match self {
+                Self::Start => Self::S1,
+                _ => Self::Trap,
+            },
+            '(' | ')' => match self {
+                Self::S1 => Self::S2,
+                Self::S2 | Self::S4 => Self::S4,
+                _ => Self::Trap,
+            },
+            ';' => match self {
+                Self::S1 | Self::S2 | Self::S4 => Self::S4,
+                Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S10 => Self::S10,
+                _ => Self::Trap,
+            },
 
-        *self = match (*self, c) {
-            (Start, '\u{1b}' | '\u{9b}') => S1,
-            (S1, '(' | ')') => S2,
-            (S1, '[' | '#' | ';' | '?') => S4,
-            (S1 | S4, '0'..='9') => S5,
-            (
-                S1 | S2 | S4 | S5 | S6 | S7 | S8 | S10,
-                'A'..='P' | 'R' | 'Z' | 'c' | 'f'..='n' | 'q' | 'r' | 'y' | '=' | '>' | '<',
-            ) => S11,
-            (S2, '0'..='2') => S3,
-            (S2, '3'..='9') => S5,
-            (S2 | S4, '[' | '(' | ')' | '#' | ';' | '?') => S4,
-            (S5, '0'..='9') => S6,
-            (S5 | S6 | S7 | S8 | S10, ';') => S10,
-            (S6, '0'..='9') => S7,
-            (S7, '0'..='9') => S8,
-            (S8, '0'..='9') => S9,
-            (S10, '0'..='9') => S5,
-            _ => Trap,
-        }
+            '[' | '#' | '?' => match self {
+                Self::S1 | Self::S2 | Self::S4 => Self::S4,
+                _ => Self::Trap,
+            },
+            '0'..='2' => match self {
+                Self::S1 | Self::S4 => Self::S5,
+                Self::S2 => Self::S3,
+                Self::S5 => Self::S6,
+                Self::S6 => Self::S7,
+                Self::S7 => Self::S8,
+                Self::S8 => Self::S9,
+                Self::S10 => Self::S5,
+                _ => Self::Trap,
+            },
+            '3'..='9' => match self {
+                Self::S1 | Self::S4 => Self::S5,
+                Self::S2 => Self::S5,
+                Self::S5 => Self::S6,
+                Self::S6 => Self::S7,
+                Self::S7 => Self::S8,
+                Self::S8 => Self::S9,
+                Self::S10 => Self::S5,
+                _ => Self::Trap,
+            },
+            'A'..='P' | 'R' | 'Z' | 'c' | 'f'..='n' | 'q' | 'r' | 'y' | '=' | '>' | '<' => {
+                match self {
+                    Self::S1
+                    | Self::S2
+                    | Self::S4
+                    | Self::S5
+                    | Self::S6
+                    | Self::S7
+                    | Self::S8
+                    | Self::S10 => Self::S11,
+                    _ => Self::Trap,
+                }
+            }
+            _ => Self::Trap,
+        };
     }
 }
 
@@ -107,7 +144,7 @@ impl<'a> FusedIterator for Matches<'a> {}
 
 fn find_ansi_code_exclusive(it: &mut Peekable<CharIndices>) -> Option<(usize, usize)> {
     'outer: loop {
-        if let (start, '\u{1b}' | '\u{9b}') = it.peek()? {
+        if let (start, '\u{1b}') | (start, '\u{9b}') = it.peek()? {
             let start = *start;
             let mut state = State::default();
             let mut maybe_end = None;
