@@ -29,14 +29,17 @@ impl Default for State {
 
 impl State {
     fn is_final(&self) -> bool {
-        matches!(
-            self,
-            Self::S3 | Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S9 | Self::S11
-        )
+        match self {
+            Self::S3 | Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S9 | Self::S11 => true,
+            _ => false,
+        }
     }
 
     fn is_trapped(&self) -> bool {
-        matches!(self, Self::Trap)
+        match self {
+            Self::Trap => true,
+            _ => false,
+        }
     }
 
     fn transition(&mut self, c: char) {
