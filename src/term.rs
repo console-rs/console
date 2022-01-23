@@ -61,13 +61,13 @@ pub enum TermFamily {
 pub struct TermFeatures<'a>(&'a Term);
 
 impl<'a> TermFeatures<'a> {
-    /// Checks if this is a real user attended terminal (`isatty`)
+    /// Check if this is a real user attended terminal (`isatty`)
     #[inline]
     pub fn is_attended(&self) -> bool {
         is_a_terminal(self.0)
     }
 
-    /// Checks if colors are supported by this terminal.
+    /// Check if colors are supported by this terminal.
     ///
     /// This does not check if colors are enabled.  Currently all terminals
     /// are considered to support colors
@@ -76,7 +76,7 @@ impl<'a> TermFeatures<'a> {
         is_a_color_terminal(self.0)
     }
 
-    /// Checks if this terminal is an msys terminal.
+    /// Check if this terminal is an msys terminal.
     ///
     /// This is sometimes useful to disable features that are known to not
     /// work on msys terminals or require special handling.
@@ -92,13 +92,13 @@ impl<'a> TermFeatures<'a> {
         }
     }
 
-    /// Checks if this terminal wants emojis.
+    /// Check if this terminal wants emojis.
     #[inline]
     pub fn wants_emoji(&self) -> bool {
         self.is_attended() && wants_emoji()
     }
 
-    /// Returns the family of the terminal.
+    /// Return the family of the terminal.
     #[inline]
     pub fn family(&self) -> TermFamily {
         if !self.is_attended() {
@@ -204,7 +204,7 @@ impl Term {
         })
     }
 
-    /// Returns the style for the term
+    /// Return the style for this terminal
     #[inline]
     pub fn style(&self) -> Style {
         match self.inner.target {
@@ -215,7 +215,7 @@ impl Term {
         }
     }
 
-    /// Returns the target
+    /// Return the target of this terminal
     #[inline]
     pub fn target(&self) -> TermTarget {
         self.inner.target.clone()
@@ -229,7 +229,7 @@ impl Term {
         }
     }
 
-    /// Writes a string to the terminal and adds a newline.
+    /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
         match self.inner.buffer {
             Some(ref mutex) => {
@@ -242,7 +242,7 @@ impl Term {
         }
     }
 
-    /// Read a single character from the terminal
+    /// Read a single character from the terminal.
     ///
     /// This does not echo the character and blocks until a single character
     /// is entered.
@@ -333,7 +333,7 @@ impl Term {
         Ok(chars.iter().collect::<String>())
     }
 
-    /// Read securely a line of input.
+    /// Read a line of input securely.
     ///
     /// This is similar to `read_line` but will not echo the output.  This
     /// also switches the terminal into a different mode where not all
@@ -351,7 +351,7 @@ impl Term {
         }
     }
 
-    /// Flushes internal buffers.
+    /// Flush internal buffers.
     ///
     /// This forces the contents of the internal buffer to be written to
     /// the terminal.  This is unnecessary for unbuffered terminals which
@@ -367,71 +367,71 @@ impl Term {
         Ok(())
     }
 
-    /// Checks if the terminal is indeed a terminal.
+    /// Check if the terminal is indeed a terminal.
     #[inline]
     pub fn is_term(&self) -> bool {
         self.is_tty
     }
 
-    /// Checks for common terminal features.
+    /// Check for common terminal features.
     #[inline]
     pub fn features(&self) -> TermFeatures<'_> {
         TermFeatures(self)
     }
 
-    /// Returns the terminal size in rows and columns or gets sensible defaults.
+    /// Return the terminal size in rows and columns or gets sensible defaults.
     #[inline]
     pub fn size(&self) -> (u16, u16) {
         self.size_checked().unwrap_or((24, DEFAULT_WIDTH))
     }
 
-    /// Returns the terminal size in rows and columns.
+    /// Return the terminal size in rows and columns.
     ///
-    /// If the size cannot be reliably determined None is returned.
+    /// If the size cannot be reliably determined `None` is returned.
     #[inline]
     pub fn size_checked(&self) -> Option<(u16, u16)> {
         terminal_size(self)
     }
 
-    /// Moves the cursor to `x` and `y`
+    /// Move the cursor to row `x` and column `y`.
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
     }
 
-    /// Moves the cursor up `n` lines
+    /// Move the cursor up `n` lines
     #[inline]
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
     }
 
-    /// Moves the cursor down `n` lines
+    /// Move the cursor down `n` lines
     #[inline]
     pub fn move_cursor_down(&self, n: usize) -> io::Result<()> {
         move_cursor_down(self, n)
     }
 
-    /// Moves the cursor left `n` lines
+    /// Move the cursor `n` characters to the left
     #[inline]
     pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
         move_cursor_left(self, n)
     }
 
-    /// Moves the cursor down `n` lines
+    /// Move the cursor `n` characters to the right
     #[inline]
     pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
         move_cursor_right(self, n)
     }
 
-    /// Clears the current line.
+    /// Clear the current line.
     ///
-    /// The positions the cursor at the beginning of the line again.
+    /// This positions the cursor at the beginning of the current line.
     #[inline]
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
     }
 
-    /// Clear the last `n` lines.
+    /// Clear the last `n` lines before the current line.
     ///
     /// This positions the cursor at the beginning of the first line
     /// that was cleared.
@@ -445,19 +445,19 @@ impl Term {
         Ok(())
     }
 
-    /// Clears the entire screen.
+    /// Clear the entire screen.
     #[inline]
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
     }
 
-    /// Clears the entire screen.
+    /// Clear the entire screen.
     #[inline]
     pub fn clear_to_end_of_screen(&self) -> io::Result<()> {
         clear_to_end_of_screen(self)
     }
 
-    /// Clears the last char in the the current line.
+    /// Clear the last `n` chars of the current line.
     #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         clear_chars(self, n)
@@ -471,13 +471,13 @@ impl Term {
         set_title(title);
     }
 
-    /// Makes cursor visible again
+    /// Make the cursor visible again
     #[inline]
     pub fn show_cursor(&self) -> io::Result<()> {
         show_cursor(self)
     }
 
-    /// Hides cursor
+    /// Hide the cursor
     #[inline]
     pub fn hide_cursor(&self) -> io::Result<()> {
         hide_cursor(self)
