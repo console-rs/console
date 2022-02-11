@@ -320,7 +320,10 @@ impl Term {
                     self.write_str(chr.encode_utf8(&mut bytes_char))?;
                     self.flush()?;
                 }
-                Key::Enter => break,
+                Key::Enter => {
+                    self.write_line("")?;
+                    break;
+                }
                 Key::Unknown => {
                     return Err(io::Error::new(
                         io::ErrorKind::NotConnected,
