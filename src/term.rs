@@ -436,8 +436,11 @@ impl Term {
 
     /// Clear the last `n` lines before the current line.
     ///
-    /// This positions the cursor at the beginning of the first line
-    /// that was cleared.
+    /// Position the cursor at the beginning of the first line that was cleared.
+    ///
+    /// **Caution.** When `n` is larger than the number of lines above the
+    /// current cursor, the top `n` lines are cleared --- including some lines
+    /// below the cursor.
     pub fn clear_last_lines(&self, n: usize) -> io::Result<()> {
         self.move_cursor_up(n)?;
         for _ in 0..n {
