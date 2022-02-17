@@ -402,25 +402,37 @@ impl Term {
         move_cursor_to(self, x, y)
     }
 
-    /// Move the cursor up `n` lines.
+    /// Move the cursor up by `n` lines, if possible.
+    ///
+    /// If there are less than `n` lines above the current cursor position,
+    /// the cursor is moved to the top line of the terminal (i.e., as far up as possible).
     #[inline]
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
     }
 
-    /// Move the cursor down `n` lines
+    /// Move the cursor down by `n` lines, if possible.
+    ///
+    /// If there are less than `n` lines below the current cursor position,
+    /// the cursor is moved to the bottom line of the terminal (i.e., as far down as possible).
     #[inline]
     pub fn move_cursor_down(&self, n: usize) -> io::Result<()> {
         move_cursor_down(self, n)
     }
 
-    /// Move the cursor `n` characters to the left.
+    /// Move the cursor `n` characters to the left, if possible.
+    ///
+    /// If there are fewer than `n` characters to the left of the current cursor position,
+    /// the cursor is moved to the beginning of the line (i.e., as far to the left as possible).
     #[inline]
     pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
         move_cursor_left(self, n)
     }
 
     /// Move the cursor `n` characters to the right.
+    ///
+    /// If there are fewer than `n` characters to the right of the current cursor position,
+    /// the cursor is moved to the end of the current line (i.e., as far to the right as possible).
     #[inline]
     pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
         move_cursor_right(self, n)
