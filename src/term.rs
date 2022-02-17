@@ -428,7 +428,7 @@ impl Term {
 
     /// Clear the current line.
     ///
-    /// This positions the cursor at the beginning of the current line.
+    /// Position the cursor at the beginning of the current line.
     #[inline]
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
@@ -436,8 +436,7 @@ impl Term {
 
     /// Clear the last `n` lines before the current line.
     ///
-    /// This positions the cursor at the beginning of the first line
-    /// that was cleared.
+    /// Position the cursor at the beginning of the first line that was cleared.
     pub fn clear_last_lines(&self, n: usize) -> io::Result<()> {
         self.move_cursor_up(n)?;
         for _ in 0..n {
@@ -449,18 +448,21 @@ impl Term {
     }
 
     /// Clear the entire screen.
+    ///
+    /// Move the cursor to the upper left corner of the screen.
     #[inline]
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
     }
 
-    /// Clear the entire screen.
+    /// Clear everything from the current cursor position to the end of the screen.
+    /// The cursor stays in its position.
     #[inline]
     pub fn clear_to_end_of_screen(&self) -> io::Result<()> {
         clear_to_end_of_screen(self)
     }
 
-    /// Clear the last `n` chars of the current line.
+    /// Clear the last `n` characters of the current line.
     #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         clear_chars(self, n)
