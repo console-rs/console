@@ -396,7 +396,7 @@ impl Term {
         terminal_size(self)
     }
 
-    /// Move the cursor to row `x` and column `y`.
+    /// Move the cursor to row `x` and column `y`. Values are 0-based.
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
