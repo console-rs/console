@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Enhancements
+
+* ANSI support no longer depends on `regex` crate.
+
 ## 0.15.0
 
 ### Enhancements
