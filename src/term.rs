@@ -143,7 +143,7 @@ impl Term {
         term
     }
 
-    /// Return a new unbuffered terminal
+    /// Return a new unbuffered terminal.
     #[inline]
     pub fn stdout() -> Term {
         Term::with_inner(TermInner {
@@ -152,7 +152,7 @@ impl Term {
         })
     }
 
-    /// Return a new unbuffered terminal to stderr
+    /// Return a new unbuffered terminal to stderr.
     #[inline]
     pub fn stderr() -> Term {
         Term::with_inner(TermInner {
@@ -161,7 +161,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal
+    /// Return a new buffered terminal.
     pub fn buffered_stdout() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
@@ -169,7 +169,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal to stderr
+    /// Return a new buffered terminal to stderr.
     pub fn buffered_stderr() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
@@ -177,7 +177,7 @@ impl Term {
         })
     }
 
-    /// Return a terminal for the given Read/Write pair styled-like Stderr.
+    /// Return a terminal for the given Read/Write pair styled like stderr.
     #[cfg(unix)]
     pub fn read_write_pair<R, W>(read: R, write: W) -> Term
     where
@@ -204,7 +204,7 @@ impl Term {
         })
     }
 
-    /// Return the style for this terminal
+    /// Return the style for this terminal.
     #[inline]
     pub fn style(&self) -> Style {
         match self.inner.target {
@@ -215,7 +215,7 @@ impl Term {
         }
     }
 
-    /// Return the target of this terminal
+    /// Return the target of this terminal.
     #[inline]
     pub fn target(&self) -> TermTarget {
         self.inner.target.clone()
@@ -396,31 +396,43 @@ impl Term {
         terminal_size(self)
     }
 
-    /// Move the cursor to row `x` and column `y`.
+    /// Move the cursor to row `x` and column `y`. Values are 0-based.
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
         move_cursor_to(self, x, y)
     }
 
-    /// Move the cursor up `n` lines
+    /// Move the cursor up by `n` lines, if possible.
+    ///
+    /// If there are less than `n` lines above the current cursor position,
+    /// the cursor is moved to the top line of the terminal (i.e., as far up as possible).
     #[inline]
     pub fn move_cursor_up(&self, n: usize) -> io::Result<()> {
         move_cursor_up(self, n)
     }
 
-    /// Move the cursor down `n` lines
+    /// Move the cursor down by `n` lines, if possible.
+    ///
+    /// If there are less than `n` lines below the current cursor position,
+    /// the cursor is moved to the bottom line of the terminal (i.e., as far down as possible).
     #[inline]
     pub fn move_cursor_down(&self, n: usize) -> io::Result<()> {
         move_cursor_down(self, n)
     }
 
-    /// Move the cursor `n` characters to the left
+    /// Move the cursor `n` characters to the left, if possible.
+    ///
+    /// If there are fewer than `n` characters to the left of the current cursor position,
+    /// the cursor is moved to the beginning of the line (i.e., as far to the left as possible).
     #[inline]
     pub fn move_cursor_left(&self, n: usize) -> io::Result<()> {
         move_cursor_left(self, n)
     }
 
-    /// Move the cursor `n` characters to the right
+    /// Move the cursor `n` characters to the right.
+    ///
+    /// If there are fewer than `n` characters to the right of the current cursor position,
+    /// the cursor is moved to the end of the current line (i.e., as far to the right as possible).
     #[inline]
     pub fn move_cursor_right(&self, n: usize) -> io::Result<()> {
         move_cursor_right(self, n)
@@ -428,7 +440,7 @@ impl Term {
 
     /// Clear the current line.
     ///
-    /// This positions the cursor at the beginning of the current line.
+    /// Position the cursor at the beginning of the current line.
     #[inline]
     pub fn clear_line(&self) -> io::Result<()> {
         clear_line(self)
@@ -436,8 +448,7 @@ impl Term {
 
     /// Clear the last `n` lines before the current line.
     ///
-    /// This positions the cursor at the beginning of the first line
-    /// that was cleared.
+    /// Position the cursor at the beginning of the first line that was cleared.
     pub fn clear_last_lines(&self, n: usize) -> io::Result<()> {
         self.move_cursor_up(n)?;
         for _ in 0..n {
@@ -449,24 +460,27 @@ impl Term {
     }
 
     /// Clear the entire screen.
+    ///
+    /// Move the cursor to the upper left corner of the screen.
     #[inline]
     pub fn clear_screen(&self) -> io::Result<()> {
         clear_screen(self)
     }
 
-    /// Clear the entire screen.
+    /// Clear everything from the current cursor position to the end of the screen.
+    /// The cursor stays in its position.
     #[inline]
     pub fn clear_to_end_of_screen(&self) -> io::Result<()> {
         clear_to_end_of_screen(self)
     }
 
-    /// Clear the last `n` chars of the current line.
+    /// Clear the last `n` characters of the current line.
     #[inline]
     pub fn clear_chars(&self, n: usize) -> io::Result<()> {
         clear_chars(self, n)
     }
 
-    /// Set the terminal title
+    /// Set the terminal title.
     pub fn set_title<T: Display>(&self, title: T) {
         if !self.is_tty {
             return;
@@ -474,13 +488,13 @@ impl Term {
         set_title(title);
     }
 
-    /// Make the cursor visible again
+    /// Make the cursor visible again.
     #[inline]
     pub fn show_cursor(&self) -> io::Result<()> {
         show_cursor(self)
     }
 
-    /// Hide the cursor
+    /// Hide the cursor.
     #[inline]
     pub fn hide_cursor(&self) -> io::Result<()> {
         hide_cursor(self)
