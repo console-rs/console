@@ -22,7 +22,6 @@ impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct ReadWritePair {
-    #[allow(unused)]
     read: Arc<Mutex<dyn TermRead>>,
     write: Arc<Mutex<dyn TermWrite>>,
     /// How output is printed: foreground and background colour, formatting, etc.
@@ -37,6 +36,7 @@ pub enum TermTarget {
     /// standard error
     Stderr,
     #[cfg(unix)]
+    /// anything which implements the Read and Write traits XXX fixup
     ReadWritePair(ReadWritePair),
 }
 
@@ -294,7 +294,24 @@ impl Term {
             return Ok("".into());
         }
         let mut rv = String::new();
-        io::stdin().read_line(&mut rv)?;
+        match &self.inner.target {
+            TermTarget::Stdout | TermTarget::Stderr => { io::stdin().read_line(&mut rv)?; },
+            TermTarget::ReadWritePair(ReadWritePair { read, .. }) => {
+                let mut input = read.lock().unwrap();
+                // Read a single char until we hit a newline ("\n", an 0xA byte).
+                let mut output_bytes = Vec::new();
+                let mut current_char = [0u8; 1];
+                loop {
+                    input.read_exact(&mut current_char)?;
+                    if current_char[0] == b'\n' {
+                        break;
+                    } else {
+                        output_bytes.push(current_char[0]);
+                    }
+                }
+                rv = std::str::from_utf8(&output_bytes[..]).unwrap().to_string();
+            },
+        };
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
         rv.truncate(len);
         Ok(rv)
