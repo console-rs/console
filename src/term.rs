@@ -25,18 +25,22 @@ pub struct ReadWritePair {
     #[allow(unused)]
     read: Arc<Mutex<dyn TermRead>>,
     write: Arc<Mutex<dyn TermWrite>>,
+    /// How output is printed: foreground and background colour, formatting, etc.
     style: Style,
 }
 
 /// Where the term is writing.
 #[derive(Debug, Clone)]
 pub enum TermTarget {
+    /// standard output
     Stdout,
+    /// standard error
     Stderr,
     #[cfg(unix)]
     ReadWritePair(ReadWritePair),
 }
 
+/// Underlying data of the terminal: its target and buffer.
 #[derive(Debug)]
 pub struct TermInner {
     target: TermTarget,
@@ -126,11 +130,14 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
+    /// See [is_msys_tty](TermFeatures::is_msys_tty).
     pub(crate) is_msys_tty: bool,
+    /// If this is a user attended tty.
     pub(crate) is_tty: bool,
 }
 
 impl Term {
+    /// Construct an instance from given data.
     fn with_inner(inner: TermInner) -> Term {
         let mut term = Term {
             inner: Arc::new(inner),
@@ -143,7 +150,7 @@ impl Term {
         term
     }
 
-    /// Return a new unbuffered terminal.
+    /// Return a new unbuffered terminal, writing to stdout.
     #[inline]
     pub fn stdout() -> Term {
         Term::with_inner(TermInner {
@@ -152,7 +159,7 @@ impl Term {
         })
     }
 
-    /// Return a new unbuffered terminal to stderr.
+    /// Return a new unbuffered terminal, writing to stderr.
     #[inline]
     pub fn stderr() -> Term {
         Term::with_inner(TermInner {
@@ -161,7 +168,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal.
+    /// Return a new buffered terminal, writing to stderr.
     pub fn buffered_stdout() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
@@ -169,7 +176,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal to stderr.
+    /// Return a new buffered terminal, writing to stderr.
     pub fn buffered_stderr() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
