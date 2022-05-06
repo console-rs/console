@@ -294,14 +294,16 @@ impl Term {
             return Ok("".into());
         }
         let mut rv = String::new();
-        #[cfg(not(unix))] {
+        #[cfg(not(unix))]
+        {
             io::stdin().read_line(&mut rv)?;
         }
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             match &self.inner.target {
                 TermTarget::Stdout | TermTarget::Stderr => {
                     io::stdin().read_line(&mut rv)?;
-                },
+                }
                 TermTarget::ReadWritePair(ReadWritePair { read, .. }) => {
                     let mut input = read.lock().unwrap();
                     // Read a single char until we hit a newline ("\n", an 0xA byte).
