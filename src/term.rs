@@ -294,24 +294,31 @@ impl Term {
             return Ok("".into());
         }
         let mut rv = String::new();
-        match &self.inner.target {
-            TermTarget::Stdout | TermTarget::Stderr => { io::stdin().read_line(&mut rv)?; },
-            TermTarget::ReadWritePair(ReadWritePair { read, .. }) => {
-                let mut input = read.lock().unwrap();
-                // Read a single char until we hit a newline ("\n", an 0xA byte).
-                let mut output_bytes = Vec::new();
-                let mut current_char = [0u8; 1];
-                loop {
-                    input.read_exact(&mut current_char)?;
-                    if current_char[0] == b'\n' {
-                        break;
-                    } else {
-                        output_bytes.push(current_char[0]);
+        #[cfg(not(unix))] {
+            io::stdin().read_line(&mut rv)?;
+        }
+        #[cfg(unix)] {
+            match &self.inner.target {
+                TermTarget::Stdout | TermTarget::Stderr => {
+                    io::stdin().read_line(&mut rv)?;
+                },
+                TermTarget::ReadWritePair(ReadWritePair { read, .. }) => {
+                    let mut input = read.lock().unwrap();
+                    // Read a single char until we hit a newline ("\n", an 0xA byte).
+                    let mut output_bytes = Vec::new();
+                    let mut current_char = [0u8; 1];
+                    loop {
+                        input.read_exact(&mut current_char)?;
+                        if current_char[0] == b'\n' {
+                            break;
+                        } else {
+                            output_bytes.push(current_char[0]);
+                        }
                     }
+                    rv = std::str::from_utf8(&output_bytes[..]).unwrap().to_string();
                 }
-                rv = std::str::from_utf8(&output_bytes[..]).unwrap().to_string();
-            },
-        };
+            };
+        }
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
         rv.truncate(len);
         Ok(rv)
