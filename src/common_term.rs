@@ -38,32 +38,36 @@ pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
     out.write_str(&format!("\x1B[{};{}H", y + 1, x + 1))
 }
 
+#[cfg(unix)]
 /// Return the current cursor's position as a tuple `(n, m)`,
 /// where `n` is the row and `m` the column of the cursor (both 1-based).
-// FIXME: allow a larger range of characters than u8.
-// FIXME: clear the terminal after this operation.
-pub fn get_cursor_position(mut out: &Term) -> io::Result<(u8, u8)> {
-    // Send the code ESC6n to the terminal: asking for the current cursor position.
+pub fn get_cursor_position(mut out: &Term) -> io::Result<(u16, u16)> {
+    // Send the code "ESC[6n" to the terminal: asking for the current cursor position.
     out.write_str("\x1b[6n")?;
-    // We expect a response ESC[n;mR, where n and m are the row and column of the cursor.
-    let mut buf = [0u8; 6];
+    // We expect a response of the form "ESC[n;mR", where n and m are the row and column of the cursor.
+    // n and m are at most 65536, so 4+2*5 bytes should suffice for these purposes.
+    // TODO: this blocks for user input!
+    let mut buf = [0u8; 4 + 2*5];
     let num_read = io::Read::read(&mut out, &mut buf)?;
-    let (n, m) = match &buf[..] {
-        // If we didn't read enough bytes, we certainly didn't get the response we wanted.
-        _ if num_read < buf.len() => return Err(std::io::Error::new(
-            io::ErrorKind::Other, format!("invalid terminal response: expected six bytes, only read {}", num_read)
-        )),
-        [a, b, n, c, m, d] => {
-            // The bytes a, b, c and d should be byte string \x1 [ ; R.
-            if &[*a, *b, *c, *d] != b"\x1b[;R" {
-                return Err(std::io::Error::new(io::ErrorKind::Other, "invalid terminal response: should be of the form ESC[n;mR"));
-            } else {
-                (n, m)
-            }
-        }
-        _ => unreachable!(),
-    };
-    Ok((*n, *m))
+    out.clear_chars(num_read)?;
+    // FIXME: re-use ANSI code parser instead of rolling my own.
+    match &buf[..] {
+        [b'\x1B', b'[', middle @ .., b'R'] => {
+            // A valid terminal response means `middle` is valid UTF-8.
+            // Use string methods to simplify the parsing of input.
+            let middle = match std::str::from_utf8(middle) {
+                Ok(m) => m,
+                Err(_) => return Err(io::Error::new(io::ErrorKind::Other, format!("invalid terminal response: middle part of the output {:?} must be valid UTF-8", buf))),
+            };
+            let (nstr, mstr) = match middle.split_once(';') {
+                Some((nstr, mstr)) => (nstr, mstr),
+                None => return Err(io::Error::new(io::ErrorKind::Other, format!("invalid terminal response: middle part of the output should be of the form n;m, got {}", middle))),
+            };
+            let (n, m) = (nstr.parse::<u16>().unwrap(), mstr.parse::<u16>().unwrap());
+            Ok((n, m))
+        },
+        _ => return Err(io::Error::new(io::ErrorKind::Other, "invalid terminal response: should be of the form ESC[n;mR")),
+    }
 }
 
 pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {

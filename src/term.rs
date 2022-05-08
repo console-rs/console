@@ -449,12 +449,16 @@ impl Term {
     /// Clear the last `n` lines before the current line, if possible.
     ///
     /// Position the cursor at the beginning of the first line that was cleared.
-    /// Error when `n` is larger than the number of lines before the current cursor.
+    /// On UNIX, error when `n` is larger than the number of lines before the current cursor.
+    // FIXME: find good behaviour on windows and document it here.
     pub fn clear_last_lines(&self, n: usize) -> io::Result<()> {
-        let (current_row, _) = get_cursor_position(self)?;
-        if usize::from(current_row) < n {
-            // We cannot move up n lines, only current_row ones.
-            return Err(io::Error::new(io::ErrorKind::Other, format!("can only move up {} lines, not {}", current_row, n)));
+        #[cfg(unix)]
+        {
+            let (current_row, _) = get_cursor_position(self)?;
+            if usize::from(current_row) < n {
+                // We cannot move up n lines, only current_row ones.
+                return Err(io::Error::new(io::ErrorKind::Other, format!("can only move up {} lines, not {}", current_row, n)));
+            }
         }
         self.move_cursor_up(n)?;
         for _ in 0..n {
