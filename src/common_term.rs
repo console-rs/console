@@ -47,7 +47,7 @@ pub fn get_cursor_position(mut out: &Term) -> io::Result<(u16, u16)> {
     // We expect a response of the form "ESC[n;mR", where n and m are the row and column of the cursor.
     // n and m are at most 65536, so 4+2*5 bytes should suffice for these purposes.
     // TODO: this blocks for user input!
-    let mut buf = [0u8; 4 + 2*5];
+    let mut buf = [0u8; 4 + 2 * 5];
     let num_read = io::Read::read(&mut out, &mut buf)?;
     out.clear_chars(num_read)?;
     // FIXME: re-use ANSI code parser instead of rolling my own.
@@ -59,14 +59,19 @@ pub fn get_cursor_position(mut out: &Term) -> io::Result<(u16, u16)> {
                 Ok(m) => m,
                 Err(_) => return Err(io::Error::new(io::ErrorKind::Other, format!("invalid terminal response: middle part of the output {:?} must be valid UTF-8", buf))),
             };
-            let (nstr, mstr) = match middle.split_once(';') {
-                Some((nstr, mstr)) => (nstr, mstr),
-                None => return Err(io::Error::new(io::ErrorKind::Other, format!("invalid terminal response: middle part of the output should be of the form n;m, got {}", middle))),
+            let parts = middle.splitn(2, ';').collect::<Vec<_>>();
+            let (nstr, mstr) =
+            match &parts[..] {
+                [a, b] => (a, b),
+                _ => return Err(io::Error::new(io::ErrorKind::Other, format!("invalid terminal response: middle part of the output should be of the form n;m, got {}", middle))),
             };
             let (n, m) = (nstr.parse::<u16>().unwrap(), mstr.parse::<u16>().unwrap());
             Ok((n, m))
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::Other, "invalid terminal response: should be of the form ESC[n;mR")),
+        }
+        _ => Err(io::Error::new(
+            io::ErrorKind::Other,
+            "invalid terminal response: should be of the form ESC[n;mR",
+        )),
     }
 }
 
