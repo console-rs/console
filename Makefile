@@ -11,15 +11,11 @@ doc:
 
 test: cargotest cargo-insta-tests
 
-cargo-insta-tests:
-	@echo "CARGO-INSTA INTEGRATION TESTS"
-	@cd cargo-insta/integration-tests; cargo run
-
 cargotest:
 	@echo "CARGO TESTS"
 	@cargo test
 	@cargo test --all-features
-	@cd cargo-insta; cargo test
+	@cargo test --no-default-features
 
 check-minver:
 	@echo "MINVER CHECK"
