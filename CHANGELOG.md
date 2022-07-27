@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.15.1
 
 ### Enhancements
 
 * ANSI support no longer depends on `regex` crate.
+* Crate now supports `minver`.
 
 ## 0.15.0
 
