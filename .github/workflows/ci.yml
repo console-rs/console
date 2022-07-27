@@ -29,7 +29,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Build
-        run: CARGO_BUILD_TARGET=${{ matrix.target }} make check
+        env: 
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+        run: make check
 
   test:
     name: Tests
@@ -75,7 +77,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install gcc-multilib
       - name: Test
-        run: CARGO_BUILD_TARGET=${{ matrix.target }} make test
+        env: 
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+        run: make test
   wasm:
     name: Wasm
     strategy:
@@ -94,7 +98,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Check
-        run: CARGO_BUILD_TARGET=${{ matrix.target }} make check
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+        run: make check
   nightly:
     name: Nightly Tests
     runs-on: ubuntu-latest
