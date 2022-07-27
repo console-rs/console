@@ -9,9 +9,7 @@ build:
 doc:
 	@cargo doc --all-features
 
-test: cargotest cargo-insta-tests
-
-cargotest:
+test:
 	@echo "CARGO TESTS"
 	@cargo test
 	@cargo test --all-features
@@ -35,4 +33,4 @@ lint:
 	@rustup component add clippy 2> /dev/null
 	@cargo clippy
 
-.PHONY: all doc build check test cargotest format format-check lint check-minver
+.PHONY: all doc build check test format format-check lint check-minver
