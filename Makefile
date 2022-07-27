@@ -1,5 +1,8 @@
 all: test
 
+check:
+	@cargo check --all-features
+
 build:
 	@cargo build --all-features
 
@@ -36,4 +39,4 @@ lint:
 	@rustup component add clippy 2> /dev/null
 	@cargo clippy
 
-.PHONY: all doc test cargotest format format-check lint check-minver
+.PHONY: all doc build check test cargotest format format-check lint check-minver
