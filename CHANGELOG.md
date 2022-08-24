@@ -11,7 +11,7 @@
 
 ### Enhancements
 
-* Addeed more key recognitions
+* Added more key recognitions
 * Exposed `pad_str_with` to public API
 * Added `ReadWritePair`
 * Support `color256` in `Style::from_dotted_str`
