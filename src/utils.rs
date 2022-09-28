@@ -4,8 +4,9 @@ use std::env;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use lazy_static::lazy_static;
+
 use crate::term::{wants_emoji, Term};
-use once_cell::sync::Lazy;
 
 #[cfg(feature = "ansi-parsing")]
 use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
@@ -21,10 +22,10 @@ fn default_colors_enabled(out: &Term) -> bool {
         || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
-static STDOUT_COLORS: Lazy<AtomicBool> =
-    Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stdout())));
-static STDERR_COLORS: Lazy<AtomicBool> =
-    Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stderr())));
+lazy_static! {
+    static ref STDOUT_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stdout()));
+    static ref STDERR_COLORS: AtomicBool = AtomicBool::new(default_colors_enabled(&Term::stderr()));
+}
 
 /// Returns `true` if colors should be enabled for stdout.
 ///

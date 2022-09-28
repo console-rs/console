@@ -271,11 +271,12 @@ pub fn key_from_utf8(buf: &[u8]) -> Key {
 }
 
 #[cfg(not(target_os = "macos"))]
-static IS_LANG_UTF8: once_cell::sync::Lazy<bool> =
-    once_cell::sync::Lazy::new(|| match std::env::var("LANG") {
+lazy_static::lazy_static! {
+    static ref IS_LANG_UTF8: bool = match std::env::var("LANG") {
         Ok(lang) => lang.to_uppercase().ends_with("UTF-8"),
         _ => false,
-    });
+    };
+}
 
 #[cfg(target_os = "macos")]
 pub fn wants_emoji() -> bool {
