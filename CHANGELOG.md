@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.2
+
+### Enhancements
+
+* Dropped `once_cell` dependency to support MSRV again.
+
 ## 0.15.1
 
 ### Enhancements
