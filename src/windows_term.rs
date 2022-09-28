@@ -38,16 +38,14 @@ use crate::kb::Key;
 use crate::term::{Term, TermTarget};
 
 #[cfg(feature = "windows-console-colors")]
-use once_cell::sync::Lazy;
-#[cfg(feature = "windows-console-colors")]
 use regex::Regex;
+
 #[cfg(feature = "windows-console-colors")]
-static INTENSE_COLOR_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\x1b\[(3|4)8;5;(8|9|1[0-5])m").unwrap());
-#[cfg(feature = "windows-console-colors")]
-static NORMAL_COLOR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\x1b\[(3|4)([0-7])m").unwrap());
-#[cfg(feature = "windows-console-colors")]
-static ATTR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\x1b\[([1-8])m").unwrap());
+lazy_static::lazy_static! {
+    static ref INTENSE_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)8;5;(8|9|1[0-5])m").unwrap();
+    static ref NORMAL_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)([0-7])m").unwrap();
+    static ref ATTR_RE: Regex = Regex::new(r"\x1b\[([1-8])m").unwrap();
+}
 
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub const DEFAULT_WIDTH: u16 = 79;
