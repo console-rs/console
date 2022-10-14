@@ -10,7 +10,7 @@ use std::os::windows::io::AsRawHandle;
 use std::slice;
 use std::{char, mem::MaybeUninit};
 
-use encode_unicode::error::InvalidUtf16Tuple;
+use encode_unicode::error::Utf16TupleError;
 use encode_unicode::CharExt;
 use winapi::ctypes::c_void;
 use winapi::shared::minwindef::DWORD;
@@ -381,13 +381,13 @@ pub fn read_single_key() -> io::Result<Key> {
                 }
             }
             // This is part of a surrogate pair. Try to read the second half.
-            Err(InvalidUtf16Tuple::MissingSecond) => {
+            Err(Utf16TupleError::MissingSecond) => {
                 // Confirm that there is a next character to read.
                 if get_key_event_count()? == 0 {
                     let message = format!(
                         "Read invlid utf16 {}: {}",
                         unicode_char,
-                        InvalidUtf16Tuple::MissingSecond
+                        Utf16TupleError::MissingSecond
                     );
                     return Err(io::Error::new(io::ErrorKind::InvalidData, message));
                 }
