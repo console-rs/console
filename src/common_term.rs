@@ -70,3 +70,13 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
     out.write_str("\x1b[?25l")
 }
+
+#[inline]
+pub fn enter_alternate_screen(out: &Term) -> io::Result<()> {
+    out.write_str("\x1b[?1049h")
+}
+
+#[inline]
+pub fn exit_alternate_screen(out: &Term) -> io::Result<()> {
+    out.write_str("\x1b[?1049l")
+}

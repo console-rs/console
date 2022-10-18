@@ -301,6 +301,20 @@ pub fn hide_cursor(out: &Term) -> io::Result<()> {
     Ok(())
 }
 
+pub fn enter_alternate_screen(out: &Term) -> io::Result<()> {
+    if out.is_msys_tty {
+        return common_term::enter_alternate_screen(out);
+    }
+    Ok(())
+}
+
+pub fn exit_alternate_screen(out: &Term) -> io::Result<()> {
+    if out.is_msys_tty {
+        return common_term::exit_alternate_screen(out);
+    }
+    Ok(())
+}
+
 fn get_console_screen_buffer_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_SCREEN_BUFFER_INFO)> {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe { mem::zeroed() };
     match unsafe { GetConsoleScreenBufferInfo(hand, &mut csbi) } {
