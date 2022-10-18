@@ -93,21 +93,21 @@ pub fn is_a_color_terminal(out: &Term) -> bool {
 }
 
 fn enable_ansi_on(out: &Term) -> bool {
-    unsafe {
+    
         let handle = as_handle(out);
 
         let mut dw_mode = 0;
-        if GetConsoleMode(handle, &mut dw_mode) == 0 {
+        if unsafe { GetConsoleMode(handle, &mut dw_mode) == 0 }{
             return false;
         }
 
         dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        if SetConsoleMode(handle, dw_mode) == 0 {
+        if unsafe { SetConsoleMode(handle, dw_mode) == 0 }{
             return false;
         }
 
         true
-    }
+    
 }
 
 unsafe fn console_on_any(fds: &[DWORD]) -> bool {
@@ -201,13 +201,13 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
         return common_term::clear_line(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        let width = csbi.srWindow.Right - csbi.srWindow.Left;
+        let pos = COORD {
+            X: 0,
+            Y: csbi.dwCursorPosition.Y,
+        };
+        let mut written = 0;
         unsafe {
-            let width = csbi.srWindow.Right - csbi.srWindow.Left;
-            let pos = COORD {
-                X: 0,
-                Y: csbi.dwCursorPosition.Y,
-            };
-            let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
@@ -221,13 +221,13 @@ pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
         return common_term::clear_chars(out, n);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        let width = cmp::min(csbi.dwCursorPosition.X, n as i16);
+        let pos = COORD {
+            X: csbi.dwCursorPosition.X - width,
+            Y: csbi.dwCursorPosition.Y,
+        };
+        let mut written = 0;
         unsafe {
-            let width = cmp::min(csbi.dwCursorPosition.X, n as i16);
-            let pos = COORD {
-                X: csbi.dwCursorPosition.X - width,
-                Y: csbi.dwCursorPosition.Y,
-            };
-            let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
@@ -241,10 +241,10 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
         return common_term::clear_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD; // as DWORD, or else this causes stack overflows.
+        let pos = COORD { X: 0, Y: 0 };
+        let mut written = 0;
         unsafe {
-            let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD; // as DWORD, or else this causes stack overflows.
-            let pos = COORD { X: 0, Y: 0 };
-            let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
@@ -258,15 +258,15 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
         return common_term::clear_to_end_of_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
+        let bottom = csbi.srWindow.Right as DWORD * csbi.srWindow.Bottom as DWORD;
+        let cells =
+            bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
+        let pos = COORD {
+            X: 0,
+            Y: csbi.dwCursorPosition.Y,
+        };
+        let mut written = 0;
         unsafe {
-            let bottom = csbi.srWindow.Right as DWORD * csbi.srWindow.Bottom as DWORD;
-            let cells =
-                bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
-            let pos = COORD {
-                X: 0,
-                Y: csbi.dwCursorPosition.Y,
-            };
-            let mut written = 0;
             FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
@@ -280,8 +280,8 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
         return common_term::show_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
+        cci.bVisible = 1;
         unsafe {
-            cci.bVisible = 1;
             SetConsoleCursorInfo(hand, &cci);
         }
     }
@@ -293,8 +293,8 @@ pub fn hide_cursor(out: &Term) -> io::Result<()> {
         return common_term::hide_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
+        cci.bVisible = 0;
         unsafe {
-            cci.bVisible = 0;
             SetConsoleCursorInfo(hand, &cci);
         }
     }
