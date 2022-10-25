@@ -106,7 +106,6 @@ impl Color {
 
     #[inline]
     fn is_color256(self) -> bool {
-        #[allow(clippy::match_like_matches_macro)]
         match self {
             Color::Color256(_) => true,
             _ => false,

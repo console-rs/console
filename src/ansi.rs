@@ -29,7 +29,6 @@ impl Default for State {
 
 impl State {
     fn is_final(&self) -> bool {
-        #[allow(clippy::match_like_matches_macro)]
         match self {
             Self::S3 | Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S9 | Self::S11 => true,
             _ => false,
@@ -37,7 +36,6 @@ impl State {
     }
 
     fn is_trapped(&self) -> bool {
-        #[allow(clippy::match_like_matches_macro)]
         match self {
             Self::Trap => true,
             _ => false,
