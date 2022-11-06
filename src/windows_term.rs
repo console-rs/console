@@ -126,6 +126,34 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     terminal_size::terminal_size_using_handle(out.as_raw_handle()).map(|x| ((x.1).0, (x.0).0))
 }
 
+pub fn save_cursor_pos(out: &Term) -> io::Result<()> {
+    if out.is_msys_tty || is_a_color_terminal(out) {
+        return common_term::save_cursor_pos(out);
+    }
+    Ok(())
+}
+
+pub fn restore_cursor_pos(out: &Term) -> io::Result<()> {
+    if out.is_msys_tty || is_a_color_terminal(out) {
+        return common_term::restore_cursor_pos(out);
+    }
+    Ok(())
+}
+
+pub fn scroll_up(out: &Term, x: usize) -> io::Result<()> {
+    if out.is_msys_tty || is_a_color_terminal(out) {
+        return common_term::scroll_up(out, x);
+    }
+    Ok(())
+}
+
+pub fn scroll_down(out: &Term, x: usize) -> io::Result<()> {
+    if out.is_msys_tty || is_a_color_terminal(out) {
+        return common_term::scroll_down(out, x);
+    }
+    Ok(())
+}
+
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
     if out.is_msys_tty {
         return common_term::move_cursor_to(out, x, y);

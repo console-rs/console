@@ -396,6 +396,18 @@ impl Term {
         terminal_size(self)
     }
 
+    /// Save cursor position
+    #[inline]
+    pub fn save_cursor_pos(&self) -> io::Result<()> {
+        save_cursor_pos(self)
+    }
+
+    /// Save cursor position
+    #[inline]
+    pub fn restore_cursor_pos(&self) -> io::Result<()> {
+        restore_cursor_pos(self)
+    }
+
     /// Move the cursor to row `x` and column `y`. Values are 0-based.
     #[inline]
     pub fn move_cursor_to(&self, x: usize, y: usize) -> io::Result<()> {
@@ -498,6 +510,16 @@ impl Term {
     #[inline]
     pub fn hide_cursor(&self) -> io::Result<()> {
         hide_cursor(self)
+    }
+
+    /// Scroll the whole page up by x lines
+    pub fn scroll_up(&self, x: usize) -> io::Result<()> {
+        scroll_up(self, x)
+    }
+
+    /// Scroll the whole page down by x lines
+    pub fn scroll_down(&self, x: usize) -> io::Result<()> {
+        scroll_down(self, x)
     }
 
     // helpers
