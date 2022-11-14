@@ -52,6 +52,11 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 }
 
 #[inline]
+pub fn clear_to_end_of_line(out: &Term) -> io::Result<()> {
+    out.write_str("\r\x1b[0K")
+}
+
+#[inline]
 pub fn clear_screen(out: &Term) -> io::Result<()> {
     out.write_str("\r\x1b[2J\r\x1b[H")
 }
