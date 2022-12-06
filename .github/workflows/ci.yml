@@ -92,7 +92,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.51.0
+          toolchain: stable
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
