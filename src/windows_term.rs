@@ -121,9 +121,40 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
     false
 }
 
-#[inline]
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
-    terminal_size::terminal_size_using_handle(out.as_raw_handle()).map(|x| ((x.1).0, (x.0).0))
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Console::{
+        GetConsoleScreenBufferInfo, CONSOLE_SCREEN_BUFFER_INFO, COORD, SMALL_RECT,
+    };
+
+    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
+    let handle = out.as_raw_handle();
+    let hand = handle as windows_sys::Win32::Foundation::HANDLE;
+
+    if hand == INVALID_HANDLE_VALUE {
+        return None;
+    }
+
+    let zc = COORD { X: 0, Y: 0 };
+    let mut csbi = CONSOLE_SCREEN_BUFFER_INFO {
+        dwSize: zc,
+        dwCursorPosition: zc,
+        wAttributes: 0,
+        srWindow: SMALL_RECT {
+            Left: 0,
+            Top: 0,
+            Right: 0,
+            Bottom: 0,
+        },
+        dwMaximumWindowSize: zc,
+    };
+    if unsafe { GetConsoleScreenBufferInfo(hand, &mut csbi) } == 0 {
+        return None;
+    }
+
+    let w = (csbi.srWindow.Right - csbi.srWindow.Left + 1) as u16;
+    let h = (csbi.srWindow.Bottom - csbi.srWindow.Top + 1) as u16;
+    Some((w, h))
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
