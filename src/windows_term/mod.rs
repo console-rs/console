@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::io;
 use std::iter::once;
 use std::mem;
+use std::os::raw::c_void;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::AsRawHandle;
 use std::slice;
@@ -12,47 +13,34 @@ use std::{char, mem::MaybeUninit};
 
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
-use winapi::ctypes::c_void;
-use winapi::shared::minwindef::DWORD;
-use winapi::shared::minwindef::MAX_PATH;
-use winapi::um::consoleapi::{GetConsoleMode, SetConsoleMode};
-use winapi::um::consoleapi::{GetNumberOfConsoleInputEvents, ReadConsoleInputW};
-use winapi::um::fileapi::FILE_NAME_INFO;
-use winapi::um::handleapi::INVALID_HANDLE_VALUE;
-use winapi::um::minwinbase::FileNameInfo;
-use winapi::um::processenv::GetStdHandle;
-use winapi::um::winbase::GetFileInformationByHandleEx;
-use winapi::um::winbase::{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
-use winapi::um::wincon::{
-    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo,
-    GetConsoleScreenBufferInfo, SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleTitleW,
-    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
-    KEY_EVENT_RECORD,
+use windows_sys::Win32::Foundation::{CHAR, HANDLE, INVALID_HANDLE_VALUE, MAX_PATH};
+use windows_sys::Win32::Storage::FileSystem::{
+    FileNameInfo, GetFileInformationByHandleEx, FILE_NAME_INFO,
 };
-use winapi::um::winnt::{CHAR, HANDLE, INT, WCHAR};
-#[cfg(feature = "windows-console-colors")]
-use winapi_util::console::{Color, Console, Intense};
+use windows_sys::Win32::System::Console::{
+    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo, GetConsoleMode,
+    GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
+    SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleMode, SetConsoleTitleW,
+    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
+    KEY_EVENT_RECORD, STD_ERROR_HANDLE, STD_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
 use crate::common_term;
 use crate::kb::Key;
 use crate::term::{Term, TermTarget};
 
 #[cfg(feature = "windows-console-colors")]
-use regex::Regex;
+mod colors;
 
 #[cfg(feature = "windows-console-colors")]
-lazy_static::lazy_static! {
-    static ref INTENSE_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)8;5;(8|9|1[0-5])m").unwrap();
-    static ref NORMAL_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)([0-7])m").unwrap();
-    static ref ATTR_RE: Regex = Regex::new(r"\x1b\[([1-8])m").unwrap();
-}
+pub use self::colors::*;
 
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub const DEFAULT_WIDTH: u16 = 79;
 
 pub fn as_handle(term: &Term) -> HANDLE {
-    // convert between winapi::um::winnt::HANDLE and std::os::windows::raw::HANDLE
-    // which are both c_void. would be nice to find a better way to do this
+    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
     term.as_raw_handle() as HANDLE
 }
 
@@ -110,7 +98,7 @@ fn enable_ansi_on(out: &Term) -> bool {
     }
 }
 
-unsafe fn console_on_any(fds: &[DWORD]) -> bool {
+unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
     for &fd in fds {
         let mut out = 0;
         let handle = GetStdHandle(fd);
@@ -121,9 +109,37 @@ unsafe fn console_on_any(fds: &[DWORD]) -> bool {
     false
 }
 
-#[inline]
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
-    terminal_size::terminal_size_using_handle(out.as_raw_handle()).map(|x| ((x.1).0, (x.0).0))
+    use windows_sys::Win32::System::Console::SMALL_RECT;
+
+    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
+    let handle = out.as_raw_handle();
+    let hand = handle as windows_sys::Win32::Foundation::HANDLE;
+
+    if hand == INVALID_HANDLE_VALUE {
+        return None;
+    }
+
+    let zc = COORD { X: 0, Y: 0 };
+    let mut csbi = CONSOLE_SCREEN_BUFFER_INFO {
+        dwSize: zc,
+        dwCursorPosition: zc,
+        wAttributes: 0,
+        srWindow: SMALL_RECT {
+            Left: 0,
+            Top: 0,
+            Right: 0,
+            Bottom: 0,
+        },
+        dwMaximumWindowSize: zc,
+    };
+    if unsafe { GetConsoleScreenBufferInfo(hand, &mut csbi) } == 0 {
+        return None;
+    }
+
+    let w = (csbi.srWindow.Right - csbi.srWindow.Left + 1) as u16;
+    let h = (csbi.srWindow.Bottom - csbi.srWindow.Top + 1) as u16;
+    Some((w, h))
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
@@ -208,8 +224,8 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
-            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as u32, pos, &mut written);
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
     }
@@ -228,8 +244,8 @@ pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as DWORD, pos, &mut written);
-            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as DWORD, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as u32, pos, &mut written);
+            FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
     }
@@ -242,10 +258,10 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
-            let cells = csbi.dwSize.X as DWORD * csbi.dwSize.Y as DWORD; // as DWORD, or else this causes stack overflows.
+            let cells = csbi.dwSize.X as u32 * csbi.dwSize.Y as u32; // as u32, or else this causes stack overflows.
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -259,15 +275,14 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
         unsafe {
-            let bottom = csbi.srWindow.Right as DWORD * csbi.srWindow.Bottom as DWORD;
-            let cells =
-                bottom - (csbi.dwCursorPosition.X as DWORD * csbi.dwCursorPosition.Y as DWORD); // as DWORD, or else this causes stack overflows.
+            let bottom = csbi.srWindow.Right as u32 * csbi.srWindow.Bottom as u32;
+            let cells = bottom - (csbi.dwCursorPosition.X as u32 * csbi.dwCursorPosition.Y as u32); // as u32, or else this causes stack overflows.
             let pos = COORD {
                 X: 0,
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as DWORD no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -317,21 +332,23 @@ fn get_console_cursor_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_CURSOR_INFO)
     }
 }
 
-pub fn key_from_key_code(code: INT) -> Key {
+pub fn key_from_key_code(code: VIRTUAL_KEY) -> Key {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse;
+
     match code {
-        winapi::um::winuser::VK_LEFT => Key::ArrowLeft,
-        winapi::um::winuser::VK_RIGHT => Key::ArrowRight,
-        winapi::um::winuser::VK_UP => Key::ArrowUp,
-        winapi::um::winuser::VK_DOWN => Key::ArrowDown,
-        winapi::um::winuser::VK_RETURN => Key::Enter,
-        winapi::um::winuser::VK_ESCAPE => Key::Escape,
-        winapi::um::winuser::VK_BACK => Key::Backspace,
-        winapi::um::winuser::VK_TAB => Key::Tab,
-        winapi::um::winuser::VK_HOME => Key::Home,
-        winapi::um::winuser::VK_END => Key::End,
-        winapi::um::winuser::VK_DELETE => Key::Del,
-        winapi::um::winuser::VK_SHIFT => Key::Shift,
-        winapi::um::winuser::VK_MENU => Key::Alt,
+        KeyboardAndMouse::VK_LEFT => Key::ArrowLeft,
+        KeyboardAndMouse::VK_RIGHT => Key::ArrowRight,
+        KeyboardAndMouse::VK_UP => Key::ArrowUp,
+        KeyboardAndMouse::VK_DOWN => Key::ArrowDown,
+        KeyboardAndMouse::VK_RETURN => Key::Enter,
+        KeyboardAndMouse::VK_ESCAPE => Key::Escape,
+        KeyboardAndMouse::VK_BACK => Key::Backspace,
+        KeyboardAndMouse::VK_TAB => Key::Tab,
+        KeyboardAndMouse::VK_HOME => Key::Home,
+        KeyboardAndMouse::VK_END => Key::End,
+        KeyboardAndMouse::VK_DELETE => Key::Del,
+        KeyboardAndMouse::VK_SHIFT => Key::Shift,
+        KeyboardAndMouse::VK_MENU => Key::Alt,
         _ => Key::Unknown,
     }
 }
@@ -361,9 +378,9 @@ pub fn read_secure() -> io::Result<String> {
 pub fn read_single_key() -> io::Result<Key> {
     let key_event = read_key_event()?;
 
-    let unicode_char = unsafe { *key_event.uChar.UnicodeChar() };
+    let unicode_char = unsafe { key_event.uChar.UnicodeChar };
     if unicode_char == 0 {
-        Ok(key_from_key_code(key_event.wVirtualKeyCode as INT))
+        Ok(key_from_key_code(key_event.wVirtualKeyCode))
     } else {
         // This is a unicode character, in utf-16. Try to decode it by itself.
         match char::from_utf16_tuple((unicode_char, None)) {
@@ -394,7 +411,7 @@ pub fn read_single_key() -> io::Result<Key> {
 
                 // Read the next character.
                 let next_event = read_key_event()?;
-                let next_surrogate = unsafe { *next_event.uChar.UnicodeChar() };
+                let next_surrogate = unsafe { next_event.uChar.UnicodeChar };
 
                 // Attempt to decode it.
                 match char::from_utf16_tuple((unicode_char, Some(next_surrogate))) {
@@ -437,9 +454,9 @@ fn get_stdin_handle() -> io::Result<HANDLE> {
 /// is read.
 ///
 /// Therefore, this is accurate as long as at least one KEY_EVENT has already been read.
-fn get_key_event_count() -> io::Result<DWORD> {
+fn get_key_event_count() -> io::Result<u32> {
     let handle = get_stdin_handle()?;
-    let mut event_count: DWORD = unsafe { mem::zeroed() };
+    let mut event_count: u32 = unsafe { mem::zeroed() };
 
     let success = unsafe { GetNumberOfConsoleInputEvents(handle, &mut event_count) };
     if success == 0 {
@@ -453,7 +470,7 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
     let handle = get_stdin_handle()?;
     let mut buffer: INPUT_RECORD = unsafe { mem::zeroed() };
 
-    let mut events_read: DWORD = unsafe { mem::zeroed() };
+    let mut events_read: u32 = unsafe { mem::zeroed() };
 
     let mut key_event: KEY_EVENT_RECORD;
     loop {
@@ -468,7 +485,7 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
             ));
         }
 
-        if events_read == 1 && buffer.EventType != KEY_EVENT {
+        if events_read == 1 && buffer.EventType != KEY_EVENT as u16 {
             // This isn't a key event; ignore it.
             continue;
         }
@@ -498,7 +515,7 @@ pub fn msys_tty_on(term: &Term) -> bool {
         // Check whether the Windows 10 native pty is enabled
         {
             let mut out = MaybeUninit::uninit();
-            let res = GetConsoleMode(handle as *mut _, out.as_mut_ptr());
+            let res = GetConsoleMode(handle as HANDLE, out.as_mut_ptr());
             if res != 0 // If res is true then out was initialized.
                 && (out.assume_init() & ENABLE_VIRTUAL_TERMINAL_PROCESSING)
                     == ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -508,9 +525,9 @@ pub fn msys_tty_on(term: &Term) -> bool {
         }
 
         let size = mem::size_of::<FILE_NAME_INFO>();
-        let mut name_info_bytes = vec![0u8; size + MAX_PATH * mem::size_of::<WCHAR>()];
+        let mut name_info_bytes = vec![0u8; size + MAX_PATH as usize * mem::size_of::<u16>()];
         let res = GetFileInformationByHandleEx(
-            handle as *mut _,
+            handle as HANDLE,
             FileNameInfo,
             &mut *name_info_bytes as *mut _ as *mut c_void,
             name_info_bytes.len() as u32,
@@ -541,59 +558,5 @@ pub fn set_title<T: Display>(title: T) {
         .collect();
     unsafe {
         SetConsoleTitleW(buffer.as_ptr());
-    }
-}
-
-#[cfg(feature = "windows-console-colors")]
-pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<()> {
-    use crate::ansi::AnsiCodeIterator;
-    use std::str::from_utf8;
-
-    let s = from_utf8(bytes).expect("data to be printed is not an ansi string");
-    let mut iter = AnsiCodeIterator::new(s);
-
-    while !iter.rest_slice().is_empty() {
-        if let Some((part, is_esc)) = iter.next() {
-            if !is_esc {
-                out.write_through_common(part.as_bytes())?;
-            } else if part == "\x1b[0m" {
-                con.reset()?;
-            } else if let Some(cap) = INTENSE_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::Yes, color)?,
-                    "4" => con.bg(Intense::Yes, color)?,
-                    _ => unreachable!(),
-                };
-            } else if let Some(cap) = NORMAL_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::No, color)?,
-                    "4" => con.bg(Intense::No, color)?,
-                    _ => unreachable!(),
-                };
-            } else if !ATTR_RE.is_match(part) {
-                out.write_through_common(part.as_bytes())?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "windows-console-colors")]
-fn get_color_from_ansi(ansi: &str) -> Color {
-    match ansi {
-        "0" | "8" => Color::Black,
-        "1" | "9" => Color::Red,
-        "2" | "10" => Color::Green,
-        "3" | "11" => Color::Yellow,
-        "4" | "12" => Color::Blue,
-        "5" | "13" => Color::Magenta,
-        "6" | "14" => Color::Cyan,
-        "7" | "15" => Color::White,
-        _ => unreachable!(),
     }
 }

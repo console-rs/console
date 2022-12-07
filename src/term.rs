@@ -507,8 +507,6 @@ impl Term {
         if self.is_msys_tty || !self.is_tty {
             self.write_through_common(bytes)
         } else {
-            use winapi_util::console::Console;
-
             match self.inner.target {
                 TermTarget::Stdout => console_colors(self, Console::stdout()?, bytes),
                 TermTarget::Stderr => console_colors(self, Console::stderr()?, bytes),
@@ -578,8 +576,9 @@ impl AsRawFd for Term {
 #[cfg(windows)]
 impl AsRawHandle for Term {
     fn as_raw_handle(&self) -> RawHandle {
-        use winapi::um::processenv::GetStdHandle;
-        use winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
+        use windows_sys::Win32::System::Console::{
+            GetStdHandle, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE,
+        };
 
         unsafe {
             GetStdHandle(match self.inner.target {
