@@ -507,8 +507,6 @@ impl Term {
         if self.is_msys_tty || !self.is_tty {
             self.write_through_common(bytes)
         } else {
-            use winapi_util::console::Console;
-
             match self.inner.target {
                 TermTarget::Stdout => console_colors(self, Console::stdout()?, bytes),
                 TermTarget::Stderr => console_colors(self, Console::stderr()?, bytes),

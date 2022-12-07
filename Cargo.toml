@@ -13,7 +13,7 @@ readme = "README.md"
 
 [features]
 default = ["unicode-width", "ansi-parsing"]
-windows-console-colors = ["ansi-parsing", "regex", "winapi-util"]
+windows-console-colors = ["ansi-parsing", "regex"]
 ansi-parsing = []
 
 [dependencies]
@@ -23,8 +23,6 @@ unicode-width = { version = "0.1", optional = true }
 lazy_static = "1.4.0"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winbase", "winuser", "consoleapi", "processenv", "wincon"] }
-winapi-util = { version = "0.1.3", optional = true }
 encode_unicode = "0.3"
 
 [target.'cfg(windows)'.dependencies.windows-sys]

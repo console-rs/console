@@ -13,8 +13,6 @@ use std::{char, mem::MaybeUninit};
 
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
-#[cfg(feature = "windows-console-colors")]
-use winapi_util::console::{Color, Console, Intense};
 use windows_sys::Win32::Foundation::{CHAR, HANDLE, INVALID_HANDLE_VALUE, MAX_PATH};
 use windows_sys::Win32::Storage::FileSystem::{
     FileNameInfo, GetFileInformationByHandleEx, FILE_NAME_INFO,
@@ -33,21 +31,16 @@ use crate::kb::Key;
 use crate::term::{Term, TermTarget};
 
 #[cfg(feature = "windows-console-colors")]
-use regex::Regex;
+mod colors;
 
 #[cfg(feature = "windows-console-colors")]
-lazy_static::lazy_static! {
-    static ref INTENSE_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)8;5;(8|9|1[0-5])m").unwrap();
-    static ref NORMAL_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)([0-7])m").unwrap();
-    static ref ATTR_RE: Regex = Regex::new(r"\x1b\[([1-8])m").unwrap();
-}
+pub use self::colors::*;
 
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub const DEFAULT_WIDTH: u16 = 79;
 
 pub fn as_handle(term: &Term) -> HANDLE {
-    // convert between winapi::um::winnt::HANDLE and std::os::windows::raw::HANDLE
-    // which are both c_void. would be nice to find a better way to do this
+    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
     term.as_raw_handle() as HANDLE
 }
 
@@ -565,59 +558,5 @@ pub fn set_title<T: Display>(title: T) {
         .collect();
     unsafe {
         SetConsoleTitleW(buffer.as_ptr());
-    }
-}
-
-#[cfg(feature = "windows-console-colors")]
-pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<()> {
-    use crate::ansi::AnsiCodeIterator;
-    use std::str::from_utf8;
-
-    let s = from_utf8(bytes).expect("data to be printed is not an ansi string");
-    let mut iter = AnsiCodeIterator::new(s);
-
-    while !iter.rest_slice().is_empty() {
-        if let Some((part, is_esc)) = iter.next() {
-            if !is_esc {
-                out.write_through_common(part.as_bytes())?;
-            } else if part == "\x1b[0m" {
-                con.reset()?;
-            } else if let Some(cap) = INTENSE_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::Yes, color)?,
-                    "4" => con.bg(Intense::Yes, color)?,
-                    _ => unreachable!(),
-                };
-            } else if let Some(cap) = NORMAL_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::No, color)?,
-                    "4" => con.bg(Intense::No, color)?,
-                    _ => unreachable!(),
-                };
-            } else if !ATTR_RE.is_match(part) {
-                out.write_through_common(part.as_bytes())?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "windows-console-colors")]
-fn get_color_from_ansi(ansi: &str) -> Color {
-    match ansi {
-        "0" | "8" => Color::Black,
-        "1" | "9" => Color::Red,
-        "2" | "10" => Color::Green,
-        "3" | "11" => Color::Yellow,
-        "4" | "12" => Color::Blue,
-        "5" | "13" => Color::Magenta,
-        "6" | "14" => Color::Cyan,
-        "7" | "15" => Color::White,
-        _ => unreachable!(),
     }
 }
