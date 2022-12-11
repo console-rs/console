@@ -45,7 +45,7 @@ pub fn colors_enabled() -> bool {
 /// `colors_enabled` function.
 #[inline]
 pub fn set_colors_enabled(val: bool) {
-    STDOUT_COLORS.store(val, Ordering::Relaxed)
+    STDOUT_COLORS.store(val, Ordering::Relaxed);
 }
 
 /// Returns `true` if colors should be enabled for stderr.
@@ -66,7 +66,7 @@ pub fn colors_enabled_stderr() -> bool {
 /// `colors_enabled` function.
 #[inline]
 pub fn set_colors_enabled_stderr(val: bool) {
-    STDERR_COLORS.store(val, Ordering::Relaxed)
+    STDERR_COLORS.store(val, Ordering::Relaxed);
 }
 
 /// Measure the width of a string in terminal characters.
