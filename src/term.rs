@@ -131,8 +131,8 @@ pub struct Term {
 }
 
 impl Term {
-    fn with_inner(inner: TermInner) -> Term {
-        let mut term = Term {
+    fn with_inner(inner: TermInner) -> Self {
+        let mut term = Self {
             inner: Arc::new(inner),
             is_msys_tty: false,
             is_tty: false,
@@ -145,8 +145,8 @@ impl Term {
 
     /// Return a new unbuffered terminal.
     #[inline]
-    pub fn stdout() -> Term {
-        Term::with_inner(TermInner {
+    pub fn stdout() -> Self {
+        Self::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: None,
         })
@@ -154,24 +154,24 @@ impl Term {
 
     /// Return a new unbuffered terminal to stderr.
     #[inline]
-    pub fn stderr() -> Term {
-        Term::with_inner(TermInner {
+    pub fn stderr() -> Self {
+        Self::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: None,
         })
     }
 
     /// Return a new buffered terminal.
-    pub fn buffered_stdout() -> Term {
-        Term::with_inner(TermInner {
+    pub fn buffered_stdout() -> Self {
+        Self::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: Some(Mutex::new(vec![])),
         })
     }
 
     /// Return a new buffered terminal to stderr.
-    pub fn buffered_stderr() -> Term {
-        Term::with_inner(TermInner {
+    pub fn buffered_stderr() -> Self {
+        Self::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: Some(Mutex::new(vec![])),
         })
@@ -179,7 +179,7 @@ impl Term {
 
     /// Return a terminal for the given Read/Write pair styled like stderr.
     #[cfg(unix)]
-    pub fn read_write_pair<R, W>(read: R, write: W) -> Term
+    pub fn read_write_pair<R, W>(read: R, write: W) -> Self
     where
         R: Read + Debug + AsRawFd + Send + 'static,
         W: Write + Debug + AsRawFd + Send + 'static,
@@ -189,12 +189,12 @@ impl Term {
 
     /// Return a terminal for the given Read/Write pair.
     #[cfg(unix)]
-    pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Term
+    pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Self
     where
         R: Read + Debug + AsRawFd + Send + 'static,
         W: Write + Debug + AsRawFd + Send + 'static,
     {
-        Term::with_inner(TermInner {
+        Self::with_inner(TermInner {
             target: TermTarget::ReadWritePair(ReadWritePair {
                 read: Arc::new(Mutex::new(read)),
                 write: Arc::new(Mutex::new(write)),
@@ -599,7 +599,7 @@ impl Write for Term {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        Term::flush(self)
+        Self::flush(self)
     }
 }
 

@@ -92,15 +92,15 @@ impl Color {
     #[inline]
     fn ansi_num(self) -> usize {
         match self {
-            Color::Black => 0,
-            Color::Red => 1,
-            Color::Green => 2,
-            Color::Yellow => 3,
-            Color::Blue => 4,
-            Color::Magenta => 5,
-            Color::Cyan => 6,
-            Color::White => 7,
-            Color::Color256(x) => x as usize,
+            Self::Black => 0,
+            Self::Red => 1,
+            Self::Green => 2,
+            Self::Yellow => 3,
+            Self::Blue => 4,
+            Self::Magenta => 5,
+            Self::Cyan => 6,
+            Self::White => 7,
+            Self::Color256(x) => x as usize,
         }
     }
 
@@ -108,7 +108,7 @@ impl Color {
     fn is_color256(self) -> bool {
         #[allow(clippy::match_like_matches_macro)]
         match self {
-            Color::Color256(_) => true,
+            Self::Color256(_) => true,
             _ => false,
         }
     }
@@ -130,13 +130,13 @@ impl Attribute {
     #[inline]
     fn ansi_num(self) -> usize {
         match self {
-            Attribute::Bold => 1,
-            Attribute::Dim => 2,
-            Attribute::Italic => 3,
-            Attribute::Underlined => 4,
-            Attribute::Blink => 5,
-            Attribute::Reverse => 7,
-            Attribute::Hidden => 8,
+            Self::Bold => 1,
+            Self::Dim => 2,
+            Self::Italic => 3,
+            Self::Underlined => 4,
+            Self::Blink => 5,
+            Self::Reverse => 7,
+            Self::Hidden => 8,
         }
     }
 }
@@ -162,15 +162,15 @@ pub struct Style {
 }
 
 impl Default for Style {
-    fn default() -> Style {
-        Style::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Style {
     /// Returns an empty default style.
-    pub fn new() -> Style {
-        Style {
+    pub fn new() -> Self {
+        Self {
             fg: None,
             bg: None,
             fg_bright: false,
@@ -188,8 +188,8 @@ impl Style {
     /// create a string that is red on blue background. `9.on_12` is
     /// the same, but using 256 color numbers. Unknown terms are
     /// ignored.
-    pub fn from_dotted_str(s: &str) -> Style {
-        let mut rv = Style::new();
+    pub fn from_dotted_str(s: &str) -> Self {
+        let mut rv = Self::new();
         for part in s.split('.') {
             rv = match part {
                 "black" => rv.black(),
@@ -247,14 +247,14 @@ impl Style {
     ///
     /// This overrides the detection from `clicolors-control`.
     #[inline]
-    pub fn force_styling(mut self, value: bool) -> Style {
+    pub fn force_styling(mut self, value: bool) -> Self {
         self.force = Some(value);
         self
     }
 
     /// Specifies that style is applying to something being written on stderr.
     #[inline]
-    pub fn for_stderr(mut self) -> Style {
+    pub fn for_stderr(mut self) -> Self {
         self.for_stderr = true;
         self
     }
@@ -263,144 +263,144 @@ impl Style {
     ///
     /// This is the default behaviour.
     #[inline]
-    pub fn for_stdout(mut self) -> Style {
+    pub fn for_stdout(mut self) -> Self {
         self.for_stderr = false;
         self
     }
 
     /// Sets a foreground color.
     #[inline]
-    pub fn fg(mut self, color: Color) -> Style {
+    pub fn fg(mut self, color: Color) -> Self {
         self.fg = Some(color);
         self
     }
 
     /// Sets a background color.
     #[inline]
-    pub fn bg(mut self, color: Color) -> Style {
+    pub fn bg(mut self, color: Color) -> Self {
         self.bg = Some(color);
         self
     }
 
     /// Adds a attr.
     #[inline]
-    pub fn attr(mut self, attr: Attribute) -> Style {
+    pub fn attr(mut self, attr: Attribute) -> Self {
         self.attrs.insert(attr);
         self
     }
 
     #[inline]
-    pub fn black(self) -> Style {
+    pub fn black(self) -> Self {
         self.fg(Color::Black)
     }
     #[inline]
-    pub fn red(self) -> Style {
+    pub fn red(self) -> Self {
         self.fg(Color::Red)
     }
     #[inline]
-    pub fn green(self) -> Style {
+    pub fn green(self) -> Self {
         self.fg(Color::Green)
     }
     #[inline]
-    pub fn yellow(self) -> Style {
+    pub fn yellow(self) -> Self {
         self.fg(Color::Yellow)
     }
     #[inline]
-    pub fn blue(self) -> Style {
+    pub fn blue(self) -> Self {
         self.fg(Color::Blue)
     }
     #[inline]
-    pub fn magenta(self) -> Style {
+    pub fn magenta(self) -> Self {
         self.fg(Color::Magenta)
     }
     #[inline]
-    pub fn cyan(self) -> Style {
+    pub fn cyan(self) -> Self {
         self.fg(Color::Cyan)
     }
     #[inline]
-    pub fn white(self) -> Style {
+    pub fn white(self) -> Self {
         self.fg(Color::White)
     }
     #[inline]
-    pub fn color256(self, color: u8) -> Style {
+    pub fn color256(self, color: u8) -> Self {
         self.fg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn bright(mut self) -> Style {
+    pub fn bright(mut self) -> Self {
         self.fg_bright = true;
         self
     }
 
     #[inline]
-    pub fn on_black(self) -> Style {
+    pub fn on_black(self) -> Self {
         self.bg(Color::Black)
     }
     #[inline]
-    pub fn on_red(self) -> Style {
+    pub fn on_red(self) -> Self {
         self.bg(Color::Red)
     }
     #[inline]
-    pub fn on_green(self) -> Style {
+    pub fn on_green(self) -> Self {
         self.bg(Color::Green)
     }
     #[inline]
-    pub fn on_yellow(self) -> Style {
+    pub fn on_yellow(self) -> Self {
         self.bg(Color::Yellow)
     }
     #[inline]
-    pub fn on_blue(self) -> Style {
+    pub fn on_blue(self) -> Self {
         self.bg(Color::Blue)
     }
     #[inline]
-    pub fn on_magenta(self) -> Style {
+    pub fn on_magenta(self) -> Self {
         self.bg(Color::Magenta)
     }
     #[inline]
-    pub fn on_cyan(self) -> Style {
+    pub fn on_cyan(self) -> Self {
         self.bg(Color::Cyan)
     }
     #[inline]
-    pub fn on_white(self) -> Style {
+    pub fn on_white(self) -> Self {
         self.bg(Color::White)
     }
     #[inline]
-    pub fn on_color256(self, color: u8) -> Style {
+    pub fn on_color256(self, color: u8) -> Self {
         self.bg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn on_bright(mut self) -> Style {
+    pub fn on_bright(mut self) -> Self {
         self.bg_bright = true;
         self
     }
 
     #[inline]
-    pub fn bold(self) -> Style {
+    pub fn bold(self) -> Self {
         self.attr(Attribute::Bold)
     }
     #[inline]
-    pub fn dim(self) -> Style {
+    pub fn dim(self) -> Self {
         self.attr(Attribute::Dim)
     }
     #[inline]
-    pub fn italic(self) -> Style {
+    pub fn italic(self) -> Self {
         self.attr(Attribute::Italic)
     }
     #[inline]
-    pub fn underlined(self) -> Style {
+    pub fn underlined(self) -> Self {
         self.attr(Attribute::Underlined)
     }
     #[inline]
-    pub fn blink(self) -> Style {
+    pub fn blink(self) -> Self {
         self.attr(Attribute::Blink)
     }
     #[inline]
-    pub fn reverse(self) -> Style {
+    pub fn reverse(self) -> Self {
         self.attr(Attribute::Reverse)
     }
     #[inline]
-    pub fn hidden(self) -> Style {
+    pub fn hidden(self) -> Self {
         self.attr(Attribute::Hidden)
     }
 }
@@ -437,14 +437,14 @@ impl<D> StyledObject<D> {
     ///
     /// This overrides the detection from `clicolors-control`.
     #[inline]
-    pub fn force_styling(mut self, value: bool) -> StyledObject<D> {
+    pub fn force_styling(mut self, value: bool) -> Self {
         self.style = self.style.force_styling(value);
         self
     }
 
     /// Specifies that style is applying to something being written on stderr
     #[inline]
-    pub fn for_stderr(mut self) -> StyledObject<D> {
+    pub fn for_stderr(mut self) -> Self {
         self.style = self.style.for_stderr();
         self
     }
@@ -453,144 +453,144 @@ impl<D> StyledObject<D> {
     ///
     /// This is the default
     #[inline]
-    pub fn for_stdout(mut self) -> StyledObject<D> {
+    pub fn for_stdout(mut self) -> Self {
         self.style = self.style.for_stdout();
         self
     }
 
     /// Sets a foreground color.
     #[inline]
-    pub fn fg(mut self, color: Color) -> StyledObject<D> {
+    pub fn fg(mut self, color: Color) -> Self {
         self.style = self.style.fg(color);
         self
     }
 
     /// Sets a background color.
     #[inline]
-    pub fn bg(mut self, color: Color) -> StyledObject<D> {
+    pub fn bg(mut self, color: Color) -> Self {
         self.style = self.style.bg(color);
         self
     }
 
     /// Adds a attr.
     #[inline]
-    pub fn attr(mut self, attr: Attribute) -> StyledObject<D> {
+    pub fn attr(mut self, attr: Attribute) -> Self {
         self.style = self.style.attr(attr);
         self
     }
 
     #[inline]
-    pub fn black(self) -> StyledObject<D> {
+    pub fn black(self) -> Self {
         self.fg(Color::Black)
     }
     #[inline]
-    pub fn red(self) -> StyledObject<D> {
+    pub fn red(self) -> Self {
         self.fg(Color::Red)
     }
     #[inline]
-    pub fn green(self) -> StyledObject<D> {
+    pub fn green(self) -> Self {
         self.fg(Color::Green)
     }
     #[inline]
-    pub fn yellow(self) -> StyledObject<D> {
+    pub fn yellow(self) -> Self {
         self.fg(Color::Yellow)
     }
     #[inline]
-    pub fn blue(self) -> StyledObject<D> {
+    pub fn blue(self) -> Self {
         self.fg(Color::Blue)
     }
     #[inline]
-    pub fn magenta(self) -> StyledObject<D> {
+    pub fn magenta(self) -> Self {
         self.fg(Color::Magenta)
     }
     #[inline]
-    pub fn cyan(self) -> StyledObject<D> {
+    pub fn cyan(self) -> Self {
         self.fg(Color::Cyan)
     }
     #[inline]
-    pub fn white(self) -> StyledObject<D> {
+    pub fn white(self) -> Self {
         self.fg(Color::White)
     }
     #[inline]
-    pub fn color256(self, color: u8) -> StyledObject<D> {
+    pub fn color256(self, color: u8) -> Self {
         self.fg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn bright(mut self) -> StyledObject<D> {
+    pub fn bright(mut self) -> Self {
         self.style = self.style.bright();
         self
     }
 
     #[inline]
-    pub fn on_black(self) -> StyledObject<D> {
+    pub fn on_black(self) -> Self {
         self.bg(Color::Black)
     }
     #[inline]
-    pub fn on_red(self) -> StyledObject<D> {
+    pub fn on_red(self) -> Self {
         self.bg(Color::Red)
     }
     #[inline]
-    pub fn on_green(self) -> StyledObject<D> {
+    pub fn on_green(self) -> Self {
         self.bg(Color::Green)
     }
     #[inline]
-    pub fn on_yellow(self) -> StyledObject<D> {
+    pub fn on_yellow(self) -> Self {
         self.bg(Color::Yellow)
     }
     #[inline]
-    pub fn on_blue(self) -> StyledObject<D> {
+    pub fn on_blue(self) -> Self {
         self.bg(Color::Blue)
     }
     #[inline]
-    pub fn on_magenta(self) -> StyledObject<D> {
+    pub fn on_magenta(self) -> Self {
         self.bg(Color::Magenta)
     }
     #[inline]
-    pub fn on_cyan(self) -> StyledObject<D> {
+    pub fn on_cyan(self) -> Self {
         self.bg(Color::Cyan)
     }
     #[inline]
-    pub fn on_white(self) -> StyledObject<D> {
+    pub fn on_white(self) -> Self {
         self.bg(Color::White)
     }
     #[inline]
-    pub fn on_color256(self, color: u8) -> StyledObject<D> {
+    pub fn on_color256(self, color: u8) -> Self {
         self.bg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn on_bright(mut self) -> StyledObject<D> {
+    pub fn on_bright(mut self) -> Self {
         self.style = self.style.on_bright();
         self
     }
 
     #[inline]
-    pub fn bold(self) -> StyledObject<D> {
+    pub fn bold(self) -> Self {
         self.attr(Attribute::Bold)
     }
     #[inline]
-    pub fn dim(self) -> StyledObject<D> {
+    pub fn dim(self) -> Self {
         self.attr(Attribute::Dim)
     }
     #[inline]
-    pub fn italic(self) -> StyledObject<D> {
+    pub fn italic(self) -> Self {
         self.attr(Attribute::Italic)
     }
     #[inline]
-    pub fn underlined(self) -> StyledObject<D> {
+    pub fn underlined(self) -> Self {
         self.attr(Attribute::Underlined)
     }
     #[inline]
-    pub fn blink(self) -> StyledObject<D> {
+    pub fn blink(self) -> Self {
         self.attr(Attribute::Blink)
     }
     #[inline]
-    pub fn reverse(self) -> StyledObject<D> {
+    pub fn reverse(self) -> Self {
         self.attr(Attribute::Reverse)
     }
     #[inline]
-    pub fn hidden(self) -> StyledObject<D> {
+    pub fn hidden(self) -> Self {
         self.attr(Attribute::Hidden)
     }
 }
