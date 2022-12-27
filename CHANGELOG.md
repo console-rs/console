@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.3
+
+### Enhancements
+
+* Dropped `terminal_size` dependency.
+
 ## 0.15.2
 
 ### Enhancements
