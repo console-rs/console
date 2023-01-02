@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.4
+
+### Enhancements
+
+* Fix for regression where console size was misreported on windows. (#151)
+
 ## 0.15.3
 
 ### Enhancements
