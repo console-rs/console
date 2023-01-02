@@ -137,9 +137,10 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
         return None;
     }
 
-    let w = (csbi.srWindow.Right - csbi.srWindow.Left + 1) as u16;
-    let h = (csbi.srWindow.Bottom - csbi.srWindow.Top + 1) as u16;
-    Some((w, h))
+    let rows = (csbi.srWindow.Bottom - csbi.srWindow.Top + 1) as u16;
+    let columns = (csbi.srWindow.Right - csbi.srWindow.Left + 1) as u16;
+
+    Some((rows, columns))
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
