@@ -1,5 +1,3 @@
-// TODO: add tests
-
 use std::io;
 use std::mem;
 use std::os::windows::io::AsRawHandle;
@@ -316,6 +314,7 @@ pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum FgBg {
     Foreground,
     Background,
@@ -343,7 +342,7 @@ fn driver<Out>(parse: fn(Bytes<'_>) -> Option<Out>, part: &str) -> Option<Out> {
     }
 }
 
-// Parses the equivalent of the regex
+// `driver(parse_color, s)` parses the equivalent of the regex
 // \x1b\[(3|4)8;5;(8|9|1[0-5])m
 // for intense or
 // \x1b\[(3|4)([0-7])m
@@ -367,7 +366,7 @@ fn parse_color(mut bytes: Bytes<'_>) -> Option<(Intense, Color, FgBg)> {
     Some((intense, color, fg_bg))
 }
 
-// Parses the equivalent of the regex
+// `driver(parse_attr, s)` parses the equivalent of the regex
 // \x1b\[([1-8])m
 fn parse_attr(mut bytes: Bytes<'_>) -> Option<u8> {
     parse_prefix(&mut bytes)?;
@@ -425,5 +424,28 @@ fn parse_suffix(bytes: &mut Bytes<'_>) -> Option<()> {
         Some(())
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn color_parsing() {
+        let intense_color = "leading bytes \x1b[38;5;10m trailing bytes";
+        let parsed = driver(parse_color, intense_color).unwrap();
+        assert_eq!(parsed, (Intense::Yes, Color::Green, FgBg::Foreground));
+
+        let normal_color = "leading bytes \x1b[40m trailing bytes";
+        let parsed = driver(parse_color, normal_color).unwrap();
+        assert_eq!(parsed, (Intense::No, Color::Black, FgBg::Background));
+    }
+
+    #[test]
+    fn attr_parsing() {
+        let attr = "leading bytes \x1b[1m trailing bytes";
+        let parsed = driver(parse_attr, attr).unwrap();
+        assert_eq!(parsed, b'1');
     }
 }
