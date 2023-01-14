@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.5
+
+### Enhancements
+
+* Removed `regex` dependency. (#153)
+* Clarified that `clicolors-control` is no longer used.
+* Handle non-tty terminals in `read_char`. (#124)
+
 ## 0.15.4
 
 ### Enhancements
