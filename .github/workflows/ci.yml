@@ -27,7 +27,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build
         env: 
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -70,7 +70,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install linker
         if: matrix.target == 'i686-unknown-linux-gnu'
         run: |
@@ -96,7 +96,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Check
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -111,6 +111,6 @@ jobs:
           toolchain: nightly
           override: true
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Test
         run: make test
