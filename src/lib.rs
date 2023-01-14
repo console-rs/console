@@ -33,9 +33,9 @@
 //!
 //! # Colors and Styles
 //!
-//! `console` uses `clicolors-control` to control colors.  It also
-//! provides higher level wrappers for styling text and other things
-//! that can be displayed with the `style` function and utility types.
+//! `console` automaticaly detects when to use colors based on the tty flag.  It also
+//! provides higher level wrappers for styling text and other things that can be
+//! displayed with the `style` function and utility types.
 //!
 //! Example usage:
 //!

@@ -245,7 +245,7 @@ impl Style {
 
     /// Forces styling on or off.
     ///
-    /// This overrides the detection from `clicolors-control`.
+    /// This overrides the automatic detection.
     #[inline]
     pub fn force_styling(mut self, value: bool) -> Style {
         self.force = Some(value);
@@ -435,7 +435,7 @@ pub struct StyledObject<D> {
 impl<D> StyledObject<D> {
     /// Forces styling on or off.
     ///
-    /// This overrides the detection from `clicolors-control`.
+    /// This overrides the automatic detection.
     #[inline]
     pub fn force_styling(mut self, value: bool) -> StyledObject<D> {
         self.style = self.style.force_styling(value);
