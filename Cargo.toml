@@ -14,12 +14,11 @@ rust-version = "1.48.0"
 
 [features]
 default = ["unicode-width", "ansi-parsing"]
-windows-console-colors = ["ansi-parsing", "regex"]
+windows-console-colors = ["ansi-parsing"]
 ansi-parsing = []
 
 [dependencies]
 libc = "0.2.30"
-regex = { version = "1.4.2", optional = true, default-features = false, features = ["std"] }
 unicode-width = { version = "0.1", optional = true }
 lazy_static = "1.4.0"
 

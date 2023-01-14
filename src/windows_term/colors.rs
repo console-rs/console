@@ -1,8 +1,8 @@
 use std::io;
 use std::mem;
 use std::os::windows::io::AsRawHandle;
+use std::str::Bytes;
 
-use regex::Regex;
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::System::Console::{
     GetConsoleScreenBufferInfo, SetConsoleTextAttribute, CONSOLE_SCREEN_BUFFER_INFO,
@@ -11,12 +11,6 @@ use windows_sys::Win32::System::Console::{
 };
 
 use crate::Term;
-
-lazy_static::lazy_static! {
-    static ref INTENSE_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)8;5;(8|9|1[0-5])m").unwrap();
-    static ref NORMAL_COLOR_RE: Regex = Regex::new(r"\x1b\[(3|4)([0-7])m").unwrap();
-    static ref ATTR_RE: Regex = Regex::new(r"\x1b\[([1-8])m").unwrap();
-}
 
 type WORD = u16;
 
@@ -306,23 +300,12 @@ pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<
                 out.write_through_common(part.as_bytes())?;
             } else if part == "\x1b[0m" {
                 con.reset()?;
-            } else if let Some(cap) = INTENSE_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::Yes, color)?,
-                    "4" => con.bg(Intense::Yes, color)?,
-                    _ => unreachable!(),
-                };
-            } else if let Some(cap) = NORMAL_COLOR_RE.captures(part) {
-                let color = get_color_from_ansi(cap.get(2).unwrap().as_str());
-
-                match cap.get(1).unwrap().as_str() {
-                    "3" => con.fg(Intense::No, color)?,
-                    "4" => con.bg(Intense::No, color)?,
-                    _ => unreachable!(),
-                };
-            } else if !ATTR_RE.is_match(part) {
+            } else if let Some((intense, color, fg_bg)) = driver(parse_color, part) {
+                match fg_bg {
+                    FgBg::Foreground => con.fg(intense, color),
+                    FgBg::Background => con.bg(intense, color),
+                }?;
+            } else if driver(parse_attr, part).is_none() {
                 out.write_through_common(part.as_bytes())?;
             }
         }
@@ -331,16 +314,138 @@ pub fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<
     Ok(())
 }
 
-fn get_color_from_ansi(ansi: &str) -> Color {
-    match ansi {
-        "0" | "8" => Color::Black,
-        "1" | "9" => Color::Red,
-        "2" | "10" => Color::Green,
-        "3" | "11" => Color::Yellow,
-        "4" | "12" => Color::Blue,
-        "5" | "13" => Color::Magenta,
-        "6" | "14" => Color::Cyan,
-        "7" | "15" => Color::White,
-        _ => unreachable!(),
+#[derive(Debug, PartialEq, Eq)]
+enum FgBg {
+    Foreground,
+    Background,
+}
+
+impl FgBg {
+    fn new(byte: u8) -> Option<Self> {
+        match byte {
+            b'3' => Some(Self::Foreground),
+            b'4' => Some(Self::Background),
+            _ => None,
+        }
+    }
+}
+
+fn driver<Out>(parse: fn(Bytes<'_>) -> Option<Out>, part: &str) -> Option<Out> {
+    let mut bytes = part.bytes();
+
+    loop {
+        while bytes.next()? != b'\x1b' {}
+
+        if let ret @ Some(_) = (parse)(bytes.clone()) {
+            return ret;
+        }
+    }
+}
+
+// `driver(parse_color, s)` parses the equivalent of the regex
+// \x1b\[(3|4)8;5;(8|9|1[0-5])m
+// for intense or
+// \x1b\[(3|4)([0-7])m
+// for normal
+fn parse_color(mut bytes: Bytes<'_>) -> Option<(Intense, Color, FgBg)> {
+    parse_prefix(&mut bytes)?;
+
+    let fg_bg = FgBg::new(bytes.next()?)?;
+    let (intense, color) = match bytes.next()? {
+        b @ b'0'..=b'7' => (Intense::No, normal_color_ansi_from_byte(b)?),
+        b'8' => {
+            if &[bytes.next()?, bytes.next()?, bytes.next()?] != b";5;" {
+                return None;
+            }
+            (Intense::Yes, parse_intense_color_ansi(&mut bytes)?)
+        }
+        _ => return None,
+    };
+
+    parse_suffix(&mut bytes)?;
+    Some((intense, color, fg_bg))
+}
+
+// `driver(parse_attr, s)` parses the equivalent of the regex
+// \x1b\[([1-8])m
+fn parse_attr(mut bytes: Bytes<'_>) -> Option<u8> {
+    parse_prefix(&mut bytes)?;
+    let attr = match bytes.next()? {
+        attr @ b'1'..=b'8' => attr,
+        _ => return None,
+    };
+    parse_suffix(&mut bytes)?;
+    Some(attr)
+}
+
+fn parse_prefix(bytes: &mut Bytes<'_>) -> Option<()> {
+    if bytes.next()? == b'[' {
+        Some(())
+    } else {
+        None
+    }
+}
+
+fn parse_intense_color_ansi(bytes: &mut Bytes<'_>) -> Option<Color> {
+    let color = match bytes.next()? {
+        b'8' => Color::Black,
+        b'9' => Color::Red,
+        b'1' => match bytes.next()? {
+            b'0' => Color::Green,
+            b'1' => Color::Yellow,
+            b'2' => Color::Blue,
+            b'3' => Color::Magenta,
+            b'4' => Color::Cyan,
+            b'5' => Color::White,
+            _ => return None,
+        },
+        _ => return None,
+    };
+    Some(color)
+}
+
+fn normal_color_ansi_from_byte(b: u8) -> Option<Color> {
+    let color = match b {
+        b'0' => Color::Black,
+        b'1' => Color::Red,
+        b'2' => Color::Green,
+        b'3' => Color::Yellow,
+        b'4' => Color::Blue,
+        b'5' => Color::Magenta,
+        b'6' => Color::Cyan,
+        b'7' => Color::White,
+        _ => return None,
+    };
+    Some(color)
+}
+
+fn parse_suffix(bytes: &mut Bytes<'_>) -> Option<()> {
+    if bytes.next()? == b'm' {
+        Some(())
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn color_parsing() {
+        let intense_color = "leading bytes \x1b[38;5;10m trailing bytes";
+        let parsed = driver(parse_color, intense_color).unwrap();
+        assert_eq!(parsed, (Intense::Yes, Color::Green, FgBg::Foreground));
+
+        let normal_color = "leading bytes \x1b[40m trailing bytes";
+        let parsed = driver(parse_color, normal_color).unwrap();
+        assert_eq!(parsed, (Intense::No, Color::Black, FgBg::Background));
+    }
+
+    #[test]
+    fn attr_parsing() {
+        let attr = "leading bytes \x1b[1m trailing bytes";
+        let parsed = driver(parse_attr, attr).unwrap();
+        assert_eq!(parsed, b'1');
     }
 }
