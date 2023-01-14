@@ -245,8 +245,15 @@ impl Term {
     /// Read a single character from the terminal.
     ///
     /// This does not echo the character and blocks until a single character
-    /// is entered.
+    /// or complete key chord is entered.  If the terminal is not user attended
+    /// the return value will be an error.
     pub fn read_char(&self) -> io::Result<char> {
+        if !self.is_tty {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "Not a terminal",
+            ));
+        }
         loop {
             match self.read_key()? {
                 Key::Char(c) => {
@@ -254,12 +261,6 @@ impl Term {
                 }
                 Key::Enter => {
                     return Ok('\n');
-                }
-                Key::Unknown => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::NotConnected,
-                        "Not a terminal",
-                    ))
                 }
                 _ => {}
             }
@@ -323,12 +324,6 @@ impl Term {
                 Key::Enter => {
                     self.write_line("")?;
                     break;
-                }
-                Key::Unknown => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::NotConnected,
-                        "Not a terminal",
-                    ))
                 }
                 _ => (),
             }
