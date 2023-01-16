@@ -22,7 +22,15 @@ pub fn is_a_terminal(_out: &Term) -> bool {
 
 #[inline]
 pub fn is_a_color_terminal(_out: &Term) -> bool {
-    false
+    if !is_a_terminal(out) {
+        return false;
+    }
+
+    if env::var("NO_COLOR").is_ok() {
+        return false;
+    }
+
+    true
 }
 
 #[inline]
