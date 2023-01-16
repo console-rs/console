@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          target: [wasm32-unknown-unknown, wasm32-wasi]
+        target: [wasm32-unknown-unknown, wasm32-wasi]
     runs-on: ubuntu-latest
     steps:
       - name: Install rust
@@ -97,10 +97,16 @@ jobs:
           override: true
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Check
+      - name: Install WasmTime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          curl -LO https://github.com/bytecodealliance/wasmtime/releases/download/v4.0.0/wasmtime-v4.0.0-x86_64-linux.tar.xz
+          tar xvf wasmtime-v4.0.0-x86_64-linux.tar.xz
+          echo `pwd`/wasmtime-v4.0.0-x86_64-linux >> $GITHUB_PATH
+      - name: Test
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
-        run: make check
+        run: make test
   nightly:
     name: Nightly Tests
     runs-on: ubuntu-latest
