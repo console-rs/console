@@ -10,11 +10,20 @@ pub const DEFAULT_WIDTH: u16 = 80;
 
 #[inline]
 pub fn is_a_terminal(_out: &Term) -> bool {
-    false
+    #[cfg(target = "wasm32-wasi")]
+    {
+        unsafe { libc::isatty(out.as_raw_fd()) != 0 }
+    }
+    #[cfg(not(target = "wasm32-wasi"))]
+    {
+        false
+    }
 }
 
 #[inline]
 pub fn is_a_color_terminal(_out: &Term) -> bool {
+    // We currently never report color terminals.  For discussion see
+    // the issue in the WASI repo: https://github.com/WebAssembly/WASI/issues/162
     false
 }
 
