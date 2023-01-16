@@ -22,22 +22,9 @@ pub fn is_a_terminal(_out: &Term) -> bool {
 
 #[inline]
 pub fn is_a_color_terminal(_out: &Term) -> bool {
-    #[cfg(target = "wasm32-wasi")]
-    {
-        if !is_a_terminal(out) {
-            return false;
-        }
-
-        if env::var("NO_COLOR").is_ok() {
-            return false;
-        }
-        true
-    }
-
-    #[cfg(not(target = "wasm32-wasi"))]
-    {
-        false
-    }
+    // We currently never report color terminals.  For discussion see
+    // the issue in the WASI repo: https://github.com/WebAssembly/WASI/issues/162
+    false
 }
 
 #[inline]
