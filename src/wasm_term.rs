@@ -22,15 +22,22 @@ pub fn is_a_terminal(_out: &Term) -> bool {
 
 #[inline]
 pub fn is_a_color_terminal(_out: &Term) -> bool {
-    if !is_a_terminal(out) {
-        return false;
+    #[cfg(target = "wasm32-wasi")]
+    {
+        if !is_a_terminal(out) {
+            return false;
+        }
+
+        if env::var("NO_COLOR").is_ok() {
+            return false;
+        }
+        true
     }
 
-    if env::var("NO_COLOR").is_ok() {
-        return false;
+    #[cfg(not(target = "wasm32-wasi"))]
+    {
+        false
     }
-
-    true
 }
 
 #[inline]
