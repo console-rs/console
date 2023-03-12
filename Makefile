@@ -33,4 +33,7 @@ lint:
 	@rustup component add clippy 2> /dev/null
 	@cargo clippy --examples --tests
 
-.PHONY: all doc build check test format format-check lint check-minver
+msrv-lock:
+	@cargo update -p proptest --precise=1.0.0
+
+.PHONY: all doc build check test format format-check lint check-minver msrv-lock

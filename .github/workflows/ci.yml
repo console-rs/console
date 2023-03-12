@@ -28,6 +28,8 @@ jobs:
           override: true
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Copy MSRV Lock
+        run: make msrv-lock
       - name: Build
         env: 
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -76,6 +78,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install gcc-multilib
+      - name: Copy MSRV Lock
+        run: make msrv-lock
       - name: Test
         env: 
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -124,6 +128,8 @@ jobs:
           curl -LO https://github.com/bytecodealliance/wasmtime/releases/download/v4.0.0/wasmtime-v4.0.0-x86_64-linux.tar.xz
           tar xvf wasmtime-v4.0.0-x86_64-linux.tar.xz
           echo `pwd`/wasmtime-v4.0.0-x86_64-linux >> $GITHUB_PATH
+      - name: Copy MSRV Lock
+        run: make msrv-lock
       - name: Test
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
