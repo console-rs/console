@@ -28,6 +28,8 @@ jobs:
           override: true
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Copy MSRV Lock
+        run: make msrv-lock
       - name: Build
         env: 
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -76,6 +78,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install gcc-multilib
+      - name: Copy MSRV Lock
+        run: make msrv-lock
       - name: Test
         env: 
           CARGO_BUILD_TARGET: ${{ matrix.target }}
