@@ -122,8 +122,10 @@ pub enum Attribute {
     Italic,
     Underlined,
     Blink,
+    BlinkFast,
     Reverse,
     Hidden,
+    StrikeThrough,
 }
 
 impl Attribute {
@@ -135,8 +137,10 @@ impl Attribute {
             Attribute::Italic => 3,
             Attribute::Underlined => 4,
             Attribute::Blink => 5,
+            Attribute::BlinkFast => 6,
             Attribute::Reverse => 7,
             Attribute::Hidden => 8,
+            Attribute::StrikeThrough => 9,
         }
     }
 }
@@ -214,8 +218,10 @@ impl Style {
                 "dim" => rv.dim(),
                 "underlined" => rv.underlined(),
                 "blink" => rv.blink(),
+                "blink_fast" => rv.blink_fast(),
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
+                "strikethrough" => rv.strikethrough(),
                 on_c if on_c.starts_with("on_") => {
                     if let Ok(n) = on_c[3..].parse::<u8>() {
                         rv.on_color256(n)
@@ -396,12 +402,20 @@ impl Style {
         self.attr(Attribute::Blink)
     }
     #[inline]
+    pub fn blink_fast(self) -> Style {
+        self.attr(Attribute::BlinkFast)
+    }
+    #[inline]
     pub fn reverse(self) -> Style {
         self.attr(Attribute::Reverse)
     }
     #[inline]
     pub fn hidden(self) -> Style {
         self.attr(Attribute::Hidden)
+    }
+    #[inline]
+    pub fn strikethrough(self) -> Style {
+        self.attr(Attribute::StrikeThrough)
     }
 }
 
@@ -586,12 +600,20 @@ impl<D> StyledObject<D> {
         self.attr(Attribute::Blink)
     }
     #[inline]
+    pub fn blink_fast(self) -> StyledObject<D> {
+        self.attr(Attribute::BlinkFast)
+    }
+    #[inline]
     pub fn reverse(self) -> StyledObject<D> {
         self.attr(Attribute::Reverse)
     }
     #[inline]
     pub fn hidden(self) -> StyledObject<D> {
         self.attr(Attribute::Hidden)
+    }
+    #[inline]
+    pub fn strikethrough(self) -> StyledObject<D> {
+        self.attr(Attribute::StrikeThrough)
     }
 }
 
