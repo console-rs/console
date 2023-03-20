@@ -13,26 +13,16 @@ use std::{char, mem::MaybeUninit};
 
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
-use windows_sys::Win32::Foundation::{CHAR, HANDLE, INVALID_HANDLE_VALUE, MAX_PATH};
-use windows_sys::Win32::Storage::FileSystem::{
-    FileNameInfo, GetFileInformationByHandleEx, FILE_NAME_INFO,
-};
-use windows_sys::Win32::System::Console::{
-    FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo, GetConsoleMode,
-    GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
-    SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleMode, SetConsoleTitleW,
-    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
-    KEY_EVENT_RECORD, STD_ERROR_HANDLE, STD_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
 use crate::common_term;
 use crate::kb::Key;
 use crate::term::{Term, TermTarget};
 
+pub(crate) mod bindings;
+use bindings::*;
+
 #[cfg(feature = "windows-console-colors")]
 mod colors;
-
 #[cfg(feature = "windows-console-colors")]
 pub use self::colors::*;
 
@@ -46,8 +36,8 @@ pub fn as_handle(term: &Term) -> HANDLE {
 
 pub fn is_a_terminal(out: &Term) -> bool {
     let (fd, others) = match out.target() {
-        TermTarget::Stdout => (STD_OUTPUT_HANDLE, [STD_INPUT_HANDLE, STD_ERROR_HANDLE]),
-        TermTarget::Stderr => (STD_ERROR_HANDLE, [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE]),
+        TermTarget::Stdout => (STD_HANDLE::STD_OUTPUT_HANDLE, [STD_HANDLE::STD_INPUT_HANDLE, STD_HANDLE::STD_ERROR_HANDLE]),
+        TermTarget::Stderr => (STD_HANDLE::STD_ERROR_HANDLE, [STD_HANDLE::STD_INPUT_HANDLE, STD_HANDLE::STD_OUTPUT_HANDLE]),
     };
 
     if unsafe { console_on_any(&[fd]) } {
@@ -85,7 +75,7 @@ fn enable_ansi_on(out: &Term) -> bool {
         let handle = as_handle(out);
 
         let mut dw_mode = 0;
-        if GetConsoleMode(handle, &mut dw_mode) == 0 {
+        if bindings::GetConsoleMode(handle, &mut dw_mode) == 0 {
             return false;
         }
 
@@ -110,11 +100,9 @@ unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
 }
 
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
-    use windows_sys::Win32::System::Console::SMALL_RECT;
-
     // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
     let handle = out.as_raw_handle();
-    let hand = handle as windows_sys::Win32::Foundation::HANDLE;
+    let hand = handle as HANDLE;
 
     if hand == INVALID_HANDLE_VALUE {
         return None;
@@ -225,7 +213,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as u32, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ', width as u32, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -245,7 +233,7 @@ pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, width as u32, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ', width as u32, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -262,7 +250,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
             let cells = csbi.dwSize.X as u32 * csbi.dwSize.Y as u32; // as u32, or else this causes stack overflows.
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as u32 no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ', cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -283,7 +271,7 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ' as CHAR, cells, pos, &mut written); // cells as u32 no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ', cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -334,22 +322,20 @@ fn get_console_cursor_info(hand: HANDLE) -> Option<(HANDLE, CONSOLE_CURSOR_INFO)
 }
 
 pub fn key_from_key_code(code: VIRTUAL_KEY) -> Key {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse;
-
     match code {
-        KeyboardAndMouse::VK_LEFT => Key::ArrowLeft,
-        KeyboardAndMouse::VK_RIGHT => Key::ArrowRight,
-        KeyboardAndMouse::VK_UP => Key::ArrowUp,
-        KeyboardAndMouse::VK_DOWN => Key::ArrowDown,
-        KeyboardAndMouse::VK_RETURN => Key::Enter,
-        KeyboardAndMouse::VK_ESCAPE => Key::Escape,
-        KeyboardAndMouse::VK_BACK => Key::Backspace,
-        KeyboardAndMouse::VK_TAB => Key::Tab,
-        KeyboardAndMouse::VK_HOME => Key::Home,
-        KeyboardAndMouse::VK_END => Key::End,
-        KeyboardAndMouse::VK_DELETE => Key::Del,
-        KeyboardAndMouse::VK_SHIFT => Key::Shift,
-        KeyboardAndMouse::VK_MENU => Key::Alt,
+        VK_LEFT => Key::ArrowLeft,
+        VK_RIGHT => Key::ArrowRight,
+        VK_UP => Key::ArrowUp,
+        VK_DOWN => Key::ArrowDown,
+        VK_RETURN => Key::Enter,
+        VK_ESCAPE => Key::Escape,
+        VK_BACK => Key::Backspace,
+        VK_TAB => Key::Tab,
+        VK_HOME => Key::Home,
+        VK_END => Key::End,
+        VK_DELETE => Key::Del,
+        VK_SHIFT => Key::Shift,
+        VK_MENU => Key::Alt,
         _ => Key::Unknown,
     }
 }
@@ -441,7 +427,7 @@ pub fn read_single_key() -> io::Result<Key> {
 }
 
 fn get_stdin_handle() -> io::Result<HANDLE> {
-    let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
+    let handle = unsafe { GetStdHandle(STD_HANDLE::STD_INPUT_HANDLE) };
     if handle == INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
     } else {

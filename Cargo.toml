@@ -25,15 +25,6 @@ lazy_static = "1.4.0"
 [target.'cfg(windows)'.dependencies]
 encode_unicode = "0.3"
 
-[target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.45.0"
-features = [
-    "Win32_Foundation",
-    "Win32_System_Console",
-    "Win32_Storage_FileSystem",
-    "Win32_UI_Input_KeyboardAndMouse",
-]
-
 [dev-dependencies]
 # Pick a setup for proptest that works with wasi
 proptest = { version = "1.0.0", default-features = false, features = ["std", "bit-set", "break-dead-code"] }
