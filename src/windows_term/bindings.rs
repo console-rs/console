@@ -39,13 +39,11 @@ pub struct CONSOLE_SCREEN_BUFFER_INFO {
     pub dwMaximumWindowSize: COORD,
 }
 
-#[derive(Copy, Clone)]
-#[repr(u32)]
-pub enum STD_HANDLE {
-    STD_INPUT_HANDLE = 4294967286,
-    STD_OUTPUT_HANDLE = 4294967285,
-    STD_ERROR_HANDLE = 4294967284,
-}
+pub type STD_HANDLE = u32;
+pub const STD_INPUT_HANDLE: STD_HANDLE = 4294967286;
+pub const STD_OUTPUT_HANDLE: STD_HANDLE = 4294967285;
+pub const STD_ERROR_HANDLE: STD_HANDLE = 4294967284;
+
 pub const KEY_EVENT: u32 = 1u32;
 #[derive(Copy, Clone)]
 #[repr(C)]

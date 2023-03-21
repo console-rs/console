@@ -36,8 +36,8 @@ pub fn as_handle(term: &Term) -> HANDLE {
 
 pub fn is_a_terminal(out: &Term) -> bool {
     let (fd, others) = match out.target() {
-        TermTarget::Stdout => (STD_HANDLE::STD_OUTPUT_HANDLE, [STD_HANDLE::STD_INPUT_HANDLE, STD_HANDLE::STD_ERROR_HANDLE]),
-        TermTarget::Stderr => (STD_HANDLE::STD_ERROR_HANDLE, [STD_HANDLE::STD_INPUT_HANDLE, STD_HANDLE::STD_OUTPUT_HANDLE]),
+        TermTarget::Stdout => (STD_OUTPUT_HANDLE, [STD_INPUT_HANDLE, STD_ERROR_HANDLE]),
+        TermTarget::Stderr => (STD_ERROR_HANDLE, [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE]),
     };
 
     if unsafe { console_on_any(&[fd]) } {
@@ -75,7 +75,7 @@ fn enable_ansi_on(out: &Term) -> bool {
         let handle = as_handle(out);
 
         let mut dw_mode = 0;
-        if bindings::GetConsoleMode(handle, &mut dw_mode) == 0 {
+        if GetConsoleMode(handle, &mut dw_mode) == 0 {
             return false;
         }
 
@@ -427,7 +427,7 @@ pub fn read_single_key() -> io::Result<Key> {
 }
 
 fn get_stdin_handle() -> io::Result<HANDLE> {
-    let handle = unsafe { GetStdHandle(STD_HANDLE::STD_INPUT_HANDLE) };
+    let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
     if handle == INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
     } else {

@@ -573,8 +573,8 @@ impl AsRawHandle for Term {
     fn as_raw_handle(&self) -> RawHandle {
         unsafe {
             bindings::GetStdHandle(match self.inner.target {
-                TermTarget::Stdout => bindings::STD_HANDLE::STD_OUTPUT_HANDLE,
-                TermTarget::Stderr => bindings::STD_HANDLE::STD_ERROR_HANDLE,
+                TermTarget::Stdout => bindings::STD_OUTPUT_HANDLE,
+                TermTarget::Stderr => bindings::STD_ERROR_HANDLE,
             }) as RawHandle
         }
     }
