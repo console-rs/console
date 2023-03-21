@@ -29,8 +29,8 @@ pub use self::colors::*;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub const DEFAULT_WIDTH: u16 = 79;
 
+#[inline]
 pub fn as_handle(term: &Term) -> HANDLE {
-    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
     term.as_raw_handle() as HANDLE
 }
 
@@ -100,9 +100,7 @@ unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
 }
 
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
-    // convert between windows_sys::Win32::Foundation::HANDLE and std::os::windows::raw::HANDLE
-    let handle = out.as_raw_handle();
-    let hand = handle as HANDLE;
+    let hand = as_handle(out);
 
     if hand == INVALID_HANDLE_VALUE {
         return None;
