@@ -24,11 +24,18 @@ lazy_static = "1.4.0"
 
 [target.'cfg(windows)'.dependencies]
 encode_unicode = "0.3"
+windows-targets = "0.47"
 
 [dev-dependencies]
 # Pick a setup for proptest that works with wasi
-proptest = { version = "1.0.0", default-features = false, features = ["std", "bit-set", "break-dead-code"] }
+proptest = { version = "1.0.0", default-features = false, features = [
+    "std",
+    "bit-set",
+    "break-dead-code",
+] }
 regex = "1.4.2"
+# Uncomment this if you want to regenerate Windows bindings
+#windows-bindgen = "0.47"
 
 ## These are currently disabled.  If you want to play around with the benchmarks
 ## uncommit this.

@@ -2,26 +2,20 @@ use std::io;
 use std::mem;
 use std::os::windows::io::AsRawHandle;
 use std::str::Bytes;
-use super::bindings::*;
+use super::bindings::{
+    FOREGROUND_BLUE as FG_BLUE,
+    FOREGROUND_GREEN as FG_GREEN,
+    FOREGROUND_RED as FG_RED,
+    FOREGROUND_INTENSITY as FG_INTENSITY,
+    *,
+};
 
 use crate::Term;
 
-const FG_BLUE: u16 = 1;
-const FG_GREEN: u16 = 2;
-const FG_RED: u16 = 4;
-const FG_INTENSITY: u16 = 8;
 const FG_CYAN: u16 = FG_BLUE | FG_GREEN;
 const FG_MAGENTA: u16 = FG_BLUE | FG_RED;
 const FG_YELLOW: u16 = FG_GREEN | FG_RED;
 const FG_WHITE: u16 = FG_BLUE | FG_GREEN | FG_RED;
-
-#[link(name = "kernel32")]
-extern "system" {
-    pub fn SetConsoleTextAttribute(
-        hConsoleOutput: HANDLE,
-        wAttributes: u16,
-    ) -> BOOL;
-}
 
 /// Query the given handle for information about the console's screen buffer.
 ///
