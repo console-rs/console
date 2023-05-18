@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.6
+
+### Enhancements
+
+* Switch to `select()` on macOS for polling on TTYs to work around
+  a macOS bug. (#169)
+
 ## 0.15.5
 
 ### Enhancements
