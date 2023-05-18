@@ -6,6 +6,7 @@
 
 * Switch to `select()` on macOS for polling on TTYs to work around
   a macOS bug. (#169)
+* Added blink fast and strikethrough attributes. (#159)
 
 ## 0.15.5
 
