@@ -472,12 +472,11 @@ impl<D> StyledObject<D> {
         // more details can be found in the following test code in this file
         // such as "[hello] [world]", the space between "hello" and "world" is not surrounded by ansi code
         let mut ansi_start = false;
-        let mut ansi_end = false;
 
         for (ansi_str, is_ansi) in AnsiCodeIterator::new(ansi_str) {
             if !is_ansi {
                 val.push_str(ansi_str);
-                if !ansi_start && ansi_end {
+                if !ansi_start {
                     results.push(StyledObject {
                         style,
                         val,
@@ -485,7 +484,6 @@ impl<D> StyledObject<D> {
                     style = Style::new();
                     val = String::new();
                     ansi_start = false;
-                    ansi_end = false;
                 }
                 continue;
             }
@@ -498,12 +496,10 @@ impl<D> StyledObject<D> {
                 val = String::new();
                 // if is_ansi == true and ansi_str is reset, it means that ansi code is end
                 ansi_start = false;
-                ansi_end = true;
                 continue;
             }
             // if is_ansi == true and ansi_str is not reset, it means that ansi code is start
             ansi_start = true;
-            ansi_end = false;
             if fg_color.is_match(ansi_str) || fg_color256_or_bright.is_match(ansi_str) {
                 if let Some(n) = Self::parse_ansi_num(ansi_str) {
                     let (color, bright) = Self::convert_to_color(&n);
@@ -1113,6 +1109,7 @@ fn test_parse_to_style() {
 
 #[test]
 fn test_parse_to_style_for_multi_text() {
+    // test for "[hello] [world]"
     let style_origin1 = Style::new()
         .force_styling(true)
         .red()
@@ -1129,12 +1126,56 @@ fn test_parse_to_style_for_multi_text() {
         .italic();
     let ansi_string = format!("{} {}", style_origin1.apply_to("hello"), style_origin2.apply_to("world"));
     let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
+    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
+    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
     assert_eq!(
         vec!["hello", " ", "world"],
-        style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>()
+        plain_texts
     );
     assert_eq!(
-        vec![style_origin1, Style::new().force_styling(true), style_origin2],
-        style_parsed.into_iter().map(|x| x.style.force_styling(true)).collect::<Vec<_>>()
+        vec![&style_origin1, &Style::new().force_styling(true), &style_origin2],
+        styles.iter().collect::<Vec<&Style>>()
+    );
+
+    // test for "hello [world]"
+    let ansi_string = format!("hello {}", style_origin2.apply_to("world"));
+    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
+    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
+    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
+    assert_eq!(
+        vec!["hello ", "world"],
+        plain_texts
+    );
+    assert_eq!(
+        vec![&Style::new().force_styling(true), &style_origin2],
+        styles.iter().collect::<Vec<&Style>>()
+    );
+
+    // test for "[hello] world"
+    let ansi_string = format!("{} world", style_origin1.apply_to("hello"));
+    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
+    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
+    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
+    assert_eq!(
+        vec!["hello", " world"],
+        plain_texts
+    );
+    assert_eq!(
+        vec![&style_origin1, &Style::new().force_styling(true)],
+        styles.iter().collect::<Vec<&Style>>()
+    );
+
+    // test for "hello world"
+    let ansi_string = "hello world";
+    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string);
+    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
+    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
+    assert_eq!(
+        vec!["hello world"],
+        plain_texts
+    );
+    assert_eq!(
+        vec![&Style::new().force_styling(true)],
+        styles.iter().collect::<Vec<&Style>>()
     );
 }
