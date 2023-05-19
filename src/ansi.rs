@@ -3,6 +3,11 @@ use std::{
     iter::{FusedIterator, Peekable},
     str::CharIndices,
 };
+use std::str::FromStr;
+use lazy_static::lazy::Lazy;
+use lazy_static::lazy_static;
+use regex::Regex;
+use crate::{Attribute, Color, Style, StyledObject};
 
 #[derive(Debug, Clone, Copy)]
 enum State {
@@ -267,6 +272,133 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
 
 impl<'a> FusedIterator for AnsiCodeIterator<'a> {}
 
+pub struct ParsedStyledObjectIterator<'a> {
+    ansi_code_it: AnsiCodeIterator<'a>,
+}
+
+impl<'a> ParsedStyledObjectIterator<'a> {
+    pub fn new(s: &'a str) -> ParsedStyledObjectIterator<'a> {
+        ParsedStyledObjectIterator {
+            ansi_code_it: AnsiCodeIterator::new(s),
+        }
+    }
+
+    /// parse a ansi code string to u8
+    fn parse_ansi_num(ansi_str: &str) -> Option<u8> {
+        let number = Regex::new("[1-9]\\d?m").unwrap();
+        // find first str which matched xxm, such as 1m, 2m, 31m
+        number.find(ansi_str).map(|r| {
+            let r_str = r.as_str();
+            // trim the 'm' and convert to u8
+            u8::from_str(&r_str[0..r_str.len() - 1]).unwrap()
+        })
+    }
+
+    /// convert ansi_num to color
+    /// return (color: Color, bright: bool)
+    fn convert_to_color(ansi_num: &u8) -> (Color, bool) {
+        let mut bright = false;
+        let ansi_num = if (40u8..47u8).contains(ansi_num) {
+            ansi_num - 40
+        } else if (30u8..37u8).contains(ansi_num) {
+            ansi_num - 30
+        } else if (8u8..15u8).contains(ansi_num) {
+            bright = true;
+            ansi_num - 8
+        } else {
+            *ansi_num
+        };
+        match ansi_num {
+            0 => (Color::Black, bright),
+            1 => (Color::Red, bright),
+            2 => (Color::Green, bright),
+            3 => (Color::Yellow, bright),
+            4 => (Color::Blue, bright),
+            5 => (Color::Magenta, bright),
+            6 => (Color::Cyan, bright),
+            7 => (Color::White, bright),
+            _ => (Color::Color256(ansi_num), bright),
+        }
+    }
+
+    fn convert_to_attr(ansi_num: &u8) -> Option<Attribute> {
+        match ansi_num {
+            1 => Some(Attribute::Bold),
+            2 => Some(Attribute::Dim),
+            3 => Some(Attribute::Italic),
+            4 => Some(Attribute::Underlined),
+            5 => Some(Attribute::Blink),
+            7 => Some(Attribute::Reverse),
+            8 => Some(Attribute::Hidden),
+            _ => None,
+        }
+    }
+}
+
+lazy_static! {
+static ref FG_COLOR256_OR_BRIGHT_REG: Regex = Regex::new("\x1b\\[38;5;[1-9]\\d?m").unwrap();
+static ref FG_COLOR_REG: Regex = Regex::new("\x1b\\[3\\dm").unwrap();
+
+static ref BG_COLOR256_OR_BRIGHT_REG: Regex = Regex::new("\x1b\\[48;5;[1-9]\\d?m").unwrap();
+static ref BG_COLOR_REG: Regex = Regex::new("\x1b\\[4\\dm").unwrap();
+
+static ref ATTR_REG: Regex = Regex::new("\x1b\\[[1-9]m").unwrap();
+}
+
+static RESET_STR: &str = "\x1b[0m";
+
+impl<'a> Iterator for ParsedStyledObjectIterator<'a> {
+    type Item = StyledObject<String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut style: Style =  Style::new();
+        let mut val: Option<String> = None;
+
+        let mut ansi_start = false;
+
+        for (ansi_str, is_ansi) in self.ansi_code_it.by_ref() {
+            if !is_ansi {
+                val.get_or_insert(String::new()).push_str(ansi_str);
+                if !ansi_start {
+                    break;
+                }
+                continue;
+            }
+            if ansi_str == RESET_STR {
+                // if is_ansi == true and ansi_str is reset, it means that ansi code is end
+                break;
+            }
+            // if is_ansi == true and ansi_str is not reset, it means that ansi code is start
+            ansi_start = true;
+            if FG_COLOR_REG.is_match(ansi_str) || FG_COLOR256_OR_BRIGHT_REG.is_match(ansi_str) {
+                if let Some(n) = Self::parse_ansi_num(ansi_str) {
+                    let (color, bright) = Self::convert_to_color(&n);
+                    style = style.fg(color);
+                    if bright {
+                        style = style.bright();
+                    }
+                }
+            } else if BG_COLOR_REG.is_match(ansi_str) || BG_COLOR256_OR_BRIGHT_REG.is_match(ansi_str) {
+                if let Some(n) = Self::parse_ansi_num(ansi_str) {
+                    let (color, bright) = Self::convert_to_color(&n);
+                    style = style.bg(color);
+                    if bright {
+                        style = style.on_bright();
+                    }
+                }
+            } else if ATTR_REG.is_match(ansi_str) {
+                if let Some(n) = Self::parse_ansi_num(ansi_str) {
+                    if let Some(attr) = Self::convert_to_attr(&n) {
+                        style = style.attr(attr);
+                    }
+                }
+            }
+        }
+
+        val.map(|v| style.apply_to(v))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -434,5 +566,84 @@ mod tests {
         assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1ma\x1b[0m");
         assert_eq!(iter.rest_slice(), "");
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_parse_to_style_for_multi_text() {
+        let style_origin1 = Style::new()
+            .force_styling(true)
+            .red()
+            .on_blue()
+            .on_bright()
+            .bold()
+            .italic();
+        let style_origin2 = Style::new()
+            .force_styling(true)
+            .blue()
+            .on_yellow()
+            .on_bright()
+            .blink()
+            .italic();
+
+        // test for "[hello world]"
+        let ansi_string = style_origin1.apply_to("hello world").to_string();
+        let style_parsed = ParsedStyledObjectIterator::new(ansi_string.as_str()).collect::<Vec<StyledObject<String>>>();
+        assert_eq!(&style_origin1, &style_parsed.first().unwrap().get_style().clone().force_styling(true));
+
+        // test for "[hello] [world]"
+        let ansi_string = format!("{} {}", style_origin1.apply_to("hello"), style_origin2.apply_to("world"));
+        let style_parsed = ParsedStyledObjectIterator::new(ansi_string.as_str()).collect::<Vec<StyledObject<String>>>();
+        let plain_texts = style_parsed.iter().map(|x| x.get_val()).collect::<Vec<_>>();
+        let styles = style_parsed.iter().map(|x| x.get_style().clone().force_styling(true)).collect::<Vec<_>>();
+        assert_eq!(
+            vec!["hello", " ", "world"],
+            plain_texts
+        );
+        assert_eq!(
+            vec![&style_origin1, &Style::new().force_styling(true), &style_origin2],
+            styles.iter().collect::<Vec<&Style>>()
+        );
+
+        // test for "hello [world]"
+        let ansi_string = format!("hello {}", style_origin2.apply_to("world"));
+        let style_parsed = ParsedStyledObjectIterator::new(ansi_string.as_str()).collect::<Vec<StyledObject<String>>>();
+        let plain_texts = style_parsed.iter().map(|x| x.get_val().as_str()).collect::<Vec<_>>();
+        let styles = style_parsed.iter().map(|x| x.get_style().clone().force_styling(true)).collect::<Vec<_>>();
+        assert_eq!(
+            vec!["hello ", "world"],
+            plain_texts
+        );
+        assert_eq!(
+            vec![&Style::new().force_styling(true), &style_origin2],
+            styles.iter().collect::<Vec<&Style>>()
+        );
+
+        // test for "[hello] world"
+        let ansi_string = format!("{} world", style_origin1.apply_to("hello"));
+        let style_parsed = ParsedStyledObjectIterator::new(ansi_string.as_str()).collect::<Vec<StyledObject<String>>>();
+        let plain_texts = style_parsed.iter().map(|x| x.get_val().as_str()).collect::<Vec<_>>();
+        let styles = style_parsed.iter().map(|x| x.get_style().clone().force_styling(true)).collect::<Vec<_>>();
+        assert_eq!(
+            vec!["hello", " world"],
+            plain_texts
+        );
+        assert_eq!(
+            vec![&style_origin1, &Style::new().force_styling(true)],
+            styles.iter().collect::<Vec<&Style>>()
+        );
+
+        // test for "hello world"
+        let ansi_string = "hello world";
+        let style_parsed = ParsedStyledObjectIterator::new(ansi_string).collect::<Vec<StyledObject<String>>>();
+        let plain_texts = style_parsed.iter().map(|x| x.get_val().as_str()).collect::<Vec<_>>();
+        let styles = style_parsed.iter().map(|x| x.get_style().clone().force_styling(true)).collect::<Vec<_>>();
+        assert_eq!(
+            vec!["hello world"],
+            plain_texts
+        );
+        assert_eq!(
+            vec![&Style::new().force_styling(true)],
+            styles.iter().collect::<Vec<&Style>>()
+        );
     }
 }

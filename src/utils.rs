@@ -421,6 +421,23 @@ impl Style {
     }
 }
 
+impl Style {
+    pub fn get_fg(&self) -> Option<Color> {
+        self.fg
+    }
+    pub fn get_bg(&self) -> Option<Color> {
+        self.bg
+    }
+    pub fn get_fg_bright(&self) -> bool {
+        self.fg_bright
+    }
+    pub fn get_bg_bright(&self) -> bool {
+        self.bg_bright
+    }
+    pub fn get_attrs(&self) -> &BTreeSet<Attribute> {
+        &self.attrs
+    }
+}
 /// Wraps an object for formatting for styling.
 ///
 /// Example:
@@ -448,136 +465,16 @@ pub struct StyledObject<D> {
     val: D,
 }
 
+impl <D> StyledObject<D> {
+    pub fn get_style(&self) -> &Style {
+        &self.style
+    }
+    pub fn get_val(&self) -> &D {
+        &self.val
+    }
+}
+
 impl<D> StyledObject<D> {
-    /// parse a string with ansi escape code and return a vector of StyledObject
-    pub fn from_ansi_str(ansi_str: &str) -> Vec<StyledObject<String>> {
-        let fg_color256_or_bright = Regex::new("\x1b\\[38;5;[1-9]\\d?m").unwrap();
-        let fg_color = Regex::new("\x1b\\[3\\dm").unwrap();
-
-        let bg_color256_or_bright = Regex::new("\x1b\\[48;5;[1-9]\\d?m").unwrap();
-        let bg_color = Regex::new("\x1b\\[4\\dm").unwrap();
-
-        let attr = Regex::new("\x1b\\[[1-9]m").unwrap();
-
-        let reset = "\x1b[0m";
-
-        let mut style = Style::new();
-        let mut val = String::new();
-        let mut results = vec![];
-
-        // use ansi_start and ansi_end to determine whether the current ansi_str is surrounded by ansi code
-        // the judgment only makes sense when is_ansi is false
-        // if ansi_start is false and ansi_end is true, it means that the current ansi_str is not surrounded by ansi code, it's a normal string
-        // then we can push the current string with empty style to results
-        // more details can be found in the following test code in this file
-        // such as "[hello] [world]", the space between "hello" and "world" is not surrounded by ansi code
-        let mut ansi_start = false;
-
-        for (ansi_str, is_ansi) in AnsiCodeIterator::new(ansi_str) {
-            if !is_ansi {
-                val.push_str(ansi_str);
-                if !ansi_start {
-                    results.push(StyledObject {
-                        style,
-                        val,
-                    });
-                    style = Style::new();
-                    val = String::new();
-                    ansi_start = false;
-                }
-                continue;
-            }
-            if ansi_str == reset {
-                results.push(StyledObject {
-                    style,
-                    val,
-                });
-                style = Style::new();
-                val = String::new();
-                // if is_ansi == true and ansi_str is reset, it means that ansi code is end
-                ansi_start = false;
-                continue;
-            }
-            // if is_ansi == true and ansi_str is not reset, it means that ansi code is start
-            ansi_start = true;
-            if fg_color.is_match(ansi_str) || fg_color256_or_bright.is_match(ansi_str) {
-                if let Some(n) = Self::parse_ansi_num(ansi_str) {
-                    let (color, bright) = Self::convert_to_color(&n);
-                    style = style.fg(color);
-                    if bright {
-                        style = style.bright();
-                    }
-                }
-            } else if bg_color.is_match(ansi_str) || bg_color256_or_bright.is_match(ansi_str) {
-                if let Some(n) = Self::parse_ansi_num(ansi_str) {
-                    let (color, bright) = Self::convert_to_color(&n);
-                    style = style.bg(color);
-                    if bright {
-                        style = style.on_bright();
-                    }
-                }
-            } else if attr.is_match(ansi_str) {
-                if let Some(n) = Self::parse_ansi_num(ansi_str) {
-                    if let Some(attr) = Self::convert_to_attr(&n) {
-                        style = style.attr(attr)
-                    }
-                }
-            }
-        }
-        results
-    }
-
-    /// parse a ansi code string to u8
-    fn parse_ansi_num(ansi_str: &str) -> Option<u8> {
-        let number = Regex::new("[1-9]\\d?m").unwrap();
-        // find first str which matched xxm, such as 1m, 2m, 31m
-        number.find(ansi_str).map(|r| {
-            let r_str = r.as_str();
-            // trim the 'm' and convert to u8
-            u8::from_str(&r_str[0..r_str.len() - 1]).unwrap()
-        })
-    }
-
-    /// convert ansi_num to color
-    /// return (color: Color, bright: bool)
-    fn convert_to_color(ansi_num: &u8) -> (Color, bool) {
-        let mut bright = false;
-        let ansi_num = if (40u8..47u8).contains(ansi_num) {
-            ansi_num - 40
-        } else if (30u8..37u8).contains(ansi_num) {
-            ansi_num - 30
-        } else if (8u8..15u8).contains(ansi_num) {
-            bright = true;
-            ansi_num - 8
-        } else {
-            *ansi_num
-        };
-        match ansi_num {
-            0 => (Color::Black, bright),
-            1 => (Color::Red, bright),
-            2 => (Color::Green, bright),
-            3 => (Color::Yellow, bright),
-            4 => (Color::Blue, bright),
-            5 => (Color::Magenta, bright),
-            6 => (Color::Cyan, bright),
-            7 => (Color::White, bright),
-            _ => (Color::Color256(ansi_num), bright),
-        }
-    }
-
-    fn convert_to_attr(ansi_num: &u8) -> Option<Attribute> {
-        match ansi_num {
-            1 => Some(Attribute::Bold),
-            2 => Some(Attribute::Dim),
-            3 => Some(Attribute::Italic),
-            4 => Some(Attribute::Underlined),
-            5 => Some(Attribute::Blink),
-            7 => Some(Attribute::Reverse),
-            8 => Some(Attribute::Hidden),
-            _ => None,
-        }
-    }
-
     /// Forces styling on or off.
     ///
     /// This overrides the automatic detection.
@@ -1090,92 +987,5 @@ fn test_pad_str_with() {
     assert_eq!(
         pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
         "foo..."
-    );
-}
-
-#[test]
-fn test_parse_to_style() {
-    let style_origin = Style::new()
-        .force_styling(true)
-        .red()
-        .on_blue()
-        .on_bright()
-        .bold()
-        .italic();
-    let ansi_string = style_origin.apply_to("hello world").to_string();
-    let mut style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
-    assert_eq!(style_origin, style_parsed.pop().unwrap().style.force_styling(true));
-}
-
-#[test]
-fn test_parse_to_style_for_multi_text() {
-    // test for "[hello] [world]"
-    let style_origin1 = Style::new()
-        .force_styling(true)
-        .red()
-        .on_blue()
-        .on_bright()
-        .bold()
-        .italic();
-    let style_origin2 = Style::new()
-        .force_styling(true)
-        .blue()
-        .on_yellow()
-        .on_bright()
-        .blink()
-        .italic();
-    let ansi_string = format!("{} {}", style_origin1.apply_to("hello"), style_origin2.apply_to("world"));
-    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
-    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
-    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
-    assert_eq!(
-        vec!["hello", " ", "world"],
-        plain_texts
-    );
-    assert_eq!(
-        vec![&style_origin1, &Style::new().force_styling(true), &style_origin2],
-        styles.iter().collect::<Vec<&Style>>()
-    );
-
-    // test for "hello [world]"
-    let ansi_string = format!("hello {}", style_origin2.apply_to("world"));
-    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
-    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
-    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
-    assert_eq!(
-        vec!["hello ", "world"],
-        plain_texts
-    );
-    assert_eq!(
-        vec![&Style::new().force_styling(true), &style_origin2],
-        styles.iter().collect::<Vec<&Style>>()
-    );
-
-    // test for "[hello] world"
-    let ansi_string = format!("{} world", style_origin1.apply_to("hello"));
-    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string.as_str());
-    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
-    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
-    assert_eq!(
-        vec!["hello", " world"],
-        plain_texts
-    );
-    assert_eq!(
-        vec![&style_origin1, &Style::new().force_styling(true)],
-        styles.iter().collect::<Vec<&Style>>()
-    );
-
-    // test for "hello world"
-    let ansi_string = "hello world";
-    let style_parsed = StyledObject::<String>::from_ansi_str(ansi_string);
-    let plain_texts = style_parsed.iter().map(|x| x.val.as_str()).collect::<Vec<_>>();
-    let styles = style_parsed.iter().map(|x| x.style.clone().force_styling(true)).collect::<Vec<_>>();
-    assert_eq!(
-        vec!["hello world"],
-        plain_texts
-    );
-    assert_eq!(
-        vec![&Style::new().force_styling(true)],
-        styles.iter().collect::<Vec<&Style>>()
     );
 }
