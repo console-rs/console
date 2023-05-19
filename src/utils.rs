@@ -465,15 +465,6 @@ pub struct StyledObject<D> {
     val: D,
 }
 
-impl <D> StyledObject<D> {
-    pub fn get_style(&self) -> &Style {
-        &self.style
-    }
-    pub fn get_val(&self) -> &D {
-        &self.val
-    }
-}
-
 impl<D> StyledObject<D> {
     /// Forces styling on or off.
     ///
