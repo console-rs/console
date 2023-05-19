@@ -87,7 +87,7 @@ pub use crate::utils::{
 };
 
 #[cfg(feature = "ansi-parsing")]
-pub use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
+pub use crate::ansi::{strip_ansi_codes, AnsiCodeIterator, ParsedStyledObjectIterator};
 
 mod common_term;
 mod kb;
