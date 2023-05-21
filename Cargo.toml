@@ -18,7 +18,7 @@ windows-console-colors = ["ansi-parsing"]
 ansi-parsing = []
 
 [dependencies]
-libc = "0.2.30"
+libc = "0.2.99"
 unicode-width = { version = "0.1", optional = true }
 lazy_static = "1.4.0"
 
