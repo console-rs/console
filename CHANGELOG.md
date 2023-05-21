@@ -7,7 +7,7 @@
 * Set an appropriate lower version of libc for macos changes.
 * Improved behavior of `read_single_key` so it does not disturb other
   threads quite as much. (#165)
-* More reliably reset raw mode in terminal.
+* More reliably reset raw mode in terminal. (#171)
 
 ## 0.15.6
 
