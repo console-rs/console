@@ -220,6 +220,7 @@ pub fn read_single_key() -> io::Result<Key> {
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
     unsafe { libc::cfmakeraw(&mut termios) };
+    termios.c_oflag = original.c_oflag;
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
 
     let rv: io::Result<Key> = loop {
