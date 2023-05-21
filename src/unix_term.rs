@@ -202,28 +202,8 @@ fn read_bytes(fd: i32, buf: &mut [u8], count: u8) -> io::Result<u8> {
     }
 }
 
-pub fn read_single_key() -> io::Result<Key> {
-    let tty_f;
-    let fd = unsafe {
-        if libc::isatty(libc::STDIN_FILENO) == 1 {
-            libc::STDIN_FILENO
-        } else {
-            tty_f = fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open("/dev/tty")?;
-            tty_f.as_raw_fd()
-        }
-    };
-    let mut termios = core::mem::MaybeUninit::uninit();
-    c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
-    let mut termios = unsafe { termios.assume_init() };
-    let original = termios;
-    unsafe { libc::cfmakeraw(&mut termios) };
-    termios.c_oflag = original.c_oflag;
-    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
-
-    let rv: io::Result<Key> = loop {
+fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
+    loop {
         match read_single_char(fd)? {
             Some('\x1b') => {
                 // Escape was read, keep reading in case we find a familiar key
@@ -312,8 +292,30 @@ pub fn read_single_key() -> io::Result<Key> {
                 }
             }
         }
-    };
+    }
+}
 
+pub fn read_single_key() -> io::Result<Key> {
+    let tty_f;
+    let fd = unsafe {
+        if libc::isatty(libc::STDIN_FILENO) == 1 {
+            libc::STDIN_FILENO
+        } else {
+            tty_f = fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open("/dev/tty")?;
+            tty_f.as_raw_fd()
+        }
+    };
+    let mut termios = core::mem::MaybeUninit::uninit();
+    c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
+    let mut termios = unsafe { termios.assume_init() };
+    let original = termios;
+    unsafe { libc::cfmakeraw(&mut termios) };
+    termios.c_oflag = original.c_oflag;
+    c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
+    let rv: io::Result<Key> = read_single_key_impl(fd);
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) })?;
 
     // if the user hit ^C we want to signal SIGINT to outselves.
