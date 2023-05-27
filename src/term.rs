@@ -59,9 +59,31 @@ impl TermTarget {
             read_secure()
         }
     }
+
+    /// Reads a single key from the input source
+    ///
+    /// # Returns Error (only ReadWritePair)
+    /// If the end of the input source has been reached
+    /// If the input source lock was already acquired
+    ///
+    /// # Returns Ok
+    /// The key that was read
     fn read_single_key(&self) -> io::Result<Key> {
         if let TermTarget::ReadWritePair(pair) = self {
-            todo!()
+            if let Ok(mut reader) = pair.reader.lock() {
+                match reader.next() {
+                    Some(key) => Ok(key),
+                    None => io::Result::Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "Reached end of input source",
+                    )),
+                }
+            } else {
+                io::Result::Err(io::Error::new(
+                    io::ErrorKind::ResourceBusy,
+                    "The reader lock was already acquired by this thread",
+                ))
+            }
         } else {
             read_single_key()
         }
