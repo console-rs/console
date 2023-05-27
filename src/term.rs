@@ -11,13 +11,11 @@ use crate::{kb::Key, utils::Style};
 
 #[cfg(unix)]
 trait TermWrite: Write + Debug + AsRawFd + Send {}
-#[cfg(unix)]
 impl<T: Write + Debug + AsRawFd + Send> TermWrite for T {}
 
 #[cfg(unix)]
-trait TermRead: Read + Debug + AsRawFd + Send {}
-#[cfg(unix)]
-impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
+trait TermRead: Iterator<Item = Key> + Debug + AsRawFd + Send {}
+impl<T: Iterator<Item = Key> + Debug + AsRawFd + Send> TermRead for T {}
 
 #[cfg(unix)]
 #[derive(Debug, Clone)]
@@ -181,7 +179,7 @@ impl Term {
     #[cfg(unix)]
     pub fn read_write_pair<R, W>(read: R, write: W) -> Term
     where
-        R: Read + Debug + AsRawFd + Send + 'static,
+        R: Iterator<Item = Key> + Debug + AsRawFd + Send + 'static,
         W: Write + Debug + AsRawFd + Send + 'static,
     {
         Self::read_write_pair_with_style(read, write, Style::new().for_stderr())
@@ -191,7 +189,7 @@ impl Term {
     #[cfg(unix)]
     pub fn read_write_pair_with_style<R, W>(read: R, write: W, style: Style) -> Term
     where
-        R: Read + Debug + AsRawFd + Send + 'static,
+        R: Iterator<Item = Key> + Debug + AsRawFd + Send + 'static,
         W: Write + Debug + AsRawFd + Send + 'static,
     {
         Term::with_inner(TermInner {
@@ -210,7 +208,6 @@ impl Term {
         match self.inner.target {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
-            #[cfg(unix)]
             TermTarget::ReadWritePair(ReadWritePair { ref style, .. }) => style.clone(),
         }
     }
