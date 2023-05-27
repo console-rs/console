@@ -92,8 +92,18 @@ impl TermTarget {
             io::stdin().read_line(buf)
         }
     }
+
+    /// Read a line from the input source without showing the inserted characters
+    /// # Panics
+    /// If the input source is a custom ReadWritePair and any keys other than Char, Enter or BackSpace are encountered
+    ///
+    /// # Returns error
+    /// If there was an error reading from the input source
+    ///
+    /// # Returns ok
+    /// The read line
     fn read_secure(&self) -> io::Result<String> {
-        if let TermTarget::ReadWritePair(pair) = self {
+        if let TermTarget::ReadWritePair(_) = self {
             let mut s = String::new();
             self.read_line(&mut s)?;
             Ok(s)
