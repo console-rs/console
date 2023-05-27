@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use std::io::{self, Read, Write};
+use std::io::{self, Error, Read, Write};
 use std::sync::{Arc, Mutex};
 
 #[cfg(unix)]
@@ -7,6 +7,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
+use crate::kb::keys_to_utf8;
 use crate::{kb::Key, utils::Style};
 
 #[cfg(unix)]
@@ -21,8 +22,8 @@ impl<T: Iterator<Item = Key> + Debug + AsRawFd + Send> TermRead for T {}
 #[derive(Debug, Clone)]
 pub struct ReadWritePair {
     #[allow(unused)]
-    read: Arc<Mutex<dyn TermRead>>,
-    write: Arc<Mutex<dyn TermWrite>>,
+    reader: Arc<Mutex<dyn TermRead>>,
+    writer: Arc<Mutex<dyn TermWrite>>,
     style: Style,
 }
 
@@ -226,8 +227,8 @@ impl Term {
     {
         Term::with_inner(TermInner {
             target: TermTarget::ReadWritePair(ReadWritePair {
-                read: Arc::new(Mutex::new(read)),
-                write: Arc::new(Mutex::new(write)),
+                reader: Arc::new(Mutex::new(read)),
+                writer: Arc::new(Mutex::new(write)),
                 style,
             }),
             buffer: None,
@@ -554,8 +555,8 @@ impl Term {
                 io::stderr().flush()?;
             }
             #[cfg(unix)]
-            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
-                let mut write = write.lock().unwrap();
+            TermTarget::ReadWritePair(ReadWritePair { ref writer, .. }) => {
+                let mut write = writer.lock().unwrap();
                 write.write_all(bytes)?;
                 write.flush()?;
             }
@@ -590,8 +591,8 @@ impl AsRawFd for Term {
         match self.inner.target {
             TermTarget::Stdout => libc::STDOUT_FILENO,
             TermTarget::Stderr => libc::STDERR_FILENO,
-            TermTarget::ReadWritePair(ReadWritePair { ref write, .. }) => {
-                write.lock().unwrap().as_raw_fd()
+            TermTarget::ReadWritePair(ReadWritePair { ref writer, .. }) => {
+                writer.lock().unwrap().as_raw_fd()
             }
         }
     }
