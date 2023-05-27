@@ -34,6 +34,38 @@ pub enum TermTarget {
     #[cfg(unix)]
     ReadWritePair(ReadWritePair),
 }
+impl TermTarget {
+    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        if let TermTarget::ReadWritePair(pair) = self {
+            todo!()
+        } else {
+            io::stdin().read(buf)
+        }
+    }
+    fn read_line(&self, buf: &mut String) -> io::Result<usize> {
+        if let TermTarget::ReadWritePair(pair) = self {
+            todo!()
+        } else {
+            io::stdin().read_line(buf)
+        }
+    }
+    fn read_secure(&self) -> io::Result<String> {
+        if let TermTarget::ReadWritePair(pair) = self {
+            let mut s = String::new();
+            self.read_line(&mut s)?;
+            Ok(s)
+        } else {
+            read_secure()
+        }
+    }
+    fn read_single_key(&self) -> io::Result<Key> {
+        if let TermTarget::ReadWritePair(pair) = self {
+            todo!()
+        } else {
+            read_single_key()
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct TermInner {
@@ -272,7 +304,7 @@ impl Term {
         if !self.is_tty {
             Ok(Key::Unknown)
         } else {
-            read_single_key()
+            self.inner.target.read_single_key()
         }
     }
 
@@ -285,7 +317,7 @@ impl Term {
             return Ok("".into());
         }
         let mut rv = String::new();
-        io::stdin().read_line(&mut rv)?;
+        self.inner.target.read_line(&mut rv)?;
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
         rv.truncate(len);
         Ok(rv)
@@ -337,7 +369,7 @@ impl Term {
         if !self.is_tty {
             return Ok("".into());
         }
-        match read_secure() {
+        match self.inner.target.read_secure() {
             Ok(rv) => {
                 self.write_line("")?;
                 Ok(rv)
@@ -611,13 +643,13 @@ impl<'a> Write for &'a Term {
 
 impl Read for Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        io::stdin().read(buf)
+        self.inner.target.read(buf)
     }
 }
 
 impl<'a> Read for &'a Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        io::stdin().read(buf)
+        self.inner.target.read(buf)
     }
 }
 
