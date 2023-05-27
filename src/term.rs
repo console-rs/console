@@ -36,9 +36,29 @@ pub enum TermTarget {
     ReadWritePair(ReadWritePair),
 }
 impl TermTarget {
-    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        if let TermTarget::ReadWritePair(pair) = self {
-            todo!()
+    /// Fills the buffer with bytes read from the input source
+    /// If backspace was pressed the last character is automatically removed from the buffer
+    /// If enter is pressed, <CRLF> is appended for windows and <LF> for other os
+    ///
+    /// # Panics
+    /// If the buffer is not at least 4 bytes large
+    /// If the input source is a custom ReadWritePair and any keys other than Char, Enter or BackSpace are encountered
+    ///
+    /// # Returns Error
+    /// If there was an error reading from the input source
+    ///
+    /// # Returns ok
+    /// How many bytes have been read
+    fn read(&self, mut buf: &mut [u8]) -> io::Result<usize> {
+        assert!(buf.len() >= 4, "The buffer must be at least 4 bytes large because a single character may be 4 bytes large");
+        if let TermTarget::ReadWritePair(_) = self {
+            let mut keys = Vec::new();
+            while keys_to_utf8(&keys).as_bytes().len() <= buf.len() - 4 {
+                keys.push(self.read_single_key()?);
+            }
+            let utf8 = keys_to_utf8(&keys);
+            let bytes = utf8.as_bytes();
+            buf.write(bytes)
         } else {
             io::stdin().read(buf)
         }
