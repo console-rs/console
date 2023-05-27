@@ -63,9 +63,31 @@ impl TermTarget {
             io::stdin().read(buf)
         }
     }
+
+    /// Reads chars until Key::Enter was found
+    /// This may cause an infinite loop if the line is not terminated
+    ///
+    /// # Panics
+    /// If the input source is a custom ReadWritePair and any keys other than Char, Enter or BackSpace are encountered
+    ///
+    /// # Returns error
+    /// If there was an error reading from the input source
+    ///
+    /// # Returns ok
+    /// The length of the modified buffer string
     fn read_line(&self, buf: &mut String) -> io::Result<usize> {
-        if let TermTarget::ReadWritePair(pair) = self {
-            todo!()
+        if let TermTarget::ReadWritePair(_) = self {
+            let mut keys = Vec::new();
+            loop {
+                let key = self.read_single_key()?;
+                if key == Key::Enter {
+                    break;
+                }
+                keys.push(key);
+            }
+            buf.clear();
+            buf.push_str(&keys_to_utf8(&keys));
+            Ok(buf.len())
         } else {
             io::stdin().read_line(buf)
         }
