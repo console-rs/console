@@ -108,7 +108,7 @@ impl<'a> TermFeatures<'a> {
         {
             TermFamily::WindowsConsole
         }
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_arch = "wasm32")))]
         {
             TermFamily::UnixTerm
         }
@@ -624,7 +624,7 @@ impl<'a> Read for &'a Term {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_arch = "wasm32")))]
 pub use crate::unix_term::*;
 #[cfg(target_arch = "wasm32")]
 pub use crate::wasm_term::*;

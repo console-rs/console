@@ -92,7 +92,7 @@ pub use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
 mod common_term;
 mod kb;
 mod term;
-#[cfg(unix)]
+#[cfg(all(unix, not(target_arch = "wasm32")))]
 mod unix_term;
 mod utils;
 #[cfg(target_arch = "wasm32")]
