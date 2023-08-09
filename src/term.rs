@@ -284,14 +284,7 @@ impl Term {
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line(&self) -> io::Result<String> {
-        if !self.is_tty {
-            return Ok("".into());
-        }
-        let mut rv = String::new();
-        io::stdin().read_line(&mut rv)?;
-        let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
-        rv.truncate(len);
-        Ok(rv)
+        self.read_line_initial_text("")
     }
 
     /// Read one line of input with initial text.
