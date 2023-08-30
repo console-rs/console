@@ -8,7 +8,6 @@ use std::mem;
 use std::os::raw::c_void;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::AsRawHandle;
-use std::slice;
 use std::{char, mem::MaybeUninit};
 
 use encode_unicode::error::InvalidUtf16Tuple;
@@ -548,10 +547,14 @@ pub fn msys_tty_on(term: &Term) -> bool {
             return false;
         }
 
-        let s = slice::from_raw_parts(
-            name_info.FileName.as_ptr(),
-            name_info.FileNameLength as usize / 2,
-        );
+        // Use `get` because `FileNameLength` can be out of range.
+        let s = match name_info
+            .FileName
+            .get(..name_info.FileNameLength as usize / 2)
+        {
+            Some(s) => s,
+            None => return false,
+        };
         let name = String::from_utf16_lossy(s);
         // This checks whether 'pty' exists in the file name, which indicates that
         // a pseudo-terminal is attached. To mitigate against false positives
