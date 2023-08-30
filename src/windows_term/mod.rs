@@ -14,9 +14,7 @@ use std::{char, mem::MaybeUninit};
 use encode_unicode::error::InvalidUtf16Tuple;
 use encode_unicode::CharExt;
 use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE, MAX_PATH};
-use windows_sys::Win32::Storage::FileSystem::{
-    FileNameInfo, GetFileInformationByHandleEx, FILE_NAME_INFO,
-};
+use windows_sys::Win32::Storage::FileSystem::{FileNameInfo, GetFileInformationByHandleEx};
 use windows_sys::Win32::System::Console::{
     FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo, GetConsoleMode,
     GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
@@ -527,18 +525,29 @@ pub fn msys_tty_on(term: &Term) -> bool {
             }
         }
 
-        let size = mem::size_of::<FILE_NAME_INFO>();
-        let mut name_info_bytes = vec![0u8; size + MAX_PATH as usize * mem::size_of::<u16>()];
+        /// Mirrors windows_sys::Win32::Storage::FileSystem::FILE_NAME_INFO, giving
+        /// it a fixed length that we can stack allocate
+        #[repr(C)]
+        #[allow(non_snake_case)]
+        struct FILE_NAME_INFO {
+            FileNameLength: u32,
+            FileName: [u16; MAX_PATH as usize],
+        }
+
+        let mut name_info = FILE_NAME_INFO {
+            FileNameLength: 0,
+            FileName: [0; MAX_PATH as usize],
+        };
         let res = GetFileInformationByHandleEx(
             handle as HANDLE,
             FileNameInfo,
-            &mut *name_info_bytes as *mut _ as *mut c_void,
-            name_info_bytes.len() as u32,
+            &mut name_info as *mut _ as *mut c_void,
+            std::mem::size_of::<FILE_NAME_INFO>() as u32,
         );
         if res == 0 {
             return false;
         }
-        let name_info: &FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const FILE_NAME_INFO);
+
         let s = slice::from_raw_parts(
             name_info.FileName.as_ptr(),
             name_info.FileNameLength as usize / 2,
