@@ -22,21 +22,25 @@ impl<T: Read + Debug + AsRawFd + Send> TermRead for T {}
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct ReadWritePair {
-    #[allow(unused)]
     read: Arc<Mutex<dyn TermRead>>,
     write: Arc<Mutex<dyn TermWrite>>,
+    /// How output is printed: foreground and background colour, formatting, etc.
     style: Style,
 }
 
 /// Where the term is writing.
 #[derive(Debug, Clone)]
 pub enum TermTarget {
+    /// standard output
     Stdout,
+    /// standard error
     Stderr,
     #[cfg(unix)]
+    /// anything which implements the Read and Write traits XXX fixup
     ReadWritePair(ReadWritePair),
 }
 
+/// Underlying data of the terminal: its target and buffer.
 #[derive(Debug)]
 pub struct TermInner {
     target: TermTarget,
@@ -126,11 +130,14 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
+    /// See [is_msys_tty](TermFeatures::is_msys_tty).
     pub(crate) is_msys_tty: bool,
+    /// If this is a user attended tty.
     pub(crate) is_tty: bool,
 }
 
 impl Term {
+    /// Construct an instance from given data.
     fn with_inner(inner: TermInner) -> Term {
         let mut term = Term {
             inner: Arc::new(inner),
@@ -143,7 +150,7 @@ impl Term {
         term
     }
 
-    /// Return a new unbuffered terminal.
+    /// Return a new unbuffered terminal, writing to stdout.
     #[inline]
     pub fn stdout() -> Term {
         Term::with_inner(TermInner {
@@ -152,7 +159,7 @@ impl Term {
         })
     }
 
-    /// Return a new unbuffered terminal to stderr.
+    /// Return a new unbuffered terminal, writing to stderr.
     #[inline]
     pub fn stderr() -> Term {
         Term::with_inner(TermInner {
@@ -161,7 +168,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal.
+    /// Return a new buffered terminal, writing to stderr.
     pub fn buffered_stdout() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
@@ -169,7 +176,7 @@ impl Term {
         })
     }
 
-    /// Return a new buffered terminal to stderr.
+    /// Return a new buffered terminal, writing to stderr.
     pub fn buffered_stderr() -> Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
@@ -288,7 +295,33 @@ impl Term {
             return Ok("".into());
         }
         let mut rv = String::new();
-        io::stdin().read_line(&mut rv)?;
+        #[cfg(not(unix))]
+        {
+            io::stdin().read_line(&mut rv)?;
+        }
+        #[cfg(unix)]
+        {
+            match &self.inner.target {
+                TermTarget::Stdout | TermTarget::Stderr => {
+                    io::stdin().read_line(&mut rv)?;
+                }
+                TermTarget::ReadWritePair(ReadWritePair { read, .. }) => {
+                    let mut input = read.lock().unwrap();
+                    // Read a single char until we hit a newline ("\n", an 0xA byte).
+                    let mut output_bytes = Vec::new();
+                    let mut current_char = [0u8; 1];
+                    loop {
+                        input.read_exact(&mut current_char)?;
+                        if current_char[0] == b'\n' {
+                            break;
+                        } else {
+                            output_bytes.push(current_char[0]);
+                        }
+                    }
+                    rv = std::str::from_utf8(&output_bytes[..]).unwrap().to_string();
+                }
+            };
+        }
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
         rv.truncate(len);
         Ok(rv)
