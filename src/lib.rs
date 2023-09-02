@@ -75,6 +75,7 @@
 //! * `ansi-parsing`: adds support for parsing ansi codes (this adds support
 //!   for stripping and taking ansi escape codes into account for length
 //!   calculations).
+#![feature(io_error_more)]
 
 pub use crate::kb::Key;
 pub use crate::term::{
