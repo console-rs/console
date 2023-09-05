@@ -27,7 +27,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Copy MSRV Lock
         run: make msrv-lock
       - name: Build
@@ -72,7 +72,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install linker
         if: matrix.target == 'i686-unknown-linux-gnu'
         run: |
@@ -100,7 +100,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Check
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -121,7 +121,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install WasmTime
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
@@ -144,6 +144,6 @@ jobs:
           toolchain: nightly
           override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Test
         run: make test
