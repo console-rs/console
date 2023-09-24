@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bugfixes
+
+* Properly use configured output of `Term` to get terminal size (#186)
+
 ## 0.15.7
 
 ### Enhancements
