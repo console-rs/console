@@ -241,7 +241,7 @@ impl Term {
             }
             None => {
                 println!("got no buffer!");
-                self.write_through(format!("{}\n", s).as_bytes()),
+                self.write_through(format!("{}\n", s).as_bytes())
         }
     }
 
