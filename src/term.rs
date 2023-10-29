@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 use std::io::{self, Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -126,6 +126,7 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
+    prompt: Arc<RwLock<String>>,
     pub(crate) is_msys_tty: bool,
     pub(crate) is_tty: bool,
 }
@@ -134,6 +135,7 @@ impl Term {
     fn with_inner(inner: TermInner) -> Term {
         let mut term = Term {
             inner: Arc::new(inner),
+            prompt: Arc::new(RwLock::new(String::new())),
             is_msys_tty: false,
             is_tty: false,
         };
@@ -231,17 +233,19 @@ impl Term {
 
     /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
+        let prompt = self.prompt.read().unwrap();
+        self.clear_chars(prompt.len())?;
         match self.inner.buffer {
             Some(ref mutex) => {
-                println!("got buffer!");
                 let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
                 buffer.push(b'\n');
+                buffer.extend_from_slice(prompt.as_bytes());
                 Ok(())
             }
             None => {
-                println!("got no buffer!");
-                self.write_through(format!("{}\n", s).as_bytes())
+                self.write_through(format!("{}\n", s).as_bytes())?;
+                self.write_through(prompt.as_bytes())
             }
         }
     }
@@ -308,33 +312,45 @@ impl Term {
         }
         self.write_str(initial)?;
 
-        let prefix_len = initial.len();
+        *self.prompt.write().unwrap() = initial.to_string();
+        let _read_lock = self.prompt.read().unwrap();
 
-        let mut chars: Vec<char> = initial.chars().collect();
+        fn read_line_internal(slf: &Term, initial: &str) -> io::Result<String> {
+                let prefix_len = initial.len();
 
-        loop {
-            match self.read_key()? {
-                Key::Backspace => {
-                    if prefix_len < chars.len() && chars.pop().is_some() {
-                        self.clear_chars(1)?;
+                let mut chars: Vec<char> = initial.chars().collect();
+
+                loop {
+                    match slf.read_key()? {
+                        Key::Backspace => {
+                            if prefix_len < chars.len() && chars.pop().is_some() {
+                                slf.clear_chars(1)?;
+                            }
+                            slf.flush()?;
+                        }
+                        Key::Char(chr) => {
+                            chars.push(chr);
+                            let mut bytes_char = [0; 4];
+                            chr.encode_utf8(&mut bytes_char);
+                            slf.write_str(chr.encode_utf8(&mut bytes_char))?;
+                            slf.flush()?;
+                        }
+                        Key::Enter => {
+                            slf.write_line("")?;
+                            break;
+                        }
+                        _ => (),
                     }
-                    self.flush()?;
-                }
-                Key::Char(chr) => {
-                    chars.push(chr);
-                    let mut bytes_char = [0; 4];
-                    chr.encode_utf8(&mut bytes_char);
-                    self.write_str(chr.encode_utf8(&mut bytes_char))?;
-                    self.flush()?;
-                }
-                Key::Enter => {
-                    self.write_line("")?;
-                    break;
-                }
-                _ => (),
+                
             }
+            Ok(chars.iter().skip(prefix_len).collect::<String>())
         }
-        Ok(chars.iter().skip(prefix_len).collect::<String>())
+        let ret = read_line_internal(self, initial);
+
+        drop(_read_lock);
+        *self.prompt.write().unwrap() = String::new();
+
+        ret
     }
 
     /// Read a line of input securely.
