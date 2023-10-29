@@ -304,12 +304,14 @@ impl Term {
         }
         self.write_str(initial)?;
 
+        let prefix_len = initial.len();
+
         let mut chars: Vec<char> = initial.chars().collect();
 
         loop {
             match self.read_key()? {
                 Key::Backspace => {
-                    if chars.pop().is_some() {
+                    if prefix_len < chars.len() && chars.pop().is_some() {
                         self.clear_chars(1)?;
                     }
                     self.flush()?;
@@ -328,7 +330,7 @@ impl Term {
                 _ => (),
             }
         }
-        Ok(chars.iter().collect::<String>())
+        Ok(chars.iter().skip(prefix_len).collect::<String>())
     }
 
     /// Read a line of input securely.
