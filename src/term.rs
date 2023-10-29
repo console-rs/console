@@ -233,12 +233,15 @@ impl Term {
     pub fn write_line(&self, s: &str) -> io::Result<()> {
         match self.inner.buffer {
             Some(ref mutex) => {
+                println!("got buffer!");
                 let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
                 buffer.push(b'\n');
                 Ok(())
             }
-            None => self.write_through(format!("{}\n", s).as_bytes()),
+            None => {
+                println!("got no buffer!");
+                self.write_through(format!("{}\n", s).as_bytes()),
         }
     }
 
