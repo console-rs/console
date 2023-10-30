@@ -244,10 +244,10 @@ impl Term {
     /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
         let prompt = self.inner.prompt.read().unwrap();
-        // self.clear_chars(prompt.len())?;
-        if !prompt.is_empty() {
+        self.clear_chars(prompt.len())?;
+        /*if !prompt.is_empty() {
             self.clear_line()?;
-        }
+        }*/
         match self.inner.buffer {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock().unwrap();
@@ -354,7 +354,6 @@ impl Term {
                         }
                         _ => (),
                     }
-                
             }
             Ok(chars.iter().skip(prefix_len).collect::<String>())
         }
