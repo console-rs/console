@@ -242,13 +242,13 @@ impl Term {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
+                buffer.push(b'\r');
                 buffer.push(b'\n');
                 buffer.extend_from_slice(prompt.as_bytes());
                 Ok(())
             }
             None => {
-                self.write_through(format!("{}\n", s).as_bytes())?;
-                self.write_through(prompt.as_bytes())
+                self.write_through(format!("{}\n{}", s, prompt.as_str()).as_bytes())
             }
         }
     }
