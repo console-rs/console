@@ -41,6 +41,8 @@ pub enum TermTarget {
 pub struct TermInner {
     target: TermTarget,
     buffer: Option<Mutex<Vec<u8>>>,
+    prompt: RwLock<String>,
+    prompt_guard: Mutex<()>,
 }
 
 /// The family of the terminal.
@@ -126,7 +128,6 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
-    prompt: Arc<RwLock<String>>,
     pub(crate) is_msys_tty: bool,
     pub(crate) is_tty: bool,
 }
@@ -135,7 +136,6 @@ impl Term {
     fn with_inner(inner: TermInner) -> Term {
         let mut term = Term {
             inner: Arc::new(inner),
-            prompt: Arc::new(RwLock::new(String::new())),
             is_msys_tty: false,
             is_tty: false,
         };
@@ -151,6 +151,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -160,6 +162,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -168,6 +172,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: Some(Mutex::new(vec![])),
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -176,6 +182,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: Some(Mutex::new(vec![])),
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -203,6 +211,8 @@ impl Term {
                 style,
             }),
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -233,7 +243,7 @@ impl Term {
 
     /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
-        let prompt = self.prompt.read().unwrap();
+        let prompt = self.inner.prompt.read().unwrap();
         // self.clear_chars(prompt.len())?;
         if !prompt.is_empty() {
             self.clear_line()?;
@@ -242,7 +252,6 @@ impl Term {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
-                buffer.push(b'\r');
                 buffer.push(b'\n');
                 buffer.extend_from_slice(prompt.as_bytes());
                 Ok(())
@@ -313,10 +322,11 @@ impl Term {
         if !self.is_tty {
             return Ok("".into());
         }
-        self.write_str(initial)?;
+        *self.inner.prompt.write().unwrap() = initial.to_string();
+        // use a guard in order to prevent races with other calls to read_line_initial_text
+        let _guard = self.inner.prompt_guard.lock().unwrap();
 
-        *self.prompt.write().unwrap() = initial.to_string();
-        let _read_lock = self.prompt.read().unwrap();
+        self.write_str(initial)?;
 
         fn read_line_internal(slf: &Term, initial: &str) -> io::Result<String> {
                 let prefix_len = initial.len();
@@ -350,9 +360,7 @@ impl Term {
         }
         let ret = read_line_internal(self, initial);
 
-        drop(_read_lock);
-        *self.prompt.write().unwrap() = String::new();
-
+        *self.inner.prompt.write().unwrap() = String::new();
         ret
     }
 
