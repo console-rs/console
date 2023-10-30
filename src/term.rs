@@ -244,10 +244,9 @@ impl Term {
     /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
         let prompt = self.inner.prompt.read().unwrap();
-        // self.clear_chars(prompt.len())?;
-        /*if !prompt.is_empty() {
+        if !prompt.is_empty() {
             self.clear_line()?;
-        }*/
+        }
         match self.inner.buffer {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock().unwrap();
@@ -315,7 +314,9 @@ impl Term {
     }
 
     /// Read one line of input with initial text.
-    ///
+    /// 
+    /// This method blocks until no other thread is waiting for this read_line
+    /// before reading a line from the terminal.
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
