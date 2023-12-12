@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/console-rs/console/workflows/CI/badge.svg?branch=master)](https://github.com/console-rs/console/actions?query=workflow%3ACI)
 [![Crates.io](https://img.shields.io/crates/d/console.svg)](https://crates.io/crates/console)
 [![License](https://img.shields.io/github/license/console-rs/console)](https://github.com/console-rs/console/blob/master/LICENSE)
-[![rustc 1.48.0](https://img.shields.io/badge/rust-1.48%2B-orange.svg)](https://img.shields.io/badge/rust-1.48%2B-orange.svg)
+[![rustc 1.56.0](https://img.shields.io/badge/rust-1.56%2B-orange.svg)](https://img.shields.io/badge/rust-1.56%2B-orange.svg)
 [![Documentation](https://docs.rs/console/badge.svg)](https://docs.rs/console)
 
 **console** is a library for Rust that provides access to various terminal
