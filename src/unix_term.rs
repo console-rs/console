@@ -5,6 +5,9 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::mem;
 use std::os::unix::io::AsRawFd;
+use std::ptr;
+use std::os::unix::io::FromRawFd;
+use std::os::unix::io::IntoRawFd;
 use std::str;
 
 use crate::kb::Key;
@@ -362,4 +365,290 @@ pub fn wants_emoji() -> bool {
 
 pub fn set_title<T: Display>(title: T) {
     print!("\x1b]0;{}\x07", title);
+}
+
+fn with_raw_terminal<R>(f: impl FnOnce(&mut fs::File) -> R) -> io::Result<R> {
+    // We need a custom drop implementation for File,
+    // so that the fd for stdin does not get closed
+    enum CustomDropFile {
+        CloseFd(Option<fs::File>),
+        NotCloseFd(Option<fs::File>),
+    }
+
+    impl Drop for CustomDropFile {
+        fn drop(&mut self) {
+            match self {
+                CustomDropFile::CloseFd(_) => {}
+                CustomDropFile::NotCloseFd(inner) => {
+                    if let Some(file) = inner.take() {
+                        file.into_raw_fd();
+                    }
+                }
+            }
+        }
+    }
+
+    let (mut tty_handle, tty_fd) = if unsafe { libc::isatty(libc::STDIN_FILENO) } == 1 {
+        (
+            CustomDropFile::NotCloseFd(Some(unsafe { fs::File::from_raw_fd(libc::STDIN_FILENO) })),
+            libc::STDIN_FILENO,
+        )
+    } else {
+        let handle = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/tty")?;
+        let fd = handle.as_raw_fd();
+        (CustomDropFile::CloseFd(Some(handle)), fd)
+    };
+
+    // Get current mode
+    let mut termios = mem::MaybeUninit::uninit();
+    c_result(|| unsafe { libc::tcgetattr(tty_fd, termios.as_mut_ptr()) })?;
+
+    let mut termios = unsafe { termios.assume_init() };
+    let old_iflag = termios.c_iflag;
+    let old_oflag = termios.c_oflag;
+    let old_cflag = termios.c_cflag;
+    let old_lflag = termios.c_lflag;
+
+    // Go into raw mode
+    unsafe { libc::cfmakeraw(&mut termios) };
+    if old_lflag & libc::ISIG != 0 {
+        // Re-enable INTR, QUIT, SUSP, DSUSP, if it was activated before
+        termios.c_lflag |= libc::ISIG;
+    }
+    c_result(|| unsafe { libc::tcsetattr(tty_fd, libc::TCSADRAIN, &termios) })?;
+
+    let result = match &mut tty_handle {
+        CustomDropFile::CloseFd(Some(handle)) => f(handle),
+        CustomDropFile::NotCloseFd(Some(handle)) => f(handle),
+        _ => unreachable!(),
+    };
+
+    // Reset to previous mode
+    termios.c_iflag = old_iflag;
+    termios.c_oflag = old_oflag;
+    termios.c_cflag = old_cflag;
+    termios.c_lflag = old_lflag;
+    c_result(|| unsafe { libc::tcsetattr(tty_fd, libc::TCSADRAIN, &termios) })?;
+
+    Ok(result)
+}
+
+pub fn supports_synchronized_output() -> bool {
+    *sync_output::SUPPORTS_SYNCHRONIZED_OUTPUT
+}
+
+/// Specification: https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
+mod sync_output {
+    use std::convert::TryInto as _;
+    use std::io::Read as _;
+    use std::io::Write as _;
+    use std::os::unix::io::AsRawFd as _;
+    use std::time;
+
+    use lazy_static::lazy_static;
+
+    use super::select_or_poll_term_fd;
+    use super::with_raw_terminal;
+
+    const RESPONSE_TIMEOUT: time::Duration = time::Duration::from_millis(10);
+
+    lazy_static! {
+        pub(crate) static ref SUPPORTS_SYNCHRONIZED_OUTPUT: bool =
+            supports_synchronized_output_uncached();
+    }
+
+    struct ResponseParser {
+        state: ResponseParserState,
+        response: u8,
+    }
+
+    #[derive(PartialEq)]
+    enum ResponseParserState {
+        None,
+        CsiOne,
+        CsiTwo,
+        QuestionMark,
+        ModeDigit1,
+        ModeDigit2,
+        ModeDigit3,
+        ModeDigit4,
+        Semicolon,
+        Response,
+        DollarSign,
+        Ypsilon,
+    }
+
+    impl ResponseParser {
+        const fn new() -> Self {
+            Self {
+                state: ResponseParserState::None,
+                response: u8::MAX,
+            }
+        }
+
+        fn process_byte(&mut self, byte: u8) {
+            match byte {
+                b'\x1b' => {
+                    self.state = ResponseParserState::CsiOne;
+                }
+                b'[' => {
+                    self.state = if self.state == ResponseParserState::CsiOne {
+                        ResponseParserState::CsiTwo
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                b'?' => {
+                    self.state = if self.state == ResponseParserState::CsiTwo {
+                        ResponseParserState::QuestionMark
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                byte @ b'0' => {
+                    self.state = if self.state == ResponseParserState::Semicolon {
+                        self.response = byte;
+                        ResponseParserState::Response
+                    } else if self.state == ResponseParserState::ModeDigit1 {
+                        ResponseParserState::ModeDigit2
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                byte @ b'2' => {
+                    self.state = if self.state == ResponseParserState::Semicolon {
+                        self.response = byte;
+                        ResponseParserState::Response
+                    } else if self.state == ResponseParserState::QuestionMark {
+                        ResponseParserState::ModeDigit1
+                    } else if self.state == ResponseParserState::ModeDigit2 {
+                        ResponseParserState::ModeDigit3
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                byte @ b'1' | byte @ b'3' | byte @ b'4' => {
+                    self.state = if self.state == ResponseParserState::Semicolon {
+                        self.response = byte;
+                        ResponseParserState::Response
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                b'6' => {
+                    self.state = if self.state == ResponseParserState::ModeDigit3 {
+                        ResponseParserState::ModeDigit4
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                b';' => {
+                    self.state = if self.state == ResponseParserState::ModeDigit4 {
+                        ResponseParserState::Semicolon
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                b'$' => {
+                    self.state = if self.state == ResponseParserState::Response {
+                        ResponseParserState::DollarSign
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                b'y' => {
+                    self.state = if self.state == ResponseParserState::DollarSign {
+                        ResponseParserState::Ypsilon
+                    } else {
+                        ResponseParserState::None
+                    };
+                }
+                _ => {
+                    self.state = ResponseParserState::None;
+                }
+            }
+        }
+
+        fn get_response(&self) -> Option<u8> {
+            if self.state == ResponseParserState::Ypsilon {
+                Some(self.response - b'0')
+            } else {
+                None
+            }
+        }
+    }
+
+    fn supports_synchronized_output_uncached() -> bool {
+        with_raw_terminal(|term_handle| {
+            // Query the state of the (DEC) mode 2026 (Synchronized Output)
+            write!(term_handle, "\x1b[?2026$p").ok()?;
+            term_handle.flush().ok()?;
+
+            // Wait for response or timeout
+            let term_fd = term_handle.as_raw_fd();
+            let mut parser = ResponseParser::new();
+            let mut buf = [0u8; 256];
+            let deadline = time::Instant::now() + RESPONSE_TIMEOUT;
+
+            loop {
+                let remaining_time = deadline
+                    .saturating_duration_since(time::Instant::now())
+                    .as_millis()
+                    .try_into()
+                    .ok()?;
+
+                if remaining_time == 0 {
+                    // Timeout
+                    return Some(false);
+                }
+
+                match select_or_poll_term_fd(term_fd, remaining_time) {
+                    Ok(false) => {
+                        // Timeout
+                        return Some(false);
+                    }
+                    Ok(true) => {
+                        'read: loop {
+                            match term_handle.read(&mut buf) {
+                                Ok(0) => {
+                                    // Reached EOF
+                                    return Some(false);
+                                }
+                                Ok(size) => {
+                                    for byte in &buf[..size] {
+                                        parser.process_byte(*byte);
+
+                                        match parser.get_response() {
+                                            Some(1) | Some(2) => return Some(true),
+                                            Some(_) => return Some(false),
+                                            None => {}
+                                        }
+                                    }
+
+                                    break 'read;
+                                }
+                                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => {
+                                    // Got interrupted, retry read
+                                    continue 'read;
+                                }
+                                Err(_) => {
+                                    return Some(false);
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Error
+                        return Some(false);
+                    }
+                }
+            }
+        })
+        .ok()
+        .flatten()
+        .unwrap_or(false)
+    }
 }
