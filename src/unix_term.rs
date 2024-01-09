@@ -46,7 +46,7 @@ pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
 
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     unsafe {
-        if libc::isatty(libc::STDOUT_FILENO) != 1 {
+        if libc::isatty(out.as_raw_fd()) != 1 {
             return None;
         }
 
