@@ -39,7 +39,7 @@ pub fn read_secure() -> io::Result<String> {
     ))
 }
 
-pub fn read_single_key() -> io::Result<Key> {
+pub fn read_single_key(_ctrlc_key: bool) -> io::Result<Key> {
     Err(io::Error::new(
         io::ErrorKind::Other,
         "unsupported operation",
