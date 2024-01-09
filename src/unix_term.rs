@@ -5,7 +5,6 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::mem;
 use std::os::unix::io::AsRawFd;
-use std::ptr;
 use std::str;
 
 use crate::kb::Key;
@@ -50,7 +49,7 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
             return None;
         }
 
-        let mut winsize: libc::winsize = std::mem::zeroed();
+        let mut winsize: libc::winsize = mem::zeroed();
 
         // FIXME: ".into()" used as a temporary fix for a libc bug
         // https://github.com/rust-lang/libc/pull/704
@@ -81,7 +80,7 @@ pub fn read_secure() -> io::Result<String> {
         }
     };
 
-    let mut termios = core::mem::MaybeUninit::uninit();
+    let mut termios = mem::MaybeUninit::uninit();
     c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
@@ -125,7 +124,7 @@ fn select_fd(fd: i32, timeout: i32) -> io::Result<bool> {
 
         let mut timeout_val;
         let timeout = if timeout < 0 {
-            ptr::null_mut()
+            std::ptr::null_mut()
         } else {
             timeout_val = libc::timeval {
                 tv_sec: (timeout / 1000) as _,
@@ -139,8 +138,8 @@ fn select_fd(fd: i32, timeout: i32) -> io::Result<bool> {
         let ret = libc::select(
             fd + 1,
             &mut read_fd_set,
-            ptr::null_mut(),
-            ptr::null_mut(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
             timeout,
         );
         if ret < 0 {
