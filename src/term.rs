@@ -255,9 +255,7 @@ impl Term {
                 buffer.extend_from_slice(prompt.as_bytes());
                 Ok(())
             }
-            None => {
-                self.write_through(format!("{}\n{}", s, prompt.as_str()).as_bytes())
-            }
+            None => self.write_through(format!("{}\n{}", s, prompt.as_str()).as_bytes()),
         }
     }
 
@@ -315,7 +313,7 @@ impl Term {
     }
 
     /// Read one line of input with initial text.
-    /// 
+    ///
     /// This method blocks until no other thread is waiting for this read_line
     /// before reading a line from the terminal.
     /// This does not include the trailing newline.  If the terminal is not
@@ -331,31 +329,31 @@ impl Term {
         self.write_str(initial)?;
 
         fn read_line_internal(slf: &Term, initial: &str) -> io::Result<String> {
-                let prefix_len = initial.len();
+            let prefix_len = initial.len();
 
-                let mut chars: Vec<char> = initial.chars().collect();
+            let mut chars: Vec<char> = initial.chars().collect();
 
-                loop {
-                    match slf.read_key()? {
-                        Key::Backspace => {
-                            if prefix_len < chars.len() && chars.pop().is_some() {
-                                slf.clear_chars(1)?;
-                            }
-                            slf.flush()?;
+            loop {
+                match slf.read_key()? {
+                    Key::Backspace => {
+                        if prefix_len < chars.len() && chars.pop().is_some() {
+                            slf.clear_chars(1)?;
                         }
-                        Key::Char(chr) => {
-                            chars.push(chr);
-                            let mut bytes_char = [0; 4];
-                            chr.encode_utf8(&mut bytes_char);
-                            slf.write_str(chr.encode_utf8(&mut bytes_char))?;
-                            slf.flush()?;
-                        }
-                        Key::Enter => {
-                            slf.write_through(format!("\n{}", initial).as_bytes())?;
-                            break;
-                        }
-                        _ => (),
+                        slf.flush()?;
                     }
+                    Key::Char(chr) => {
+                        chars.push(chr);
+                        let mut bytes_char = [0; 4];
+                        chr.encode_utf8(&mut bytes_char);
+                        slf.write_str(chr.encode_utf8(&mut bytes_char))?;
+                        slf.flush()?;
+                    }
+                    Key::Enter => {
+                        slf.write_through(format!("\n{}", initial).as_bytes())?;
+                        break;
+                    }
+                    _ => (),
+                }
             }
             Ok(chars.iter().skip(prefix_len).collect::<String>())
         }
