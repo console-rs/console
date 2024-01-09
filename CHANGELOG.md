@@ -6,6 +6,7 @@
 
 * Added `wasm32-unknown-emscripten` target. (#179)
 * `read_line_initial_text` now retains the initial prefix. (#190)
+* Reading raw input now traps Ctrl+C. (#189)
 
 ### Bugfixes
 
