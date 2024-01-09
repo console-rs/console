@@ -294,7 +294,15 @@ impl Term {
         if !self.is_tty {
             Ok(Key::Unknown)
         } else {
-            read_single_key()
+            read_single_key(false)
+        }
+    }
+
+    pub fn read_key_raw(&self) -> io::Result<Key> {
+        if !self.is_tty {
+            Ok(Key::Unknown)
+        } else {
+            read_single_key(true)
         }
     }
 
