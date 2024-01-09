@@ -10,7 +10,7 @@ homepage = "https://github.com/console-rs/console"
 repository = "https://github.com/console-rs/console"
 documentation = "https://docs.rs/console"
 readme = "README.md"
-rust-version = "1.48.0"
+rust-version = "1.56.0"
 
 [features]
 default = ["unicode-width", "ansi-parsing"]
@@ -26,7 +26,7 @@ lazy_static = "1.4.0"
 encode_unicode = "0.3"
 
 [target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.48.0"
+version = "0.52.0"
 features = [
     "Win32_Foundation",
     "Win32_System_Console",
