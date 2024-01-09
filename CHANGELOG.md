@@ -12,6 +12,7 @@
 
 * Properly use configured output of `Term` to get terminal size (#186)
 * Aligned `read_line` and `read_line_initial_text`'s behavior. (#181)
+* Fixed soundness issue in `msys_tty_on`. (#183)
 
 ## 0.15.7
 
