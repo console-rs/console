@@ -295,7 +295,7 @@ fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
     }
 }
 
-pub fn read_single_key() -> io::Result<Key> {
+pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -321,8 +321,12 @@ pub fn read_single_key() -> io::Result<Key> {
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
         if err.kind() == io::ErrorKind::Interrupted {
-            unsafe {
-                libc::raise(libc::SIGINT);
+            if !ctrlc_key {
+                unsafe {
+                    libc::raise(libc::SIGINT);
+                }
+            } else {
+                return Ok(Key::CtrlC);
             }
         }
     }
