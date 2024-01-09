@@ -778,8 +778,8 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
                     }
                 }
                 (s, true) => {
-                    if rv.is_some() {
-                        rv.as_mut().unwrap().push_str(s);
+                    if let Some(ref mut rv) = rv {
+                        rv.push_str(s);
                     }
                 }
             }
