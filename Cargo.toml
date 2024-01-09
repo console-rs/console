@@ -1,7 +1,7 @@
 [package]
 name = "console"
 description = "A terminal and console abstraction for Rust"
-version = "0.15.7"
+version = "0.15.8"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
@@ -36,7 +36,11 @@ features = [
 
 [dev-dependencies]
 # Pick a setup for proptest that works with wasi
-proptest = { version = "1.0.0", default-features = false, features = ["std", "bit-set", "break-dead-code"] }
+proptest = { version = "1.0.0", default-features = false, features = [
+    "std",
+    "bit-set",
+    "break-dead-code",
+] }
 regex = "1.4.2"
 
 ## These are currently disabled.  If you want to play around with the benchmarks
