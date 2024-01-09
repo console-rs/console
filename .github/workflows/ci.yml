@@ -89,7 +89,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [wasm32-unknown-unknown]
+        include:
+          - target: wasm32-unknown-unknown
+            os: ubuntu-latest
+          - target: wasm32-unknown-emscripten
+            os: ubuntu-latest
+          - target: wasm32-unknown-emscripten
+            os: windows-latest
+          - target: wasm32-unknown-emscripten
+            os: macos-latest
     runs-on: ubuntu-latest
     steps:
       - name: Install rust

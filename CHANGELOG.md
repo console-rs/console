@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Enhancements
+
+* Added `wasm32-unknown-emscripten` target. (#179)
+* `read_line_initial_text` now retains the initial prefix. (#190)
+* Reading raw input now traps Ctrl+C. (#189)
+
+### Bugfixes
+
+* Properly use configured output of `Term` to get terminal size (#186)
+* Aligned `read_line` and `read_line_initial_text`'s behavior. (#181)
+
 ## 0.15.7
 
 ### Enhancements

@@ -26,4 +26,5 @@ pub enum Key {
     PageUp,
     PageDown,
     Char(char),
+    CtrlC,
 }

@@ -46,7 +46,7 @@ pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
 
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     unsafe {
-        if libc::isatty(libc::STDOUT_FILENO) != 1 {
+        if libc::isatty(out.as_raw_fd()) != 1 {
             return None;
         }
 
@@ -295,7 +295,7 @@ fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
     }
 }
 
-pub fn read_single_key() -> io::Result<Key> {
+pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -321,8 +321,12 @@ pub fn read_single_key() -> io::Result<Key> {
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
         if err.kind() == io::ErrorKind::Interrupted {
-            unsafe {
-                libc::raise(libc::SIGINT);
+            if !ctrlc_key {
+                unsafe {
+                    libc::raise(libc::SIGINT);
+                }
+            } else {
+                return Ok(Key::CtrlC);
             }
         }
     }

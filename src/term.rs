@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 use std::io::{self, Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -41,6 +41,8 @@ pub enum TermTarget {
 pub struct TermInner {
     target: TermTarget,
     buffer: Option<Mutex<Vec<u8>>>,
+    prompt: RwLock<String>,
+    prompt_guard: Mutex<()>,
 }
 
 /// The family of the terminal.
@@ -108,7 +110,7 @@ impl<'a> TermFeatures<'a> {
         {
             TermFamily::WindowsConsole
         }
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_arch = "wasm32")))]
         {
             TermFamily::UnixTerm
         }
@@ -149,6 +151,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -158,6 +162,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -166,6 +172,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stdout,
             buffer: Some(Mutex::new(vec![])),
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -174,6 +182,8 @@ impl Term {
         Term::with_inner(TermInner {
             target: TermTarget::Stderr,
             buffer: Some(Mutex::new(vec![])),
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -201,6 +211,8 @@ impl Term {
                 style,
             }),
             buffer: None,
+            prompt: RwLock::new(String::new()),
+            prompt_guard: Mutex::new(()),
         })
     }
 
@@ -231,14 +243,19 @@ impl Term {
 
     /// Write a string to the terminal and add a newline.
     pub fn write_line(&self, s: &str) -> io::Result<()> {
+        let prompt = self.inner.prompt.read().unwrap();
+        if !prompt.is_empty() {
+            self.clear_line()?;
+        }
         match self.inner.buffer {
             Some(ref mutex) => {
                 let mut buffer = mutex.lock().unwrap();
                 buffer.extend_from_slice(s.as_bytes());
                 buffer.push(b'\n');
+                buffer.extend_from_slice(prompt.as_bytes());
                 Ok(())
             }
-            None => self.write_through(format!("{}\n", s).as_bytes()),
+            None => self.write_through(format!("{}\n{}", s, prompt.as_str()).as_bytes()),
         }
     }
 
@@ -275,7 +292,15 @@ impl Term {
         if !self.is_tty {
             Ok(Key::Unknown)
         } else {
-            read_single_key()
+            read_single_key(false)
+        }
+    }
+
+    pub fn read_key_raw(&self) -> io::Result<Key> {
+        if !self.is_tty {
+            Ok(Key::Unknown)
+        } else {
+            read_single_key(true)
         }
     }
 
@@ -284,51 +309,58 @@ impl Term {
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line(&self) -> io::Result<String> {
-        if !self.is_tty {
-            return Ok("".into());
-        }
-        let mut rv = String::new();
-        io::stdin().read_line(&mut rv)?;
-        let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
-        rv.truncate(len);
-        Ok(rv)
+        self.read_line_initial_text("")
     }
 
     /// Read one line of input with initial text.
     ///
+    /// This method blocks until no other thread is waiting for this read_line
+    /// before reading a line from the terminal.
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
         if !self.is_tty {
             return Ok("".into());
         }
+        *self.inner.prompt.write().unwrap() = initial.to_string();
+        // use a guard in order to prevent races with other calls to read_line_initial_text
+        let _guard = self.inner.prompt_guard.lock().unwrap();
+
         self.write_str(initial)?;
 
-        let mut chars: Vec<char> = initial.chars().collect();
+        fn read_line_internal(slf: &Term, initial: &str) -> io::Result<String> {
+            let prefix_len = initial.len();
 
-        loop {
-            match self.read_key()? {
-                Key::Backspace => {
-                    if chars.pop().is_some() {
-                        self.clear_chars(1)?;
+            let mut chars: Vec<char> = initial.chars().collect();
+
+            loop {
+                match slf.read_key()? {
+                    Key::Backspace => {
+                        if prefix_len < chars.len() && chars.pop().is_some() {
+                            slf.clear_chars(1)?;
+                        }
+                        slf.flush()?;
                     }
-                    self.flush()?;
+                    Key::Char(chr) => {
+                        chars.push(chr);
+                        let mut bytes_char = [0; 4];
+                        chr.encode_utf8(&mut bytes_char);
+                        slf.write_str(chr.encode_utf8(&mut bytes_char))?;
+                        slf.flush()?;
+                    }
+                    Key::Enter => {
+                        slf.write_through(format!("\n{}", initial).as_bytes())?;
+                        break;
+                    }
+                    _ => (),
                 }
-                Key::Char(chr) => {
-                    chars.push(chr);
-                    let mut bytes_char = [0; 4];
-                    chr.encode_utf8(&mut bytes_char);
-                    self.write_str(chr.encode_utf8(&mut bytes_char))?;
-                    self.flush()?;
-                }
-                Key::Enter => {
-                    self.write_line("")?;
-                    break;
-                }
-                _ => (),
             }
+            Ok(chars.iter().skip(prefix_len).collect::<String>())
         }
-        Ok(chars.iter().collect::<String>())
+        let ret = read_line_internal(self, initial);
+
+        *self.inner.prompt.write().unwrap() = String::new();
+        ret
     }
 
     /// Read a line of input securely.
@@ -624,7 +656,7 @@ impl<'a> Read for &'a Term {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_arch = "wasm32")))]
 pub use crate::unix_term::*;
 #[cfg(target_arch = "wasm32")]
 pub use crate::wasm_term::*;
