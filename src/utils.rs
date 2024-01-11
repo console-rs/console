@@ -2,9 +2,11 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::term::{wants_emoji, Term};
 
@@ -419,6 +421,23 @@ impl Style {
     }
 }
 
+impl Style {
+    pub fn get_fg(&self) -> Option<Color> {
+        self.fg
+    }
+    pub fn get_bg(&self) -> Option<Color> {
+        self.bg
+    }
+    pub fn get_fg_bright(&self) -> bool {
+        self.fg_bright
+    }
+    pub fn get_bg_bright(&self) -> bool {
+        self.bg_bright
+    }
+    pub fn get_attrs(&self) -> &BTreeSet<Attribute> {
+        &self.attrs
+    }
+}
 /// Wraps an object for formatting for styling.
 ///
 /// Example:
@@ -820,6 +839,7 @@ pub fn pad_str<'a>(
 ) -> Cow<'a, str> {
     pad_str_with(s, width, align, truncate, ' ')
 }
+
 /// Pads a string with specific padding to fill a certain number of characters.
 ///
 /// This will honor ansi codes correctly and allows you to align a string
