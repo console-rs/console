@@ -473,6 +473,14 @@ impl Term {
         clear_line(self)
     }
 
+    /// Clear from the current cursor position to the end of the line.
+    ///
+    /// Position of the cursor does not change.
+    #[inline]
+    pub fn clear_to_end_of_line(&self) -> io::Result<()> {
+        clear_to_end_of_line(self)
+    }
+
     /// Clear the last `n` lines before the current line.
     ///
     /// Position the cursor at the beginning of the first line that was cleared.
