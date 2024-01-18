@@ -17,8 +17,15 @@ fn strip_ansi_codes(s: &str) -> &str {
 }
 
 fn default_colors_enabled(out: &Term) -> bool {
-    (out.features().colors_supported()
-        && &env::var("CLICOLOR").unwrap_or_else(|_| "1".into()) != "0")
+    let clicolor_enabled = out.features().colors_supported()
+        && &env::var("CLICOLOR").unwrap_or_else(|_| "1".into()) != "0";
+
+    let no_color_enabled = match env::var("NO_COLOR") {
+        Ok(val) => val.to_lowercase() != "0" && val.to_lowercase() != "false",
+        Err(_) => false,  // Dacă variabila nu este setată, presupunem că nu este activată
+    };
+
+    (clicolor_enabled && !no_color_enabled)
         || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
