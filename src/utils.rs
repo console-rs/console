@@ -22,7 +22,7 @@ fn default_colors_enabled(out: &Term) -> bool {
 
     let no_color_enabled = match env::var("NO_COLOR") {
         Ok(val) => val.to_lowercase() != "0" && val.to_lowercase() != "false",
-        Err(_) => false,  // Dacă variabila nu este setată, presupunem că nu este activată
+        Err(_) => false,  
     };
 
     (clicolor_enabled && !no_color_enabled)
