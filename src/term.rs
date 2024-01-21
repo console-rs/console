@@ -66,7 +66,13 @@ impl<'a> TermFeatures<'a> {
     /// Check if this is a real user attended terminal (`isatty`)
     #[inline]
     pub fn is_attended(&self) -> bool {
-        is_a_terminal(self.0)
+        self.0.tty.is_tty
+    }
+
+    /// Check if input is a terminal
+    #[inline]
+    pub fn is_input_a_tty(&self) -> bool {
+        self.0.tty.input
     }
 
     /// Check if colors are supported by this terminal.
@@ -82,16 +88,10 @@ impl<'a> TermFeatures<'a> {
     ///
     /// This is sometimes useful to disable features that are known to not
     /// work on msys terminals or require special handling.
+    #[cfg(windows)]
     #[inline]
     pub fn is_msys_tty(&self) -> bool {
-        #[cfg(windows)]
-        {
-            msys_tty_on(self.0)
-        }
-        #[cfg(not(windows))]
-        {
-            false
-        }
+        self.0.tty.msys
     }
 
     /// Check if this terminal wants emojis.
@@ -121,6 +121,62 @@ impl<'a> TermFeatures<'a> {
     }
 }
 
+pub(crate) enum Stream {
+    Stdin,
+    Stdout,
+    Stderr,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Tty {
+    /// Only considers output streams. Left for compatibility with `Term.is_tty`
+    pub(crate) is_tty: bool,
+    input: bool,
+    output: bool,
+    error: bool,
+    #[cfg(windows)]
+    pub(crate) msys: bool,
+}
+
+impl From<&TermTarget> for Tty {
+    fn from(target: &TermTarget) -> Self {
+        let mut tty = Self {
+            is_tty: false,
+            input: is_a_tty(Stream::Stdin),
+            output: is_a_tty(Stream::Stdout),
+            error: is_a_tty(Stream::Stderr),
+            #[cfg(windows)]
+            msys: msys_tty_on(&target),
+        };
+        tty.is_tty = match target {
+            TermTarget::Stdout => tty.output,
+            TermTarget::Stderr => tty.error,
+            #[cfg(unix)]
+            TermTarget::ReadWritePair(_) => false,
+        };
+
+        #[cfg(windows)]
+        {
+            if !tty.is_tty {
+                // At this point, we *could* have a false negative. We can determine that
+                // this is true negative if we can detect the presence of a console on
+                // any of the other streams. If another stream has a console, then we know
+                // we're in a Windows console and can therefore trust the negative.
+                tty.is_tty = if match target {
+                    TermTarget::Stdout => tty.input || tty.error,
+                    TermTarget::Stderr => tty.input || tty.output,
+                } {
+                    false
+                } else {
+                    tty.msys
+                }
+            }
+        }
+
+        tty
+    }
+}
+
 /// Abstraction around a terminal.
 ///
 /// A terminal can be cloned.  If a buffer is used it's shared across all
@@ -128,21 +184,16 @@ impl<'a> TermFeatures<'a> {
 #[derive(Clone, Debug)]
 pub struct Term {
     inner: Arc<TermInner>,
-    pub(crate) is_msys_tty: bool,
-    pub(crate) is_tty: bool,
+    pub(crate) tty: Tty,
 }
 
 impl Term {
     fn with_inner(inner: TermInner) -> Term {
-        let mut term = Term {
+        let tty = Tty::from(&inner.target);
+        Term {
             inner: Arc::new(inner),
-            is_msys_tty: false,
-            is_tty: false,
-        };
-
-        term.is_msys_tty = term.features().is_msys_tty();
-        term.is_tty = term.features().is_attended();
-        term
+            tty,
+        }
     }
 
     /// Return a new unbuffered terminal.
@@ -265,7 +316,7 @@ impl Term {
     /// or complete key chord is entered.  If the terminal is not user attended
     /// the return value will be an error.
     pub fn read_char(&self) -> io::Result<char> {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             return Err(io::Error::new(
                 io::ErrorKind::NotConnected,
                 "Not a terminal",
@@ -289,7 +340,7 @@ impl Term {
     /// This does not echo anything.  If the terminal is not user attended
     /// the return value will always be the unknown key.
     pub fn read_key(&self) -> io::Result<Key> {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             Ok(Key::Unknown)
         } else {
             read_single_key(false)
@@ -297,7 +348,7 @@ impl Term {
     }
 
     pub fn read_key_raw(&self) -> io::Result<Key> {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             Ok(Key::Unknown)
         } else {
             read_single_key(true)
@@ -319,7 +370,7 @@ impl Term {
     /// This does not include the trailing newline.  If the terminal is not
     /// user attended the return value will always be an empty string.
     pub fn read_line_initial_text(&self, initial: &str) -> io::Result<String> {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             return Ok("".into());
         }
         *self.inner.prompt.write().unwrap() = initial.to_string();
@@ -369,7 +420,7 @@ impl Term {
     /// also switches the terminal into a different mode where not all
     /// characters might be accepted.
     pub fn read_secure_line(&self) -> io::Result<String> {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             return Ok("".into());
         }
         match read_secure() {
@@ -400,7 +451,7 @@ impl Term {
     /// Check if the terminal is indeed a terminal.
     #[inline]
     pub fn is_term(&self) -> bool {
-        self.is_tty
+        self.tty.is_tty
     }
 
     /// Check for common terminal features.
@@ -509,7 +560,7 @@ impl Term {
 
     /// Set the terminal title.
     pub fn set_title<T: Display>(&self, title: T) {
-        if !self.is_tty {
+        if !self.tty.is_tty {
             return;
         }
         set_title(title);

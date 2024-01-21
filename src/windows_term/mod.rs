@@ -19,13 +19,13 @@ use windows_sys::Win32::System::Console::{
     GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
     SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleMode, SetConsoleTitleW,
     CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, KEY_EVENT,
-    KEY_EVENT_RECORD, STD_ERROR_HANDLE, STD_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    KEY_EVENT_RECORD, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
 use crate::common_term;
 use crate::kb::Key;
-use crate::term::{Term, TermTarget};
+use crate::term::{Stream, Term, TermTarget};
 
 #[cfg(feature = "windows-console-colors")]
 mod colors;
@@ -41,34 +41,22 @@ pub fn as_handle(term: &Term) -> HANDLE {
     term.as_raw_handle() as HANDLE
 }
 
-pub fn is_a_terminal(out: &Term) -> bool {
-    let (fd, others) = match out.target() {
-        TermTarget::Stdout => (STD_OUTPUT_HANDLE, [STD_INPUT_HANDLE, STD_ERROR_HANDLE]),
-        TermTarget::Stderr => (STD_ERROR_HANDLE, [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE]),
+pub fn is_a_tty(stream: Stream) -> bool {
+    let fd = match stream {
+        Stream::Stdin => STD_INPUT_HANDLE,
+        Stream::Stdout => STD_OUTPUT_HANDLE,
+        Stream::Stderr => STD_ERROR_HANDLE,
     };
 
-    if unsafe { console_on_any(&[fd]) } {
-        // False positives aren't possible. If we got a console then
-        // we definitely have a tty on stdin.
-        return true;
-    }
-
-    // At this point, we *could* have a false negative. We can determine that
-    // this is true negative if we can detect the presence of a console on
-    // any of the other streams. If another stream has a console, then we know
-    // we're in a Windows console and can therefore trust the negative.
-    if unsafe { console_on_any(&others) } {
-        return false;
-    }
-
-    msys_tty_on(out)
+    let mut out = 0;
+    unsafe { GetConsoleMode(GetStdHandle(fd), &mut out) != 0 }
 }
 
 pub fn is_a_color_terminal(out: &Term) -> bool {
-    if !is_a_terminal(out) {
+    if !out.is_term() {
         return false;
     }
-    if msys_tty_on(out) {
+    if out.tty.msys {
         return match env::var("TERM") {
             Ok(term) => term != "dumb",
             Err(_) => true,
@@ -93,17 +81,6 @@ fn enable_ansi_on(out: &Term) -> bool {
 
         true
     }
-}
-
-unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
-    for &fd in fds {
-        let mut out = 0;
-        let handle = GetStdHandle(fd);
-        if GetConsoleMode(handle, &mut out) != 0 {
-            return true;
-        }
-    }
-    false
 }
 
 pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
@@ -141,7 +118,7 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
 }
 
 pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::move_cursor_to(out, x, y);
     }
     if let Some((hand, _)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -159,7 +136,7 @@ pub fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::move_cursor_up(out, n);
     }
 
@@ -170,7 +147,7 @@ pub fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::move_cursor_down(out, n);
     }
 
@@ -181,7 +158,7 @@ pub fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::move_cursor_left(out, n);
     }
 
@@ -196,7 +173,7 @@ pub fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::move_cursor_right(out, n);
     }
 
@@ -211,7 +188,7 @@ pub fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn clear_line(out: &Term) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::clear_line(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -231,7 +208,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
 }
 
 pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::clear_chars(out, n);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -251,7 +228,7 @@ pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
 }
 
 pub fn clear_screen(out: &Term) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::clear_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -268,7 +245,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
 }
 
 pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::clear_to_end_of_screen(out);
     }
     if let Some((hand, csbi)) = get_console_screen_buffer_info(as_handle(out)) {
@@ -289,7 +266,7 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
 }
 
 pub fn show_cursor(out: &Term) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::show_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
@@ -302,7 +279,7 @@ pub fn show_cursor(out: &Term) -> io::Result<()> {
 }
 
 pub fn hide_cursor(out: &Term) -> io::Result<()> {
-    if out.is_msys_tty {
+    if out.tty.msys {
         return common_term::hide_cursor(out);
     }
     if let Some((hand, mut cci)) = get_console_cursor_info(as_handle(out)) {
@@ -509,9 +486,12 @@ pub fn wants_emoji() -> bool {
 }
 
 /// Returns true if there is an MSYS tty on the given handle.
-pub fn msys_tty_on(term: &Term) -> bool {
-    let handle = term.as_raw_handle();
+pub fn msys_tty_on(target: &TermTarget) -> bool {
     unsafe {
+        let handle = match target {
+            TermTarget::Stdout => GetStdHandle(STD_OUTPUT_HANDLE),
+            TermTarget::Stderr => GetStdHandle(STD_ERROR_HANDLE),
+        };
         // Check whether the Windows 10 native pty is enabled
         {
             let mut out = MaybeUninit::uninit();

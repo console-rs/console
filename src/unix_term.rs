@@ -8,7 +8,7 @@ use std::os::unix::io::AsRawFd;
 use std::str;
 
 use crate::kb::Key;
-use crate::term::Term;
+use crate::term::{Stream, Term};
 
 pub use crate::common_term::*;
 
@@ -17,6 +17,16 @@ pub const DEFAULT_WIDTH: u16 = 80;
 #[inline]
 pub fn is_a_terminal(out: &Term) -> bool {
     unsafe { libc::isatty(out.as_raw_fd()) != 0 }
+}
+
+#[inline]
+pub fn is_a_tty(stream: Stream) -> bool {
+    let fd = match stream {
+        Stream::Stdin => libc::STDIN_FILENO,
+        Stream::Stdout => libc::STDOUT_FILENO,
+        Stream::Stderr => libc::STDERR_FILENO,
+    };
+    unsafe { libc::isatty(fd) == 1 }
 }
 
 pub fn is_a_color_terminal(out: &Term) -> bool {
@@ -65,19 +75,17 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
 
 pub fn read_secure() -> io::Result<String> {
     let f_tty;
-    let fd = unsafe {
-        if libc::isatty(libc::STDIN_FILENO) == 1 {
-            f_tty = None;
-            libc::STDIN_FILENO
-        } else {
-            let f = fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open("/dev/tty")?;
-            let fd = f.as_raw_fd();
-            f_tty = Some(BufReader::new(f));
-            fd
-        }
+    let fd = if is_a_tty(Stream::Stdin) {
+        f_tty = None;
+        libc::STDIN_FILENO
+    } else {
+        let f = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/tty")?;
+        let fd = f.as_raw_fd();
+        f_tty = Some(BufReader::new(f));
+        fd
     };
 
     let mut termios = mem::MaybeUninit::uninit();
@@ -296,16 +304,14 @@ fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
 
 pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let tty_f;
-    let fd = unsafe {
-        if libc::isatty(libc::STDIN_FILENO) == 1 {
-            libc::STDIN_FILENO
-        } else {
-            tty_f = fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open("/dev/tty")?;
-            tty_f.as_raw_fd()
-        }
+    let fd = if is_a_tty(Stream::Stdin) {
+        libc::STDIN_FILENO
+    } else {
+        tty_f = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/tty")?;
+        tty_f.as_raw_fd()
     };
     let mut termios = core::mem::MaybeUninit::uninit();
     c_result(|| unsafe { libc::tcgetattr(fd, termios.as_mut_ptr()) })?;
