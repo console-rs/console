@@ -84,7 +84,7 @@ pub enum Color {
     Blue,
     Magenta,
     Cyan,
-    Silver,
+    White,
     Grey,
     Maroon,
     Lime,
@@ -92,7 +92,7 @@ pub enum Color {
     Navy,
     Aqua,
     Olive,
-    White,
+    BrightWhite,
     Color256(u8),
 }
 
@@ -107,7 +107,7 @@ impl Color {
             Color::Blue => 12,
             Color::Magenta => 5,
             Color::Cyan => 6,
-            Color::Silver => 7,
+            Color::White => 7,
             Color::Grey => 8,
             Color::Maroon => 9,
             Color::Lime => 10,
@@ -115,7 +115,7 @@ impl Color {
             Color::Navy => 4,
             Color::Olive => 3,
             Color::Aqua => 14,
-            Color::White => 15,
+            Color::BrightWhite => 15,
             Color::Color256(x) => x as usize,
         }
     }
@@ -219,7 +219,7 @@ impl Style {
                 "blue" => rv.blue(),
                 "magenta" => rv.magenta(),
                 "cyan" => rv.cyan(),
-                "silver" => rv.silver(),
+                "white" => rv.white(),
                 "aqua" => rv.aqua(),
                 "grey" => rv.grey(),
                 "maroon" => rv.maroon(),
@@ -227,7 +227,7 @@ impl Style {
                 "fuchsia" => rv.fuchsia(),
                 "navy" => rv.navy(),
                 "olive" => rv.olive(),
-                "white" => rv.white(),
+                "brightwhite" => rv.brightwhite(),
                 "bright" => rv.bright(),
                 "on_black" => rv.on_black(),
                 "on_red" => rv.on_red(),
@@ -236,7 +236,7 @@ impl Style {
                 "on_blue" => rv.on_blue(),
                 "on_magenta" => rv.on_magenta(),
                 "on_cyan" => rv.on_cyan(),
-                "on_silver" => rv.on_silver(),
+                "on_white" => rv.on_white(),
                 "on_grey" => rv.on_grey(),
                 "on_maroon" => rv.on_maroon(),
                 "on_lime" => rv.on_lime(),
@@ -244,7 +244,7 @@ impl Style {
                 "on_navy" => rv.on_navy(),
                 "on_olive" => rv.on_olive(),
                 "on_aqua" => rv.on_aqua(),
-                "on_white" => rv.on_white(),
+                "on_brightwhite" => rv.on_brightwhite(),
                 "on_bright" => rv.on_bright(),
                 "bold" => rv.bold(),
                 "dim" => rv.dim(),
@@ -360,8 +360,8 @@ impl Style {
         self.fg(Color::Aqua)
     }
     #[inline]
-    pub fn silver(self) -> Style {
-        self.fg(Color::Silver)
+    pub fn brightwhite(self) -> Style {
+        self.fg(Color::BrightWhite)
     }
     #[inline]
     pub fn grey(self) -> Style {
@@ -435,8 +435,8 @@ impl Style {
         self.bg(Color::Aqua)
     }
     #[inline]
-    pub fn on_silver(self) -> Style {
-        self.bg(Color::Silver)
+    pub fn on_brightwhite(self) -> Style {
+        self.bg(Color::BrightWhite)
     }
     #[inline]
     pub fn on_grey(self) -> Style {
@@ -661,8 +661,8 @@ impl<D> StyledObject<D> {
         self.bg(Color::Cyan)
     }
     #[inline]
-    pub fn on_silver(self) -> StyledObject<D> {
-        self.bg(Color::Silver)
+    pub fn on_brightwhite(self) -> StyledObject<D> {
+        self.bg(Color::BrightWhite)
     }
     #[inline]
     pub fn on_grey(self) -> StyledObject<D> {
