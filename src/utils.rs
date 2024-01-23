@@ -85,6 +85,14 @@ pub enum Color {
     Magenta,
     Cyan,
     White,
+    Grey,
+    Maroon,
+    Lime,
+    Fuchsia,
+    Navy,
+    Aqua,
+    Olive,
+    BrightWhite,
     Color256(u8),
 }
 
@@ -95,11 +103,19 @@ impl Color {
             Color::Black => 0,
             Color::Red => 1,
             Color::Green => 2,
-            Color::Yellow => 3,
-            Color::Blue => 4,
+            Color::Yellow => 11,
+            Color::Blue => 12,
             Color::Magenta => 5,
             Color::Cyan => 6,
             Color::White => 7,
+            Color::Grey => 8,
+            Color::Maroon => 9,
+            Color::Lime => 10,
+            Color::Fuchsia => 13,
+            Color::Navy => 4,
+            Color::Olive => 3,
+            Color::Aqua => 14,
+            Color::BrightWhite => 15,
             Color::Color256(x) => x as usize,
         }
     }
@@ -204,6 +220,14 @@ impl Style {
                 "magenta" => rv.magenta(),
                 "cyan" => rv.cyan(),
                 "white" => rv.white(),
+                "aqua" => rv.aqua(),
+                "grey" => rv.grey(),
+                "maroon" => rv.maroon(),
+                "lime" => rv.lime(),
+                "fuchsia" => rv.fuchsia(),
+                "navy" => rv.navy(),
+                "olive" => rv.olive(),
+                "brightwhite" => rv.brightwhite(),
                 "bright" => rv.bright(),
                 "on_black" => rv.on_black(),
                 "on_red" => rv.on_red(),
@@ -213,6 +237,14 @@ impl Style {
                 "on_magenta" => rv.on_magenta(),
                 "on_cyan" => rv.on_cyan(),
                 "on_white" => rv.on_white(),
+                "on_grey" => rv.on_grey(),
+                "on_maroon" => rv.on_maroon(),
+                "on_lime" => rv.on_lime(),
+                "on_fuchsia" => rv.on_fuchsia(),
+                "on_navy" => rv.on_navy(),
+                "on_olive" => rv.on_olive(),
+                "on_aqua" => rv.on_aqua(),
+                "on_brightwhite" => rv.on_brightwhite(),
                 "on_bright" => rv.on_bright(),
                 "bold" => rv.bold(),
                 "dim" => rv.dim(),
@@ -324,6 +356,38 @@ impl Style {
         self.fg(Color::Cyan)
     }
     #[inline]
+    pub fn aqua(self) -> Style {
+        self.fg(Color::Aqua)
+    }
+    #[inline]
+    pub fn brightwhite(self) -> Style {
+        self.fg(Color::BrightWhite)
+    }
+    #[inline]
+    pub fn grey(self) -> Style {
+        self.fg(Color::Grey)
+    }
+    #[inline]
+    pub fn maroon(self) -> Style {
+        self.fg(Color::Maroon)
+    }
+    #[inline]
+    pub fn lime(self) -> Style {
+        self.fg(Color::Lime)
+    }
+    #[inline]
+    pub fn fuchsia(self) -> Style {
+        self.fg(Color::Fuchsia)
+    }
+    #[inline]
+    pub fn navy(self) -> Style {
+        self.fg(Color::Navy)
+    }
+    #[inline]
+    pub fn olive(self) -> Style {
+        self.fg(Color::Olive)
+    }
+    #[inline]
     pub fn white(self) -> Style {
         self.fg(Color::White)
     }
@@ -365,6 +429,38 @@ impl Style {
     #[inline]
     pub fn on_cyan(self) -> Style {
         self.bg(Color::Cyan)
+    }
+    #[inline]
+    pub fn on_aqua(self) -> Style {
+        self.bg(Color::Aqua)
+    }
+    #[inline]
+    pub fn on_brightwhite(self) -> Style {
+        self.bg(Color::BrightWhite)
+    }
+    #[inline]
+    pub fn on_grey(self) -> Style {
+        self.bg(Color::Grey)
+    }
+    #[inline]
+    pub fn on_maroon(self) -> Style {
+        self.bg(Color::Maroon)
+    }
+    #[inline]
+    pub fn on_lime(self) -> Style {
+        self.bg(Color::Lime)
+    }
+    #[inline]
+    pub fn on_fuchsia(self) -> Style {
+        self.bg(Color::Fuchsia)
+    }
+    #[inline]
+    pub fn on_navy(self) -> Style {
+        self.bg(Color::Navy)
+    }
+    #[inline]
+    pub fn on_olive(self) -> Style {
+        self.bg(Color::Olive)
     }
     #[inline]
     pub fn on_white(self) -> Style {
@@ -563,6 +659,34 @@ impl<D> StyledObject<D> {
     #[inline]
     pub fn on_cyan(self) -> StyledObject<D> {
         self.bg(Color::Cyan)
+    }
+    #[inline]
+    pub fn on_brightwhite(self) -> StyledObject<D> {
+        self.bg(Color::BrightWhite)
+    }
+    #[inline]
+    pub fn on_grey(self) -> StyledObject<D> {
+        self.bg(Color::Grey)
+    }
+    #[inline]
+    pub fn on_maroon(self) -> StyledObject<D> {
+        self.bg(Color::Maroon)
+    }
+    #[inline]
+    pub fn on_lime(self) -> StyledObject<D> {
+        self.bg(Color::Lime)
+    }
+    #[inline]
+    pub fn on_fuchsia(self) -> StyledObject<D> {
+        self.bg(Color::Fuchsia)
+    }
+    #[inline]
+    pub fn on_navy(self) -> StyledObject<D> {
+        self.bg(Color::Navy)
+    }
+    #[inline]
+    pub fn on_olive(self) -> StyledObject<D> {
+        self.bg(Color::Olive)
     }
     #[inline]
     pub fn on_white(self) -> StyledObject<D> {
