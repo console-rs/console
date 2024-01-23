@@ -292,15 +292,25 @@ impl Term {
         if !self.is_tty {
             Ok(Key::Unknown)
         } else {
-            read_single_key(false)
+            read_single_key(false, false)
         }
     }
 
+    /// Like [`read_key`](Self::read_key) but disables the cursor.
+    pub fn read_key_no_cursor(&self) -> io::Result<Key> {
+        if !self.is_tty {
+            Ok(Key::Unknown)
+        } else {
+            read_single_key(false, true)
+        }
+    }
+
+    /// Like [`read_key`](Self::read_key) but it can catch `CtrlC`.
     pub fn read_key_raw(&self) -> io::Result<Key> {
         if !self.is_tty {
             Ok(Key::Unknown)
         } else {
-            read_single_key(true)
+            read_single_key(true, false)
         }
     }
 

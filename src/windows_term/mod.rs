@@ -354,7 +354,7 @@ pub fn key_from_key_code(code: VIRTUAL_KEY) -> Key {
 pub fn read_secure() -> io::Result<String> {
     let mut rv = String::new();
     loop {
-        match read_single_key(false)? {
+        match read_single_key(false, false)? {
             Key::Enter => {
                 break;
             }
@@ -373,7 +373,7 @@ pub fn read_secure() -> io::Result<String> {
     Ok(rv)
 }
 
-pub fn read_single_key(_ctrlc_key: bool) -> io::Result<Key> {
+pub fn read_single_key(_ctrlc_key: bool, _hide_cursor: bool) -> io::Result<Key> {
     let key_event = read_key_event()?;
 
     let unicode_char = unsafe { key_event.uChar.UnicodeChar };

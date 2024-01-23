@@ -294,7 +294,7 @@ fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
     }
 }
 
-pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
+pub fn read_single_key(ctrlc_key: bool, hide_cursor: bool) -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -314,8 +314,19 @@ pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     unsafe { libc::cfmakeraw(&mut termios) };
     termios.c_oflag = original.c_oflag;
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &termios) })?;
+
+    if hide_cursor {
+        unsafe {
+            libc::write(fd, b"\x1b[?25l".as_ptr() as *const _, 6);
+        }
+    }
     let rv: io::Result<Key> = read_single_key_impl(fd);
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) })?;
+    if hide_cursor {
+        unsafe {
+            libc::write(fd, b"\x1b[?25h".as_ptr() as *const _, 6);
+        }
+    }
 
     // if the user hit ^C we want to signal SIGINT to outselves.
     if let Err(ref err) = rv {
