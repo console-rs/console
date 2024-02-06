@@ -5,7 +5,6 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::mem;
 use std::os::unix::io::AsRawFd;
-use std::ptr;
 use std::os::unix::io::FromRawFd;
 use std::os::unix::io::IntoRawFd;
 use std::str;
@@ -122,6 +121,8 @@ fn poll_fd(fd: i32, timeout: i32) -> io::Result<bool> {
 
 #[cfg(target_os = "macos")]
 fn select_fd(fd: i32, timeout: i32) -> io::Result<bool> {
+    use std::ptr;
+
     unsafe {
         let mut read_fd_set: libc::fd_set = mem::zeroed();
 
