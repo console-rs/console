@@ -11,11 +11,6 @@ use crate::term::{wants_emoji, Term};
 #[cfg(feature = "ansi-parsing")]
 use crate::ansi::AnsiCodeIterator;
 
-#[cfg(not(feature = "ansi-parsing"))]
-fn strip_ansi_codes(s: &str) -> &str {
-    s
-}
-
 fn default_colors_enabled(out: &Term) -> bool {
     (out.features().colors_supported()
         && &env::var("CLICOLOR").unwrap_or_else(|_| "1".into()) != "0")
