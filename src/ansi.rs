@@ -4,8 +4,6 @@ use std::{
     str::CharIndices,
 };
 
-use crate::utils::char_width;
-
 #[derive(Debug, Clone, Copy)]
 enum State {
     Start,
@@ -269,63 +267,8 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
 
 impl FusedIterator for AnsiCodeIterator<'_> {}
 
-/// Slice a `&str` in terms of text width. This means that only the text
-/// columns strictly between `start` and `stop` will be kept.
-///
-/// If a multi-columns character overlaps with the end of the interval it will
-/// not be included. In such a case, the result will be less than `end - start`
-/// columns wide.
-pub fn slice_ansi_str(s: &str, start: usize, end: usize) -> &str {
-    if end <= start {
-        return "";
-    }
-
-    let mut pos = 0;
-    let mut res_start = 0;
-    let mut res_end = 0;
-
-    'outer: for (sub, is_ansi) in AnsiCodeIterator::new(s) {
-        // As ansi symbols have a width of 0 we can safely early-interupt
-        // the outer for loop only if current pos strictly greater than
-        // `end`.
-        if pos > end {
-            break;
-        }
-
-        if is_ansi {
-            if pos < start {
-                res_start += sub.len();
-                res_end = res_start;
-            } else if pos <= end {
-                res_end += sub.len();
-            } else {
-                break 'outer;
-            }
-        } else {
-            for c in sub.chars() {
-                let c_width = char_width(c);
-
-                if pos < start {
-                    res_start += c.len_utf8();
-                    res_end = res_start;
-                } else if pos + c_width <= end {
-                    res_end += c.len_utf8();
-                } else {
-                    break 'outer;
-                }
-
-                pos += char_width(c);
-            }
-        }
-    }
-
-    &s[res_start..res_end]
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::measure_text_width;
-
     use super::*;
 
     use once_cell::sync::Lazy;
@@ -491,38 +434,5 @@ mod tests {
         assert_eq!(iter.current_slice(), "\x1b[31m\x1b[1ma\x1b[0m");
         assert_eq!(iter.rest_slice(), "");
         assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn test_slice_ansi_str() {
-        // Note that 🐶 is two columns wide
-        let test_str = "Hello\x1b[31m🐶\x1b[1m🐶\x1b[0m world!";
-        assert_eq!(slice_ansi_str(test_str, 5, 5), "");
-        assert_eq!(slice_ansi_str(test_str, 0, test_str.len()), test_str);
-
-        if cfg!(feature = "unicode-width") {
-            assert_eq!(slice_ansi_str(test_str, 0, 5), "Hello\x1b[31m");
-            assert_eq!(slice_ansi_str(test_str, 0, 6), "Hello\x1b[31m");
-            assert_eq!(measure_text_width(test_str), 16);
-            assert_eq!(slice_ansi_str(test_str, 0, 5), "Hello\x1b[31m");
-            assert_eq!(slice_ansi_str(test_str, 0, 6), "Hello\x1b[31m");
-            assert_eq!(slice_ansi_str(test_str, 0, 7), "Hello\x1b[31m🐶\x1b[1m");
-            assert_eq!(slice_ansi_str(test_str, 7, 21), "\x1b[1m🐶\x1b[0m world!");
-            assert_eq!(slice_ansi_str(test_str, 8, 21), "\x1b[0m world!");
-            assert_eq!(slice_ansi_str(test_str, 9, 21), "\x1b[0m world!");
-
-            assert_eq!(
-                slice_ansi_str(test_str, 4, 9),
-                "o\x1b[31m🐶\x1b[1m🐶\x1b[0m"
-            );
-        } else {
-            assert_eq!(slice_ansi_str(test_str, 0, 5), "Hello\x1b[31m");
-            assert_eq!(slice_ansi_str(test_str, 0, 6), "Hello\x1b[31m🐶\u{1b}[1m");
-
-            assert_eq!(
-                slice_ansi_str(test_str, 4, 9),
-                "o\x1b[31m🐶\x1b[1m🐶\x1b[0m w"
-            );
-        }
     }
 }
