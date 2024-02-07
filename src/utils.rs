@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 use crate::term::{wants_emoji, Term};
 
 #[cfg(feature = "ansi-parsing")]
-use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
+use crate::ansi::AnsiCodeIterator;
 
 #[cfg(not(feature = "ansi-parsing"))]
 fn strip_ansi_codes(s: &str) -> &str {
@@ -71,7 +71,17 @@ pub fn set_colors_enabled_stderr(val: bool) {
 
 /// Measure the width of a string in terminal characters.
 pub fn measure_text_width(s: &str) -> usize {
-    str_width(&strip_ansi_codes(s))
+    #[cfg(feature = "ansi-parsing")]
+    {
+        AnsiCodeIterator::new(s)
+            .filter(|(_, is_ansi)| !is_ansi)
+            .map(|(sub, _)| str_width(sub))
+            .sum()
+    }
+    #[cfg(not(feature = "ansi-parsing"))]
+    {
+        str_width(s)
+    }
 }
 
 /// A terminal color.
@@ -936,15 +946,18 @@ fn test_text_width() {
         .on_black()
         .bold()
         .force_styling(true)
-        .to_string();
+        .to_string()
+        + "🐶bar";
     assert_eq!(
         measure_text_width(&s),
-        if cfg!(feature = "ansi-parsing") {
-            3
-        } else if cfg!(feature = "unicode-width") {
-            17
-        } else {
-            21
+        match (
+            cfg!(feature = "ansi-parsing"),
+            cfg!(feature = "unicode-width")
+        ) {
+            (true, true) => 8,
+            (true, false) => 7,
+            (false, true) => 22,
+            (false, false) => 25,
         }
     );
 }
