@@ -84,8 +84,8 @@ pub use crate::term::{
 };
 pub use crate::utils::{
     colors_enabled, colors_enabled_stderr, measure_text_width, pad_str, pad_str_with,
-    set_colors_enabled, set_colors_enabled_stderr, style, truncate_str, Alignment, Attribute,
-    Color, Emoji, Style, StyledObject,
+    set_colors_enabled, set_colors_enabled_stderr, slice_str, style, truncate_str, Alignment,
+    Attribute, Color, Emoji, Style, StyledObject,
 };
 
 #[cfg(feature = "ansi-parsing")]
