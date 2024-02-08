@@ -815,61 +815,81 @@ pub(crate) fn char_width(_c: char) -> usize {
 ///
 /// This ensures that escape codes are not screwed up in the process. And if
 /// non-empty head and tail are specified, they are inserted between the ANSI
-/// symbols from truncated bounds and the slice.
+/// codes from truncated bounds and the slice.
 pub fn slice_str<'a>(s: &'a str, head: &str, bounds: Range<usize>, tail: &str) -> Cow<'a, str> {
     #[cfg(feature = "ansi-parsing")]
     {
         let mut pos = 0;
-        let mut slice = 0..0;
+        let mut code_iter = AnsiCodeIterator::new(s).peekable();
 
-        // ANSI symbols outside of the slice
+        // Search for the begining of the slice while collecting heading ANSI
+        // codes
+        let mut slice_start = 0;
         let mut front_ansi = String::new();
-        let mut back_ansi = String::new();
 
-        // Iterate through each ANSI symbol or unicode character while keeping
-        // track of:
-        //   - pos: cumulated width of characters iterated so far
-        //   - slice: char indices of the part of the string for which `pos`
-        //     was inside bounds
-        for (sub, is_ansi) in AnsiCodeIterator::new(s) {
+        while pos < bounds.start {
+            let Some((sub, is_ansi)) = code_iter.peek_mut() else {
+                break;
+            };
+
+            if *is_ansi {
+                front_ansi.push_str(sub);
+                slice_start += sub.len();
+            } else if let Some(c) = sub.chars().next() {
+                // Pop the head char of `sub` while keeping `sub` on top of
+                // the iterator
+                pos += char_width(c);
+                slice_start += c.len_utf8();
+                *sub = &sub[c.len_utf8()..];
+                continue;
+            }
+
+            code_iter.next();
+        }
+
+        // Search for the end of the slice
+        let mut slice_end = slice_start;
+
+        'search_slice_end: for (sub, is_ansi) in &mut code_iter {
             if is_ansi {
-                if pos < bounds.start {
-                    // An ANSI symbol before the interval: keep for later
-                    front_ansi.push_str(sub);
-                    slice.start += sub.len();
-                    slice.end = slice.start;
-                } else if pos <= bounds.end {
-                    // An ANSI symbol inside of the interval: extend the slice
-                    slice.end += sub.len();
-                } else {
-                    // An ANSI symbol after the interval: keep for later
-                    back_ansi.push_str(sub);
-                }
-            } else {
-                for c in sub.chars() {
-                    let c_width = char_width(c);
+                slice_end += sub.len();
+                continue;
+            }
 
-                    if pos < bounds.start {
-                        // The char is before the interval: move the slice back
-                        slice.start += c.len_utf8();
-                        slice.end = slice.start;
-                    } else if pos + c_width <= bounds.end {
-                        // The char fits into the interval: extend the slice
-                        slice.end += c.len_utf8();
-                    }
+            for c in sub.chars() {
+                let c_width = char_width(c);
 
-                    pos += c_width;
+                if pos + c_width > bounds.end {
+                    // We will only search for ANSI codes after breaking this
+                    // loop, so we can safely drop the remaining of `sub`
+                    break 'search_slice_end;
                 }
+
+                pos += c_width;
+                slice_end += c.len_utf8();
             }
         }
 
-        let slice = &s[slice];
+        // Initialise the result, no allocation may have to be performed if
+        // both head and front are empty
+        let slice = &s[slice_start..slice_end];
 
-        if front_ansi.is_empty() && back_ansi.is_empty() && head.is_empty() && tail.is_empty() {
-            Cow::Borrowed(slice)
-        } else {
-            Cow::Owned(front_ansi + head + slice + tail + &back_ansi)
+        let mut result = {
+            if front_ansi.is_empty() && head.is_empty() && tail.is_empty() {
+                Cow::Borrowed(slice)
+            } else {
+                Cow::Owned(front_ansi + head + slice + tail)
+            }
+        };
+
+        // Push back remaining ANSI codes to result
+        for (sub, is_ansi) in code_iter {
+            if is_ansi {
+                *result.to_mut() += sub;
+            }
         }
+
+        result
     }
     #[cfg(not(feature = "ansi-parsing"))]
     {
