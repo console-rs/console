@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.0
+
+### Enhancements
+
+* Added `slice_str` util.
+
 ## 0.15.8
 
 ### Enhancements
