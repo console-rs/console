@@ -788,7 +788,7 @@ fn str_width(s: &str) -> usize {
 }
 
 #[cfg(feature = "ansi-parsing")]
-fn char_width(c: char) -> usize {
+pub(crate) fn char_width(c: char) -> usize {
     #[cfg(feature = "unicode-width")]
     {
         use unicode_width::UnicodeWidthChar;

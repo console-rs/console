@@ -59,7 +59,7 @@ pub(crate) fn terminal_size(out: &Term) -> Option<(u16, u16)> {
         winsize
     };
     if winsize.ws_row > 0 && winsize.ws_col > 0 {
-        Some((winsize.ws_row as u16, winsize.ws_col as u16))
+        Some((winsize.ws_row, winsize.ws_col))
     } else {
         None
     }
