@@ -63,15 +63,15 @@
 //!
 //! # Unicode Width Support
 //!
-//! By default this crate depends on the `unicode-width` crate to calculate
+//! By default this crate depends on the `unicode-display-width` crate to calculate
 //! the width of terminal characters.  If you do not need this you can disable
-//! the `unicode-width` feature which will cut down on dependencies.
+//! the `unicode-display-width` feature which will cut down on dependencies.
 //!
 //! # Features
 //!
 //! By default all features are enabled.  The following features exist:
 //!
-//! * `unicode-width`: adds support for unicode width calculations
+//! * `unicode-display-width`: adds support for unicode width calculations
 //! * `ansi-parsing`: adds support for parsing ansi codes (this adds support
 //!   for stripping and taking ansi escape codes into account for length
 //!   calculations).

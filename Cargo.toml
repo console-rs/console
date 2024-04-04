@@ -1,7 +1,7 @@
 [package]
 name = "console"
 description = "A terminal and console abstraction for Rust"
-version = "0.15.8"
+version = "0.16.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
@@ -13,13 +13,13 @@ readme = "README.md"
 rust-version = "1.56.0"
 
 [features]
-default = ["unicode-width", "ansi-parsing"]
+default = ["unicode-display-width", "ansi-parsing"]
 windows-console-colors = ["ansi-parsing"]
 ansi-parsing = []
 
 [dependencies]
 libc = "0.2.99"
-unicode-width = { version = "0.1", optional = true }
+unicode-display-width = { version = "0.3", optional = true }
 lazy_static = "1.4.0"
 
 [target.'cfg(windows)'.dependencies]

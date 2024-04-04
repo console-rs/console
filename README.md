@@ -69,8 +69,8 @@ are useful for more complex formatting.
 
 ## Unicode Width Support
 
-By default this crate depends on the `unicode-width` crate to calculate
+By default this crate depends on the `unicode-display-width` crate to calculate
 the width of terminal characters.  If you do not need this you can disable
-the `unicode-width` feature which will cut down on dependencies.
+the `unicode-display-width` feature which will cut down on dependencies.
 
 License: MIT

@@ -707,12 +707,11 @@ impl<'a, 'b> fmt::Display for Emoji<'a, 'b> {
 }
 
 fn str_width(s: &str) -> usize {
-    #[cfg(feature = "unicode-width")]
+    #[cfg(feature = "unicode-display-width")]
     {
-        use unicode_width::UnicodeWidthStr;
-        s.width()
+        unicode_display_width::width(s) as usize
     }
-    #[cfg(not(feature = "unicode-width"))]
+    #[cfg(not(feature = "unicode-display-width"))]
     {
         s.chars().count()
     }
@@ -720,12 +719,14 @@ fn str_width(s: &str) -> usize {
 
 #[cfg(feature = "ansi-parsing")]
 fn char_width(c: char) -> usize {
-    #[cfg(feature = "unicode-width")]
+    #[cfg(feature = "unicode-display-width")]
     {
-        use unicode_width::UnicodeWidthChar;
-        c.width().unwrap_or(0)
+        match unicode_display_width::is_double_width(c) {
+            true => 2,
+            false => 1,
+        }
     }
-    #[cfg(not(feature = "unicode-width"))]
+    #[cfg(not(feature = "unicode-display-width"))]
     {
         let _c = c;
         1
@@ -873,7 +874,7 @@ fn test_text_width() {
         measure_text_width(&s),
         if cfg!(feature = "ansi-parsing") {
             3
-        } else if cfg!(feature = "unicode-width") {
+        } else if cfg!(feature = "unicode-display-width") {
             17
         } else {
             21
@@ -882,7 +883,7 @@ fn test_text_width() {
 }
 
 #[test]
-#[cfg(all(feature = "unicode-width", feature = "ansi-parsing"))]
+#[cfg(all(feature = "unicode-display-width", feature = "ansi-parsing"))]
 fn test_truncate_str() {
     let s = format!("foo {}", style("bar").red().force_styling(true));
     assert_eq!(
