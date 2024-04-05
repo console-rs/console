@@ -720,11 +720,27 @@ fn str_width(s: &str) -> usize {
 #[cfg(feature = "ansi-parsing")]
 fn char_width(c: char) -> usize {
     #[cfg(feature = "unicode-display-width")]
-    {
-        match unicode_display_width::is_double_width(c) {
-            true => 2,
-            false => 1,
+    if c < '\u{7F}' {
+        if c >= '\u{20}' {
+            // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
+            1
+        } else if c == '\0' {
+            // U+0000 *is* a control code, but it's special-cased
+            0
+        } else {
+            // U+0001 to U+0020 (exclusive) are control codes
+            0
         }
+    } else if c >= '\u{A0}' {
+        // No characters >= U+00A0 are control codes, so we can consult the lookup tables
+        if unicode_display_width::is_double_width(c) {
+            2
+        } else {
+            1
+        }
+    } else {
+        // U+007F to U+00A0 (exclusive) are control codes
+        0
     }
     #[cfg(not(feature = "unicode-display-width"))]
     {
