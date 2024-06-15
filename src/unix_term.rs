@@ -323,7 +323,7 @@ pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let rv: io::Result<Key> = read_single_key_impl(fd);
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSADRAIN, &original) })?;
 
-    // if the user hit ^C we want to signal SIGINT to outselves.
+    // if the user hit ^C we want to signal SIGINT to ourselves.
     if let Err(ref err) = rv {
         if err.kind() == io::ErrorKind::Interrupted {
             if !ctrlc_key {
