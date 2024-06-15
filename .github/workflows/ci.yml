@@ -20,14 +20,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
-          override: true
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Copy MSRV Lock
         run: make msrv-lock
       - name: Build
@@ -65,12 +63,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
-          override: true
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install linker
@@ -101,12 +97,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
           target: ${{ matrix.target }}
-          override: true
       - name: Checkout
         uses: actions/checkout@v4
       - name: Check
@@ -122,12 +116,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
           target: ${{ matrix.target }}
-          override: true
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install WasmTime
@@ -147,10 +139,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
-          override: true
       - name: Checkout
         uses: actions/checkout@v4
       - name: Test
