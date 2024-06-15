@@ -402,7 +402,7 @@ pub fn read_single_key(_ctrlc_key: bool) -> io::Result<Key> {
                 // Confirm that there is a next character to read.
                 if get_key_event_count()? == 0 {
                     let message = format!(
-                        "Read invlid utf16 {}: {}",
+                        "Read invalid utf16 {}: {}",
                         unicode_char,
                         Utf16TupleError::MissingSecond
                     );
