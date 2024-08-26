@@ -64,7 +64,7 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
 }
 
 pub fn read_secure() -> io::Result<String> {
-    let f_tty;
+    let mut f_tty;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
             f_tty = None;
@@ -88,13 +88,16 @@ pub fn read_secure() -> io::Result<String> {
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &termios) })?;
     let mut rv = String::new();
 
-    let read_rv = if let Some(mut f) = f_tty {
+    let read_rv = if let Some(f) = &mut f_tty {
         f.read_line(&mut rv)
     } else {
         io::stdin().read_line(&mut rv)
     };
 
     c_result(|| unsafe { libc::tcsetattr(fd, libc::TCSAFLUSH, &original) })?;
+
+    // Ensure the fd is only closed after everything has been restored.
+    drop(f_tty);
 
     read_rv.map(|_| {
         let len = rv.trim_end_matches(&['\r', '\n'][..]).len();
