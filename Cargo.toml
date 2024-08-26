@@ -20,7 +20,7 @@ ansi-parsing = []
 [dependencies]
 libc = "0.2.99"
 unicode-width = { version = "0.1", optional = true }
-lazy_static = "1.4.0"
+once_cell = "^1.19.0"
 
 [target.'cfg(windows)'.dependencies]
 encode_unicode = "0.3"
