@@ -183,6 +183,7 @@ fn read_single_char(fd: i32) -> io::Result<Option<char>> {
 // If successful, return the number of bytes read.
 // Will return an error if nothing was read, i.e when called at end of file.
 fn read_bytes(fd: i32, buf: &mut [u8], count: u8) -> io::Result<u8> {
+    assert!((count as usize) <= buf.len()); // Safety precondition - prevent reading past end of buffer.
     let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, count as usize) };
     if read < 0 {
         Err(io::Error::last_os_error())
