@@ -222,7 +222,7 @@ pub fn clear_line(out: &Term) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ', width as u32, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ' as i8, width as u32, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -242,7 +242,7 @@ pub fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ', width as u32, pos, &mut written);
+            FillConsoleOutputCharacterA(hand, b' ' as i8, width as u32, pos, &mut written);
             FillConsoleOutputAttribute(hand, csbi.wAttributes, width as u32, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -259,7 +259,7 @@ pub fn clear_screen(out: &Term) -> io::Result<()> {
             let cells = csbi.dwSize.X as u32 * csbi.dwSize.Y as u32; // as u32, or else this causes stack overflows.
             let pos = COORD { X: 0, Y: 0 };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ', cells, pos, &mut written); // cells as u32 no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ' as i8, cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
@@ -280,7 +280,7 @@ pub fn clear_to_end_of_screen(out: &Term) -> io::Result<()> {
                 Y: csbi.dwCursorPosition.Y,
             };
             let mut written = 0;
-            FillConsoleOutputCharacterA(hand, b' ', cells, pos, &mut written); // cells as u32 no longer needed.
+            FillConsoleOutputCharacterA(hand, b' ' as i8, cells, pos, &mut written); // cells as u32 no longer needed.
             FillConsoleOutputAttribute(hand, csbi.wAttributes, cells, pos, &mut written);
             SetConsoleCursorPosition(hand, pos);
         }
