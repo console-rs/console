@@ -271,18 +271,18 @@ impl FusedIterator for AnsiCodeIterator<'_> {}
 mod tests {
     use super::*;
 
-    use lazy_static::lazy_static;
+    use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use regex::Regex;
 
     // The manual dfa `State` is a handwritten translation from the previously used regex. That
     // regex is kept here and used to ensure that the new matches are the same as the old
-    lazy_static! {
-        static ref STRIP_ANSI_RE: Regex = Regex::new(
+    static STRIP_ANSI_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
             r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-PRZcf-nqry=><])",
         )
-        .unwrap();
-    }
+        .unwrap()
+    });
 
     impl<'a> PartialEq<Match<'a>> for regex::Match<'_> {
         fn eq(&self, other: &Match<'a>) -> bool {
