@@ -696,7 +696,7 @@ impl<'a, 'b> Emoji<'a, 'b> {
     }
 }
 
-impl<'a, 'b> fmt::Display for Emoji<'a, 'b> {
+impl fmt::Display for Emoji<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if wants_emoji() {
             write!(f, "{}", self.0)

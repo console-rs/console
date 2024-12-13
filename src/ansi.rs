@@ -142,7 +142,7 @@ impl<'a> Iterator for Matches<'a> {
     }
 }
 
-impl<'a> FusedIterator for Matches<'a> {}
+impl FusedIterator for Matches<'_> {}
 
 fn find_ansi_code_exclusive(it: &mut Peekable<CharIndices>) -> Option<(usize, usize)> {
     'outer: loop {
@@ -265,7 +265,7 @@ impl<'a> Iterator for AnsiCodeIterator<'a> {
     }
 }
 
-impl<'a> FusedIterator for AnsiCodeIterator<'a> {}
+impl FusedIterator for AnsiCodeIterator<'_> {}
 
 #[cfg(test)]
 mod tests {
@@ -284,7 +284,7 @@ mod tests {
         .unwrap();
     }
 
-    impl<'a, 'b> PartialEq<Match<'a>> for regex::Match<'b> {
+    impl<'a> PartialEq<Match<'a>> for regex::Match<'_> {
         fn eq(&self, other: &Match<'a>) -> bool {
             self.start() == other.start && self.end() == other.end
         }

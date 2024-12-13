@@ -12,6 +12,7 @@ use windows_sys::Win32::System::Console::{
 
 use crate::Term;
 
+#[allow(clippy::upper_case_acronyms)]
 type WORD = u16;
 
 const FG_CYAN: WORD = FG_BLUE | FG_GREEN;
@@ -115,7 +116,7 @@ impl Console {
         let info = screen_buffer_info(h)?;
         let attr = TextAttributes::from_word(info.attributes());
         Ok(Console {
-            kind: kind,
+            kind,
             start_attr: attr,
             cur_attr: attr,
         })
@@ -185,7 +186,7 @@ struct TextAttributes {
 }
 
 impl TextAttributes {
-    fn to_word(&self) -> WORD {
+    fn to_word(self) -> WORD {
         let mut w = 0;
         w |= self.fg_color.to_fg();
         w |= self.fg_intense.to_fg();
@@ -213,7 +214,7 @@ pub enum Intense {
 }
 
 impl Intense {
-    fn to_bg(&self) -> WORD {
+    fn to_bg(self) -> WORD {
         self.to_fg() << 4
     }
 
@@ -221,8 +222,8 @@ impl Intense {
         Intense::from_fg(word >> 4)
     }
 
-    fn to_fg(&self) -> WORD {
-        match *self {
+    fn to_fg(self) -> WORD {
+        match self {
             Intense::No => 0,
             Intense::Yes => FG_INTENSITY,
         }
@@ -252,7 +253,7 @@ pub enum Color {
 }
 
 impl Color {
-    fn to_bg(&self) -> WORD {
+    fn to_bg(self) -> WORD {
         self.to_fg() << 4
     }
 
@@ -260,8 +261,8 @@ impl Color {
         Color::from_fg(word >> 4)
     }
 
-    fn to_fg(&self) -> WORD {
-        match *self {
+    fn to_fg(self) -> WORD {
+        match self {
             Color::Black => 0,
             Color::Blue => FG_BLUE,
             Color::Green => FG_GREEN,
