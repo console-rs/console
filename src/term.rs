@@ -62,7 +62,7 @@ pub enum TermFamily {
 #[derive(Debug, Clone)]
 pub struct TermFeatures<'a>(&'a Term);
 
-impl<'a> TermFeatures<'a> {
+impl TermFeatures<'_> {
     /// Check if this is a real user attended terminal (`isatty`)
     #[inline]
     pub fn is_attended(&self) -> bool {
@@ -630,7 +630,7 @@ impl Write for Term {
     }
 }
 
-impl<'a> Write for &'a Term {
+impl Write for &Term {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.inner.buffer {
             Some(ref buffer) => buffer.lock().unwrap().write_all(buf),
@@ -650,7 +650,7 @@ impl Read for Term {
     }
 }
 
-impl<'a> Read for &'a Term {
+impl Read for &Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
     }
