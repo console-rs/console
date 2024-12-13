@@ -23,7 +23,7 @@ unicode-width = { version = "0.2", optional = true }
 lazy_static = "1.4.0"
 
 [target.'cfg(windows)'.dependencies]
-encode_unicode = "0.3"
+encode_unicode = "1"
 
 [target.'cfg(windows)'.dependencies.windows-sys]
 version = "0.52.0"
