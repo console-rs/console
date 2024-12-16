@@ -76,6 +76,8 @@
 //!   for stripping and taking ansi escape codes into account for length
 //!   calculations).
 
+#![warn(unreachable_pub)]
+
 pub use crate::kb::Key;
 pub use crate::term::{
     user_attended, user_attended_stderr, Term, TermFamily, TermFeatures, TermTarget,

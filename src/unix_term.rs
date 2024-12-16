@@ -13,16 +13,16 @@ use once_cell::sync::Lazy;
 use crate::kb::Key;
 use crate::term::Term;
 
-pub use crate::common_term::*;
+pub(crate) use crate::common_term::*;
 
-pub const DEFAULT_WIDTH: u16 = 80;
+pub(crate) const DEFAULT_WIDTH: u16 = 80;
 
 #[inline]
-pub fn is_a_terminal(out: &Term) -> bool {
+pub(crate) fn is_a_terminal(out: &Term) -> bool {
     unsafe { libc::isatty(out.as_raw_fd()) != 0 }
 }
 
-pub fn is_a_color_terminal(out: &Term) -> bool {
+pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     if !is_a_terminal(out) {
         return false;
     }
@@ -37,7 +37,7 @@ pub fn is_a_color_terminal(out: &Term) -> bool {
     }
 }
 
-pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
+fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
     let res = f();
     if res != 0 {
         Err(io::Error::last_os_error())
@@ -46,7 +46,7 @@ pub fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
     }
 }
 
-pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
+pub(crate) fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     unsafe {
         if libc::isatty(out.as_raw_fd()) != 1 {
             return None;
@@ -66,7 +66,7 @@ pub fn terminal_size(out: &Term) -> Option<(u16, u16)> {
     }
 }
 
-pub fn read_secure() -> io::Result<String> {
+pub(crate) fn read_secure() -> io::Result<String> {
     let mut f_tty;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -300,7 +300,7 @@ fn read_single_key_impl(fd: i32) -> Result<Key, io::Error> {
     }
 }
 
-pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
+pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let tty_f;
     let fd = unsafe {
         if libc::isatty(libc::STDIN_FILENO) == 1 {
@@ -339,7 +339,7 @@ pub fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     rv
 }
 
-pub fn key_from_utf8(buf: &[u8]) -> Key {
+fn key_from_utf8(buf: &[u8]) -> Key {
     if let Ok(s) = str::from_utf8(buf) {
         if let Some(c) = s.chars().next() {
             return Key::Char(c);
@@ -355,15 +355,15 @@ static IS_LANG_UTF8: Lazy<bool> = Lazy::new(|| match std::env::var("LANG") {
 });
 
 #[cfg(target_os = "macos")]
-pub fn wants_emoji() -> bool {
+pub(crate) fn wants_emoji() -> bool {
     true
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn wants_emoji() -> bool {
+pub(crate) fn wants_emoji() -> bool {
     *IS_LANG_UTF8
 }
 
-pub fn set_title<T: Display>(title: T) {
+pub(crate) fn set_title<T: Display>(title: T) {
     print!("\x1b]0;{}\x07", title);
 }
