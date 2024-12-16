@@ -47,22 +47,22 @@ fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
 }
 
 pub(crate) fn terminal_size(out: &Term) -> Option<(u16, u16)> {
-    unsafe {
-        if libc::isatty(out.as_raw_fd()) != 1 {
-            return None;
-        }
-
+    if !is_a_terminal(out) {
+        return None;
+    }
+    let winsize = unsafe {
         let mut winsize: libc::winsize = mem::zeroed();
 
         // FIXME: ".into()" used as a temporary fix for a libc bug
         // https://github.com/rust-lang/libc/pull/704
         #[allow(clippy::useless_conversion)]
         libc::ioctl(out.as_raw_fd(), libc::TIOCGWINSZ.into(), &mut winsize);
-        if winsize.ws_row > 0 && winsize.ws_col > 0 {
-            Some((winsize.ws_row as u16, winsize.ws_col as u16))
-        } else {
-            None
-        }
+        winsize
+    };
+    if winsize.ws_row > 0 && winsize.ws_col > 0 {
+        Some((winsize.ws_row as u16, winsize.ws_col as u16))
+    } else {
+        None
     }
 }
 
