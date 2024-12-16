@@ -173,7 +173,7 @@ impl Default for Style {
 
 impl Style {
     /// Returns an empty default style.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             fg: None,
             bg: None,
@@ -253,14 +253,14 @@ impl Style {
     ///
     /// This overrides the automatic detection.
     #[inline]
-    pub fn force_styling(mut self, value: bool) -> Self {
+    pub const fn force_styling(mut self, value: bool) -> Self {
         self.force = Some(value);
         self
     }
 
     /// Specifies that style is applying to something being written on stderr.
     #[inline]
-    pub fn for_stderr(mut self) -> Self {
+    pub const fn for_stderr(mut self) -> Self {
         self.for_stderr = true;
         self
     }
@@ -269,21 +269,21 @@ impl Style {
     ///
     /// This is the default behaviour.
     #[inline]
-    pub fn for_stdout(mut self) -> Self {
+    pub const fn for_stdout(mut self) -> Self {
         self.for_stderr = false;
         self
     }
 
     /// Sets a foreground color.
     #[inline]
-    pub fn fg(mut self, color: Color) -> Self {
+    pub const fn fg(mut self, color: Color) -> Self {
         self.fg = Some(color);
         self
     }
 
     /// Sets a background color.
     #[inline]
-    pub fn bg(mut self, color: Color) -> Self {
+    pub const fn bg(mut self, color: Color) -> Self {
         self.bg = Some(color);
         self
     }
@@ -296,87 +296,87 @@ impl Style {
     }
 
     #[inline]
-    pub fn black(self) -> Self {
+    pub const fn black(self) -> Self {
         self.fg(Color::Black)
     }
     #[inline]
-    pub fn red(self) -> Self {
+    pub const fn red(self) -> Self {
         self.fg(Color::Red)
     }
     #[inline]
-    pub fn green(self) -> Self {
+    pub const fn green(self) -> Self {
         self.fg(Color::Green)
     }
     #[inline]
-    pub fn yellow(self) -> Self {
+    pub const fn yellow(self) -> Self {
         self.fg(Color::Yellow)
     }
     #[inline]
-    pub fn blue(self) -> Self {
+    pub const fn blue(self) -> Self {
         self.fg(Color::Blue)
     }
     #[inline]
-    pub fn magenta(self) -> Self {
+    pub const fn magenta(self) -> Self {
         self.fg(Color::Magenta)
     }
     #[inline]
-    pub fn cyan(self) -> Self {
+    pub const fn cyan(self) -> Self {
         self.fg(Color::Cyan)
     }
     #[inline]
-    pub fn white(self) -> Self {
+    pub const fn white(self) -> Self {
         self.fg(Color::White)
     }
     #[inline]
-    pub fn color256(self, color: u8) -> Self {
+    pub const fn color256(self, color: u8) -> Self {
         self.fg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn bright(mut self) -> Self {
+    pub const fn bright(mut self) -> Self {
         self.fg_bright = true;
         self
     }
 
     #[inline]
-    pub fn on_black(self) -> Self {
+    pub const fn on_black(self) -> Self {
         self.bg(Color::Black)
     }
     #[inline]
-    pub fn on_red(self) -> Self {
+    pub const fn on_red(self) -> Self {
         self.bg(Color::Red)
     }
     #[inline]
-    pub fn on_green(self) -> Self {
+    pub const fn on_green(self) -> Self {
         self.bg(Color::Green)
     }
     #[inline]
-    pub fn on_yellow(self) -> Self {
+    pub const fn on_yellow(self) -> Self {
         self.bg(Color::Yellow)
     }
     #[inline]
-    pub fn on_blue(self) -> Self {
+    pub const fn on_blue(self) -> Self {
         self.bg(Color::Blue)
     }
     #[inline]
-    pub fn on_magenta(self) -> Self {
+    pub const fn on_magenta(self) -> Self {
         self.bg(Color::Magenta)
     }
     #[inline]
-    pub fn on_cyan(self) -> Self {
+    pub const fn on_cyan(self) -> Self {
         self.bg(Color::Cyan)
     }
     #[inline]
-    pub fn on_white(self) -> Self {
+    pub const fn on_white(self) -> Self {
         self.bg(Color::White)
     }
     #[inline]
-    pub fn on_color256(self, color: u8) -> Self {
+    pub const fn on_color256(self, color: u8) -> Self {
         self.bg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn on_bright(mut self) -> Self {
+    pub const fn on_bright(mut self) -> Self {
         self.bg_bright = true;
         self
     }
