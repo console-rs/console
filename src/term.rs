@@ -38,7 +38,7 @@ pub enum TermTarget {
 }
 
 #[derive(Debug)]
-pub struct TermInner {
+struct TermInner {
     target: TermTarget,
     buffer: Option<Mutex<Vec<u8>>>,
     prompt: RwLock<String>,
@@ -657,8 +657,8 @@ impl Read for &Term {
 }
 
 #[cfg(all(unix, not(target_arch = "wasm32")))]
-pub use crate::unix_term::*;
+pub(crate) use crate::unix_term::*;
 #[cfg(target_arch = "wasm32")]
-pub use crate::wasm_term::*;
+pub(crate) use crate::wasm_term::*;
 #[cfg(windows)]
-pub use crate::windows_term::*;
+pub(crate) use crate::windows_term::*;
