@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::fmt::{Debug, Display};
 use std::io::{self, Read, Write};
 use std::sync::{Arc, Mutex, RwLock};
@@ -76,6 +77,19 @@ impl TermFeatures<'_> {
     #[inline]
     pub fn colors_supported(&self) -> bool {
         is_a_color_terminal(self.0)
+    }
+
+    #[inline]
+    pub fn is_synchronized_output_supported(&self) -> bool {
+        #[cfg(unix)]
+        {
+            supports_synchronized_output()
+        }
+        #[cfg(not(unix))]
+        {
+            // TODO
+            false
+        }
     }
 
     /// Check if this terminal is an msys terminal.
@@ -653,6 +667,42 @@ impl Read for Term {
 impl Read for &Term {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::stdin().read(buf)
+    }
+}
+
+pub struct SyncGuard<'a> {
+    term: Cell<Option<&'a Term>>,
+}
+
+impl<'a> SyncGuard<'a> {
+    pub fn begin_sync(term: &'a Term) -> io::Result<Self> {
+        let ret = if term.features().is_synchronized_output_supported() {
+            term.write_str("\x1b[?2026h")?;
+            Some(term)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            term: Cell::new(ret),
+        })
+    }
+
+    pub fn finish_sync(self) -> io::Result<()> {
+        self.finish_sync_inner()
+    }
+
+    fn finish_sync_inner(&self) -> io::Result<()> {
+        if let Some(term) = self.term.take() {
+            term.write_str("\x1b[?2026l")?;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for SyncGuard<'_> {
+    fn drop(&mut self) {
+        let _ = self.finish_sync_inner();
     }
 }
 

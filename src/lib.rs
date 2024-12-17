@@ -78,7 +78,7 @@
 
 pub use crate::kb::Key;
 pub use crate::term::{
-    user_attended, user_attended_stderr, Term, TermFamily, TermFeatures, TermTarget,
+    user_attended, user_attended_stderr, SyncGuard, Term, TermFamily, TermFeatures, TermTarget,
 };
 pub use crate::utils::{
     colors_enabled, colors_enabled_stderr, measure_text_width, pad_str, pad_str_with,
