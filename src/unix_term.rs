@@ -345,7 +345,7 @@ pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     unsafe { libc::cfmakeraw(&mut termios) };
     termios.c_oflag = original.c_oflag;
     c_result(|| unsafe { libc::tcsetattr(input.as_raw_fd(), libc::TCSADRAIN, &termios) })?;
-    let rv: io::Result<Key> = read_single_key_impl(input.as_raw_fd());
+    let rv = read_single_key_impl(input.as_raw_fd());
     c_result(|| unsafe { libc::tcsetattr(input.as_raw_fd(), libc::TCSADRAIN, &original) })?;
 
     // if the user hit ^C we want to signal SIGINT to ourselves.
