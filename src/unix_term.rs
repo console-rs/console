@@ -70,24 +70,28 @@ enum Input<T> {
     File(T),
 }
 
-fn unbuffered_input() -> io::Result<Input<fs::File>> {
-    let stdin = io::stdin();
-    if is_a_terminal(&stdin) {
-        Ok(Input::Stdin(stdin))
-    } else {
-        let f = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open("/dev/tty")?;
-        Ok(Input::File(f))
+impl Input<BufReader<fs::File>> {
+    fn buffered() -> io::Result<Self> {
+        Ok(match Input::unbuffered()? {
+            Input::Stdin(s) => Input::Stdin(s),
+            Input::File(f) => Input::File(BufReader::new(f)),
+        })
     }
 }
 
-fn buffered_input() -> io::Result<Input<BufReader<fs::File>>> {
-    Ok(match unbuffered_input()? {
-        Input::Stdin(s) => Input::Stdin(s),
-        Input::File(f) => Input::File(BufReader::new(f)),
-    })
+impl Input<fs::File> {
+    fn unbuffered() -> io::Result<Self> {
+        let stdin = io::stdin();
+        if is_a_terminal(&stdin) {
+            Ok(Input::Stdin(stdin))
+        } else {
+            let f = fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open("/dev/tty")?;
+            Ok(Input::File(f))
+        }
+    }
 }
 
 // NB: this is not a full BufRead implementation because io::Stdin does not implement BufRead.
@@ -119,7 +123,7 @@ impl AsRawFd for Input<BufReader<fs::File>> {
 }
 
 pub(crate) fn read_secure() -> io::Result<String> {
-    let mut input = buffered_input()?;
+    let mut input = Input::buffered()?;
 
     let mut termios = mem::MaybeUninit::uninit();
     c_result(|| unsafe { libc::tcgetattr(input.as_raw_fd(), termios.as_mut_ptr()) })?;
@@ -332,7 +336,7 @@ fn read_single_key_impl(fd: RawFd) -> Result<Key, io::Error> {
 }
 
 pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
-    let input = unbuffered_input()?;
+    let input = Input::unbuffered()?;
 
     let mut termios = core::mem::MaybeUninit::uninit();
     c_result(|| unsafe { libc::tcgetattr(input.as_raw_fd(), termios.as_mut_ptr()) })?;
