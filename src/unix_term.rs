@@ -1,4 +1,5 @@
 use std::env;
+use std::convert::TryFrom as _;
 use std::fmt::Display;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
@@ -212,7 +213,7 @@ fn read_single_char(fd: RawFd) -> io::Result<Option<char>> {
         // if there is something to be read, take 1 byte from it
         let mut buf: [u8; 1] = [0];
 
-        read_bytes(fd, &mut buf, 1)?;
+        read_bytes(fd, &mut buf)?;
         Ok(Some(buf[0] as char))
     } else {
         //there is nothing to be read
@@ -223,22 +224,25 @@ fn read_single_char(fd: RawFd) -> io::Result<Option<char>> {
 // Similar to libc::read. Read count bytes into slice buf from descriptor fd.
 // If successful, return the number of bytes read.
 // Will return an error if nothing was read, i.e when called at end of file.
-fn read_bytes(fd: RawFd, buf: &mut [u8], count: u8) -> io::Result<u8> {
-    let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, count as usize) };
-    if read < 0 {
-        Err(io::Error::last_os_error())
-    } else if read == 0 {
-        Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            "Reached end of file",
-        ))
-    } else if buf[0] == b'\x03' {
-        Err(io::Error::new(
-            io::ErrorKind::Interrupted,
-            "read interrupted",
-        ))
-    } else {
-        Ok(read as u8)
+fn read_bytes(fd: RawFd, buf: &mut [u8]) -> io::Result<()> {
+    let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, buf.len()) };
+    match usize::try_from(read) {
+        Err(std::num::TryFromIntError { .. }) => Err(io::Error::last_os_error()),
+        Ok(read) => {
+            if read != buf.len() {
+                Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Reached end of file",
+                ))
+            } else if buf.starts_with(b"\x03") {
+                Err(io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    "read interrupted",
+                ))
+            } else {
+                Ok(())
+            }
+        }
     }
 }
 
@@ -301,15 +305,15 @@ fn read_single_key_impl(fd: RawFd) -> Result<Key, io::Error> {
 
                 break if byte & 224u8 == 192u8 {
                     // a two byte unicode character
-                    read_bytes(fd, &mut buf[1..], 1)?;
+                    read_bytes(fd, &mut buf[1..][..1])?;
                     Ok(key_from_utf8(&buf[..2]))
                 } else if byte & 240u8 == 224u8 {
                     // a three byte unicode character
-                    read_bytes(fd, &mut buf[1..], 2)?;
+                    read_bytes(fd, &mut buf[1..][..2])?;
                     Ok(key_from_utf8(&buf[..3]))
                 } else if byte & 248u8 == 240u8 {
                     // a four byte unicode character
-                    read_bytes(fd, &mut buf[1..], 3)?;
+                    read_bytes(fd, &mut buf[1..][..3])?;
                     Ok(key_from_utf8(&buf[..4]))
                 } else {
                     Ok(match c {
