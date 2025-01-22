@@ -78,6 +78,11 @@ impl TermFeatures<'_> {
         is_a_color_terminal(self.0)
     }
 
+    /// Check if true colors are supported by this terminal.
+    pub fn true_colors_supported(&self) -> bool {
+        is_a_true_color_terminal(self.0)
+    }
+
     /// Check if this terminal is an msys terminal.
     ///
     /// This is sometimes useful to disable features that are known to not
