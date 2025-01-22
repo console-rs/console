@@ -17,10 +17,18 @@ fn default_colors_enabled(out: &Term) -> bool {
         || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
+fn default_true_colors_enabled(out: &Term) -> bool {
+    out.features().true_colors_supported()
+}
+
 static STDOUT_COLORS: Lazy<AtomicBool> =
     Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stdout())));
+static STDOUT_TRUE_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_true_colors_enabled(&Term::stdout())));
 static STDERR_COLORS: Lazy<AtomicBool> =
     Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stderr())));
+static STDERR_TRUE_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_true_colors_enabled(&Term::stderr())));
 
 /// Returns `true` if colors should be enabled for stdout.
 ///
@@ -34,6 +42,12 @@ pub fn colors_enabled() -> bool {
     STDOUT_COLORS.load(Ordering::Relaxed)
 }
 
+/// Returns `true` if true colors should be enabled for stdout.
+#[inline]
+pub fn true_colors_enabled() -> bool {
+    STDERR_TRUE_COLORS.load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stdout.
 ///
 /// This overrides the default for the current process and changes the return value of the
@@ -41,6 +55,15 @@ pub fn colors_enabled() -> bool {
 #[inline]
 pub fn set_colors_enabled(val: bool) {
     STDOUT_COLORS.store(val, Ordering::Relaxed)
+}
+
+/// Forces true colorization on or off for stdout.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `true_colors_enabled` function.
+#[inline]
+pub fn set_true_colors_enabled(val: bool) {
+    STDOUT_TRUE_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Returns `true` if colors should be enabled for stderr.
@@ -55,13 +78,28 @@ pub fn colors_enabled_stderr() -> bool {
     STDERR_COLORS.load(Ordering::Relaxed)
 }
 
+/// Returns `true` if true colors should be enabled for stderr.
+#[inline]
+pub fn true_colors_enabled_stderr() -> bool {
+    STDERR_TRUE_COLORS.load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stderr.
 ///
 /// This overrides the default for the current process and changes the return value of the
-/// `colors_enabled` function.
+/// `colors_enabled_stderr` function.
 #[inline]
 pub fn set_colors_enabled_stderr(val: bool) {
     STDERR_COLORS.store(val, Ordering::Relaxed)
+}
+
+/// Forces true colorization on or off for stderr.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `true_colors_enabled_stderr` function.
+#[inline]
+pub fn set_true_colors_enabled_stderr(val: bool) {
+    STDERR_TRUE_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Measure the width of a string in terminal characters.
@@ -117,6 +155,45 @@ impl Color {
         match self {
             Color::Color256(_) => true,
             _ => false,
+        }
+    }
+}
+
+/// A Color used in a gradient
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct GradientColor {
+    red: u8,
+    green: u8,
+    blue: u8,
+}
+
+impl GradientColor {
+    fn new(red: u8, green: u8, blue: u8) -> Self {
+        GradientColor {
+            red: red.min(255),
+            green: green.min(255),
+            blue: blue.min(255),
+        }
+    }
+
+    fn from_hex(hex: &str) -> Self {
+        // Remove '#' if present
+        let s = hex.trim_start_matches('#');
+
+        // 6 char hex
+        let mut channels: [u8; 3] = Default::default();
+        for i in (0..5).step_by(2) {
+            channels[i / 2] = u8::from_str_radix(&s[i..i + 2], 16).unwrap_or_default()
+        }
+
+        GradientColor::new(channels[0], channels[1], channels[2])
+    }
+
+    pub(crate) fn interpolate(&self, other: &Self, t: f32) -> Self {
+        GradientColor {
+            red: (self.red as f32 + (other.red as f32 - self.red as f32) * t) as u8,
+            green: (self.green as f32 + (other.green as f32 - self.green as f32) * t) as u8,
+            blue: (self.blue as f32 + (other.blue as f32 - self.blue as f32) * t) as u8,
         }
     }
 }
@@ -231,6 +308,8 @@ pub struct Style {
     fg_bright: bool,
     bg_bright: bool,
     attrs: Attributes,
+    fg_gradient: Vec<GradientColor>,
+    bg_gradient: Vec<GradientColor>,
     force: Option<bool>,
     for_stderr: bool,
 }
@@ -250,6 +329,8 @@ impl Style {
             fg_bright: false,
             bg_bright: false,
             attrs: Attributes::new(),
+            fg_gradient: vec![],
+            bg_gradient: vec![],
             force: None,
             for_stderr: false,
         }
@@ -292,6 +373,19 @@ impl Style {
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
                 "strikethrough" => rv.strikethrough(),
+                gradient if gradient.starts_with("gradient_") => {
+                    for hex_color in gradient[9..].split('_') {
+                        rv = rv.gradient(GradientColor::from_hex(hex_color));
+                    }
+                    rv
+                }
+                on_gradient if on_gradient.starts_with("on_gradient_") => {
+                    for hex_color in on_gradient[12..].split('_') {
+                        rv = rv.on_gradient(GradientColor::from_hex(hex_color));
+                    }
+                    rv
+                }
+
                 on_c if on_c.starts_with("on_") => {
                     if let Ok(n) = on_c[3..].parse::<u8>() {
                         rv.on_color256(n)
@@ -362,6 +456,22 @@ impl Style {
     #[inline]
     pub const fn attr(mut self, attr: Attribute) -> Self {
         self.attrs = self.attrs.insert(attr);
+        self
+    }
+
+    /// Add a gradient color to the text gradient
+    /// Overrides basic foreground colors
+    #[inline]
+    pub fn gradient(mut self, color: GradientColor) -> Self {
+        self.fg_gradient.push(color);
+        self
+    }
+
+    /// Add a gradient color to the text on_gradient
+    /// Overrides basic background colors
+    #[inline]
+    pub fn on_gradient(mut self, color: GradientColor) -> Self {
+        self.bg_gradient.push(color);
         self
     }
 
@@ -556,6 +666,18 @@ impl<D> StyledObject<D> {
         self
     }
 
+    #[inline]
+    pub fn gradient(mut self, color: GradientColor) -> StyledObject<D> {
+        self.style = self.style.gradient(color);
+        self
+    }
+
+    #[inline]
+    pub fn on_gradient(mut self, color: GradientColor) -> StyledObject<D> {
+        self.style = self.style.on_gradient(color);
+        self
+    }
+
     /// Adds a attr.
     #[inline]
     pub const fn attr(mut self, attr: Attribute) -> StyledObject<D> {
@@ -688,10 +810,16 @@ impl<D> StyledObject<D> {
 }
 
 macro_rules! impl_fmt {
-    ($name:ident) => {
+    ($name:ident,$format_char:expr) => {
         impl<D: fmt::$name> fmt::$name for StyledObject<D> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 let mut reset = false;
+
+                let use_true_colors = match self.style.for_stderr {
+                    true => true_colors_enabled_stderr(),
+                    false => true_colors_enabled(),
+                };
+
                 if self
                     .style
                     .force
@@ -700,32 +828,50 @@ macro_rules! impl_fmt {
                         false => colors_enabled(),
                     })
                 {
-                    if let Some(fg) = self.style.fg {
-                        if fg.is_color256() {
-                            write!(f, "\x1b[38;5;{}m", fg.ansi_num())?;
-                        } else if self.style.fg_bright {
-                            write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;
-                        } else {
-                            write!(f, "\x1b[{}m", fg.ansi_num() + 30)?;
+                    if !use_true_colors || self.style.fg_gradient.is_empty() {
+                        if let Some(fg) = self.style.fg {
+                            if fg.is_color256() {
+                                write!(f, "\x1b[38;5;{}m", fg.ansi_num())?;
+                            } else if self.style.fg_bright {
+                                write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;
+                            } else {
+                                write!(f, "\x1b[{}m", fg.ansi_num() + 30)?;
+                            }
+                            reset = true;
                         }
-                        reset = true;
                     }
-                    if let Some(bg) = self.style.bg {
-                        if bg.is_color256() {
-                            write!(f, "\x1b[48;5;{}m", bg.ansi_num())?;
-                        } else if self.style.bg_bright {
-                            write!(f, "\x1b[48;5;{}m", bg.ansi_num() + 8)?;
-                        } else {
-                            write!(f, "\x1b[{}m", bg.ansi_num() + 40)?;
+                    if !use_true_colors || self.style.bg_gradient.is_empty() {
+                        if let Some(bg) = self.style.bg {
+                            if bg.is_color256() {
+                                write!(f, "\x1b[48;5;{}m", bg.ansi_num())?;
+                            } else if self.style.bg_bright {
+                                write!(f, "\x1b[48;5;{}m", bg.ansi_num() + 8)?;
+                            } else {
+                                write!(f, "\x1b[{}m", bg.ansi_num() + 40)?;
+                            }
+                            reset = true;
                         }
-                        reset = true;
                     }
                     if !self.style.attrs.is_empty() {
                         write!(f, "{}", self.style.attrs)?;
                         reset = true;
                     }
                 }
-                fmt::$name::fmt(&self.val, f)?;
+                // Get the underlying value
+                let mut buf = format!($format_char, &self.val);
+
+                if use_true_colors {
+                    if !self.style.fg_gradient.is_empty() {
+                        buf = apply_gradient_impl(&buf, &self.style.fg_gradient, false, true);
+                        reset = true;
+                    }
+                    if !self.style.bg_gradient.is_empty() {
+                        buf = apply_gradient_impl(&buf, &self.style.bg_gradient, false, false);
+                        reset = true;
+                    }
+                }
+
+                write!(f, "{}", buf)?;
                 if reset {
                     write!(f, "\x1b[0m")?;
                 }
@@ -735,15 +881,15 @@ macro_rules! impl_fmt {
     };
 }
 
-impl_fmt!(Binary);
-impl_fmt!(Debug);
-impl_fmt!(Display);
-impl_fmt!(LowerExp);
-impl_fmt!(LowerHex);
-impl_fmt!(Octal);
-impl_fmt!(Pointer);
-impl_fmt!(UpperExp);
-impl_fmt!(UpperHex);
+impl_fmt!(Binary, "{:b}");
+impl_fmt!(Debug, "{:?}");
+impl_fmt!(Display, "{}");
+impl_fmt!(LowerExp, "{:e}");
+impl_fmt!(LowerHex, "{:x}");
+impl_fmt!(Octal, "{:o}");
+impl_fmt!(Pointer, "{:p}");
+impl_fmt!(UpperExp, "{:E}");
+impl_fmt!(UpperHex, "{:X}");
 
 /// "Intelligent" emoji formatter.
 ///
@@ -805,6 +951,90 @@ pub(crate) fn char_width(c: char) -> usize {
 #[cfg(not(feature = "ansi-parsing"))]
 pub(crate) fn char_width(_c: char) -> usize {
     1
+}
+
+/// Applies the gradient over a string
+fn apply_gradient_impl(
+    text: &str,
+    gradients: &[GradientColor],
+    block: bool,
+    foreground: bool,
+) -> String {
+    let ascii_number = if foreground { 3 } else { 4 };
+    let skip_sequence = format!("[{}8;2;", ascii_number);
+
+    let mut visible_chars = 0;
+    let total_visible = measure_text_width(text);
+    // The pre-allocation is an estimate, chances are high a re-allocation will occur
+    // But it still less than without the estimate
+    // Since gradients are on the form `\x1b[{}8;2;{};{};{}m` for a single color, the estimation is 16 chars per visible char
+    let mut result = String::with_capacity(16 * total_visible);
+
+    // Second pass: apply gradient
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            let mut seq = String::from(c);
+            while let Some(&next) = chars.peek() {
+                seq.push(next);
+                chars.next();
+                if next == 'm' {
+                    break;
+                }
+            }
+
+            // Only skip foreground/background color sequences
+            if !seq.contains(&skip_sequence) {
+                result.push_str(&seq);
+            }
+            continue;
+        }
+
+        if c == '\n' {
+            result.push(c);
+            if block {
+                visible_chars = 0;
+            }
+            continue;
+        }
+
+        let progress = if total_visible > 1 {
+            visible_chars as f32 / (total_visible - 1) as f32
+        } else {
+            0.0
+        };
+
+        // Find which gradient to use, along the progress for an individual gradient interpolation
+        let gradient_range =
+            map_range((0f32, 1f32), (0f32, (gradients.len() - 1) as f32), progress);
+        let mut current_gradient_index: usize = gradient_range as usize;
+        let mut gradient_progress = gradient_range - current_gradient_index as f32;
+
+        if current_gradient_index == gradients.len() - 1 && current_gradient_index > 0 {
+            // Edge case at the end of the gradient, don't continue looping
+            current_gradient_index -= 1;
+            gradient_progress = 1.0f32
+        }
+
+        let color = gradients[current_gradient_index].interpolate(
+            &gradients[(current_gradient_index + 1).min(gradients.len() - 1)],
+            gradient_progress,
+        );
+
+        result.push_str(&format!(
+            "\x1b[{}8;2;{};{};{}m",
+            ascii_number, color.red, color.green, color.blue
+        ));
+        result.push(c);
+
+        visible_chars += 1;
+    }
+    result
+}
+
+/// Map one range to another
+fn map_range(from_range: (f32, f32), to_range: (f32, f32), s: f32) -> f32 {
+    to_range.0 + (s - from_range.0) * (to_range.1 - to_range.0) / (from_range.1 - from_range.0)
 }
 
 /// Truncates a string to a certain number of characters.

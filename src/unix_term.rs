@@ -36,6 +36,16 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     }
 }
 
+pub(crate) fn is_a_true_color_terminal(out: &Term) -> bool {
+    if !is_a_color_terminal(out) {
+        return false;
+    }
+    match env::var("COLORTERM") {
+        Ok(term) => term == "truecolor" || term == "24bit",
+        Err(_) => false,
+    }
+}
+
 fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
     let res = f();
     if res != 0 {
