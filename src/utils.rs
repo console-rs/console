@@ -169,28 +169,34 @@ pub struct GradientColor {
 
 impl GradientColor {
     fn new(red: u8, green: u8, blue: u8) -> Self {
-        GradientColor {
-            red: red.min(255),
-            green: green.min(255),
-            blue: blue.min(255),
-        }
+        Self { red, green, blue }
     }
 
     fn from_hex(hex: &str) -> Self {
         // Remove '#' if present
         let s = hex.trim_start_matches('#');
 
-        // 6 char hex
-        let mut channels: [u8; 3] = Default::default();
-        for i in (0..5).step_by(2) {
-            channels[i / 2] = u8::from_str_radix(&s[i..i + 2], 16).unwrap_or_default()
+        // 3/6 char hex
+        let step = if s.len() == 6 { 2 } else { 1 };
+        let mut channels: [u8; 3] = [0u8; 3];
+
+        for i in 0..3 {
+            let step_index = (i * step)..((i * step) + step);
+            channels[i] = u8::from_str_radix(&s[step_index], 16).unwrap_or_default();
         }
 
-        GradientColor::new(channels[0], channels[1], channels[2])
+        if s.len() == 3 {
+            // Need to duplicate the value on the other bits
+            for i in 0..3 {
+                channels[i] = (channels[i] << 4) + channels[i];
+            }
+        }
+
+        Self::new(channels[0], channels[1], channels[2])
     }
 
     pub(crate) fn interpolate(&self, other: &Self, t: f32) -> Self {
-        GradientColor {
+        Self {
             red: (self.red as f32 + (other.red as f32 - self.red as f32) * t) as u8,
             green: (self.green as f32 + (other.green as f32 - self.green as f32) * t) as u8,
             blue: (self.blue as f32 + (other.blue as f32 - self.blue as f32) * t) as u8,
@@ -857,10 +863,10 @@ macro_rules! impl_fmt {
                         reset = true;
                     }
                 }
-                // Get the underlying value
-                let mut buf = format!($format_char, &self.val);
 
                 if use_true_colors {
+                    // Get the underlying value, we want to modify it before writing it to the formatter
+                    let mut buf = format!($format_char, &self.val);
                     if !self.style.fg_gradient.is_empty() {
                         buf = apply_gradient_impl(&buf, &self.style.fg_gradient, false, true);
                         reset = true;
@@ -869,9 +875,11 @@ macro_rules! impl_fmt {
                         buf = apply_gradient_impl(&buf, &self.style.bg_gradient, false, false);
                         reset = true;
                     }
+                    write!(f, "{}", buf)?;
+                } else {
+                    fmt::$name::fmt(&self.val, f)?;
                 }
 
-                write!(f, "{}", buf)?;
                 if reset {
                     write!(f, "\x1b[0m")?;
                 }
