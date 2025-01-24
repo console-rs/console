@@ -90,6 +90,7 @@ pub(crate) fn is_a_true_color_terminal(out: &Term) -> bool {
             Err(_) => true,
         };
     }
+    false
 }
 
 /// Enables or disables the `mode` flag on the given `HANDLE` and yields the previous mode.
