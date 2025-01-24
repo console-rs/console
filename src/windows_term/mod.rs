@@ -89,6 +89,7 @@ pub fn is_a_true_color_terminal(out: &Term) -> bool {
             Err(_) => true,
         };
     }
+    false
 }
 
 fn enable_ansi_on(out: &Term) -> bool {
