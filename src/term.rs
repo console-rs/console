@@ -336,8 +336,10 @@ impl Term {
             loop {
                 match slf.read_key()? {
                     Key::Backspace => {
-                        if prefix_len < chars.len() && chars.pop().is_some() {
-                            slf.clear_chars(1)?;
+                        if prefix_len < chars.len() {
+                            if let Some(ch) = chars.pop() {
+                                slf.clear_chars(crate::utils::char_width(ch))?;
+                            }
                         }
                         slf.flush()?;
                     }
