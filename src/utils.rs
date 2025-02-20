@@ -719,7 +719,7 @@ fn str_width(s: &str) -> usize {
 }
 
 #[cfg(feature = "ansi-parsing")]
-fn char_width(c: char) -> usize {
+pub(crate) fn char_width(c: char) -> usize {
     #[cfg(feature = "unicode-width")]
     {
         use unicode_width::UnicodeWidthChar;
@@ -730,6 +730,11 @@ fn char_width(c: char) -> usize {
         let _c = c;
         1
     }
+}
+
+#[cfg(not(feature = "ansi-parsing"))]
+pub(crate) fn char_width(_c: char) -> usize {
+    1
 }
 
 /// Truncates a string to a certain number of characters.
