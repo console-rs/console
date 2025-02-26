@@ -10,11 +10,12 @@ pub(crate) const DEFAULT_WIDTH: u16 = 80;
 
 #[inline]
 pub(crate) fn is_a_terminal(_out: &Term) -> bool {
-    #[cfg(target = "wasm32-wasip1")]
+    #[cfg(all(target_os = "wasi", target_env = "p1"))]
     {
-        unsafe { libc::isatty(out.as_raw_fd()) != 0 }
+        use std::os::fd::AsRawFd;
+        unsafe { libc::isatty(_out.as_raw_fd()) != 0 }
     }
-    #[cfg(not(target = "wasm32-wasip1"))]
+    #[cfg(not(all(target_os = "wasi", target_env = "p1")))]
     {
         false
     }
