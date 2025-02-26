@@ -31,6 +31,6 @@ format-check:
 
 lint:
 	@rustup component add clippy 2> /dev/null
-	@cargo clippy --examples --tests
+	@cargo clippy --examples --tests --all-features -- --deny warnings
 
 .PHONY: all doc build check test format format-check lint check-minver msrv-lock
