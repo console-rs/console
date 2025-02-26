@@ -10,11 +10,11 @@ pub const DEFAULT_WIDTH: u16 = 80;
 
 #[inline]
 pub fn is_a_terminal(_out: &Term) -> bool {
-    #[cfg(target = "wasm32-wasi")]
+    #[cfg(target = "wasm32-wasip1")]
     {
         unsafe { libc::isatty(out.as_raw_fd()) != 0 }
     }
-    #[cfg(not(target = "wasm32-wasi"))]
+    #[cfg(not(target = "wasm32-wasip1"))]
     {
         false
     }
