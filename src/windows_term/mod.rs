@@ -78,6 +78,7 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     enable_ansi_on(out)
 }
 
+/// Enables or disables the `mode` flag on the given `HANDLE` and yields the previous mode.
 fn set_console_mode(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<CONSOLE_MODE> {
     unsafe {
         let mut dw_mode = 0;
