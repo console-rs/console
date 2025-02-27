@@ -130,10 +130,6 @@ fn enable_ansi_on(out: &Term) -> bool {
     .is_some()
 }
 
-// fn set_enable_processed_input(out: &Term, enable: bool) -> bool {
-//     set_console_mode(out, ENABLE_PROCESSED_INPUT, enable)
-// }
-
 unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
     for &fd in fds {
         let mut out = 0;
