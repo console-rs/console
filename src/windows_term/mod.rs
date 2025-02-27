@@ -106,9 +106,9 @@ struct ConsoleModeGuard {
 
 impl ConsoleModeGuard {
     fn set(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<Self> {
-        set_console_mode(handle, mode, enable).map(|restore_mode| ConsoleModeGuard {
+        Some(ConsoleModeGuard {
             handle,
-            restore_mode,
+            restore_mode: set_console_mode(handle, mode, enable)?,
         })
     }
 }
