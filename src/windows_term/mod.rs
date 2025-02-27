@@ -410,15 +410,13 @@ pub(crate) fn read_secure() -> io::Result<String> {
 
 pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     let key_event = {
-        let _guard = if ctrlc_key {
+        let _guard = ctrlc_key.then(|| {
             ConsoleModeGuard::set(
                 unsafe { GetStdHandle(STD_INPUT_HANDLE) },
                 ENABLE_PROCESSED_INPUT,
                 false,
             )
-        } else {
-            None
-        };
+        });
         read_key_event()?
     };
 
