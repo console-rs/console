@@ -86,10 +86,9 @@ fn set_console_mode(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<
             return None;
         }
 
-        let new_dw_mode = if enable {
-            dw_mode | mode
-        } else {
-            dw_mode & !mode
+        let new_dw_mode = match enable {
+            true => dw_mode | mode,
+            false => dw_mode & !mode,
         };
 
         if SetConsoleMode(handle, new_dw_mode) == 0 {
