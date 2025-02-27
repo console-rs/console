@@ -14,12 +14,14 @@ use encode_unicode::error::Utf16TupleError;
 use encode_unicode::CharExt;
 use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE, MAX_PATH};
 use windows_sys::Win32::Storage::FileSystem::{FileNameInfo, GetFileInformationByHandleEx};
+use windows_sys::Win32::System::Console::CONSOLE_MODE;
 use windows_sys::Win32::System::Console::{
     FillConsoleOutputAttribute, FillConsoleOutputCharacterA, GetConsoleCursorInfo, GetConsoleMode,
     GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
     SetConsoleCursorInfo, SetConsoleCursorPosition, SetConsoleMode, SetConsoleTitleW,
-    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, INPUT_RECORD, INPUT_RECORD_0,
-    KEY_EVENT, KEY_EVENT_RECORD, STD_ERROR_HANDLE, STD_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    CONSOLE_CURSOR_INFO, CONSOLE_SCREEN_BUFFER_INFO, COORD, ENABLE_PROCESSED_INPUT,
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING, INPUT_RECORD, INPUT_RECORD_0, KEY_EVENT, KEY_EVENT_RECORD,
+    STD_ERROR_HANDLE, STD_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
@@ -33,7 +35,6 @@ mod colors;
 #[cfg(feature = "windows-console-colors")]
 pub(crate) use self::colors::*;
 
-const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x4;
 pub(crate) const DEFAULT_WIDTH: u16 = 79;
 
 pub(crate) fn as_handle(term: &Term) -> HANDLE {
@@ -77,23 +78,61 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     enable_ansi_on(out)
 }
 
-fn enable_ansi_on(out: &Term) -> bool {
+fn set_console_mode(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<CONSOLE_MODE> {
     unsafe {
-        let handle = as_handle(out);
-
         let mut dw_mode = 0;
         if GetConsoleMode(handle, &mut dw_mode) == 0 {
-            return false;
+            return None;
         }
 
-        dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        if SetConsoleMode(handle, dw_mode) == 0 {
-            return false;
+        let new_dw_mode = if enable {
+            dw_mode | mode
+        } else {
+            dw_mode & !mode
+        };
+
+        if SetConsoleMode(handle, new_dw_mode) == 0 {
+            return None;
         }
 
-        true
+        Some(dw_mode)
     }
 }
+
+struct ConsoleModeGuard {
+    handle: HANDLE,
+    restore_mode: CONSOLE_MODE,
+}
+
+impl ConsoleModeGuard {
+    fn set(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<Self> {
+        set_console_mode(handle, mode, enable).map(|restore_mode| ConsoleModeGuard {
+            handle,
+            restore_mode,
+        })
+    }
+}
+
+impl Drop for ConsoleModeGuard {
+    fn drop(&mut self) {
+        unsafe {
+            SetConsoleMode(self.handle, self.restore_mode);
+        }
+    }
+}
+
+fn enable_ansi_on(out: &Term) -> bool {
+    set_console_mode(
+        out.as_raw_handle(),
+        ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+        true,
+    )
+    .is_some()
+}
+
+// fn set_enable_processed_input(out: &Term, enable: bool) -> bool {
+//     set_console_mode(out, ENABLE_PROCESSED_INPUT, enable)
+// }
 
 unsafe fn console_on_any(fds: &[STD_HANDLE]) -> bool {
     for &fd in fds {
@@ -373,8 +412,19 @@ pub(crate) fn read_secure() -> io::Result<String> {
     Ok(rv)
 }
 
-pub(crate) fn read_single_key(_ctrlc_key: bool) -> io::Result<Key> {
-    let key_event = read_key_event()?;
+pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
+    let key_event = {
+        let _guard = if ctrlc_key {
+            ConsoleModeGuard::set(
+                unsafe { GetStdHandle(STD_INPUT_HANDLE) },
+                ENABLE_PROCESSED_INPUT,
+                false,
+            )
+        } else {
+            None
+        };
+        read_key_event()?
+    };
 
     let unicode_char = unsafe { key_event.uChar.UnicodeChar };
     if unicode_char == 0 {
@@ -393,6 +443,8 @@ pub(crate) fn read_single_key(_ctrlc_key: bool) -> io::Result<Key> {
                     Ok(Key::Backspace)
                 } else if c == '\x1B' {
                     Ok(Key::Escape)
+                } else if c == '\x03' && ctrlc_key {
+                    Ok(Key::CtrlC)
                 } else {
                     Ok(Key::Char(c))
                 }
