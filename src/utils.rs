@@ -343,7 +343,7 @@ impl Style {
 
     /// Adds a attr.
     #[inline]
-    pub fn attr(mut self, attr: Attribute) -> Self {
+    pub const fn attr(mut self, attr: Attribute) -> Self {
         self.attrs = self.attrs.insert(attr);
         self
     }
@@ -435,39 +435,39 @@ impl Style {
     }
 
     #[inline]
-    pub fn bold(self) -> Self {
+    pub const fn bold(self) -> Self {
         self.attr(Attribute::Bold)
     }
     #[inline]
-    pub fn dim(self) -> Self {
+    pub const fn dim(self) -> Self {
         self.attr(Attribute::Dim)
     }
     #[inline]
-    pub fn italic(self) -> Self {
+    pub const fn italic(self) -> Self {
         self.attr(Attribute::Italic)
     }
     #[inline]
-    pub fn underlined(self) -> Self {
+    pub const fn underlined(self) -> Self {
         self.attr(Attribute::Underlined)
     }
     #[inline]
-    pub fn blink(self) -> Self {
+    pub const fn blink(self) -> Self {
         self.attr(Attribute::Blink)
     }
     #[inline]
-    pub fn blink_fast(self) -> Self {
+    pub const fn blink_fast(self) -> Self {
         self.attr(Attribute::BlinkFast)
     }
     #[inline]
-    pub fn reverse(self) -> Self {
+    pub const fn reverse(self) -> Self {
         self.attr(Attribute::Reverse)
     }
     #[inline]
-    pub fn hidden(self) -> Self {
+    pub const fn hidden(self) -> Self {
         self.attr(Attribute::Hidden)
     }
     #[inline]
-    pub fn strikethrough(self) -> Self {
+    pub const fn strikethrough(self) -> Self {
         self.attr(Attribute::StrikeThrough)
     }
 }
@@ -520,152 +520,152 @@ impl<D> StyledObject<D> {
     ///
     /// This is the default
     #[inline]
-    pub fn for_stdout(mut self) -> StyledObject<D> {
+    pub const fn for_stdout(mut self) -> StyledObject<D> {
         self.style = self.style.for_stdout();
         self
     }
 
     /// Sets a foreground color.
     #[inline]
-    pub fn fg(mut self, color: Color) -> StyledObject<D> {
+    pub const fn fg(mut self, color: Color) -> StyledObject<D> {
         self.style = self.style.fg(color);
         self
     }
 
     /// Sets a background color.
     #[inline]
-    pub fn bg(mut self, color: Color) -> StyledObject<D> {
+    pub const fn bg(mut self, color: Color) -> StyledObject<D> {
         self.style = self.style.bg(color);
         self
     }
 
     /// Adds a attr.
     #[inline]
-    pub fn attr(mut self, attr: Attribute) -> StyledObject<D> {
+    pub const fn attr(mut self, attr: Attribute) -> StyledObject<D> {
         self.style = self.style.attr(attr);
         self
     }
 
     #[inline]
-    pub fn black(self) -> StyledObject<D> {
+    pub const fn black(self) -> StyledObject<D> {
         self.fg(Color::Black)
     }
     #[inline]
-    pub fn red(self) -> StyledObject<D> {
+    pub const fn red(self) -> StyledObject<D> {
         self.fg(Color::Red)
     }
     #[inline]
-    pub fn green(self) -> StyledObject<D> {
+    pub const fn green(self) -> StyledObject<D> {
         self.fg(Color::Green)
     }
     #[inline]
-    pub fn yellow(self) -> StyledObject<D> {
+    pub const fn yellow(self) -> StyledObject<D> {
         self.fg(Color::Yellow)
     }
     #[inline]
-    pub fn blue(self) -> StyledObject<D> {
+    pub const fn blue(self) -> StyledObject<D> {
         self.fg(Color::Blue)
     }
     #[inline]
-    pub fn magenta(self) -> StyledObject<D> {
+    pub const fn magenta(self) -> StyledObject<D> {
         self.fg(Color::Magenta)
     }
     #[inline]
-    pub fn cyan(self) -> StyledObject<D> {
+    pub const fn cyan(self) -> StyledObject<D> {
         self.fg(Color::Cyan)
     }
     #[inline]
-    pub fn white(self) -> StyledObject<D> {
+    pub const fn white(self) -> StyledObject<D> {
         self.fg(Color::White)
     }
     #[inline]
-    pub fn color256(self, color: u8) -> StyledObject<D> {
+    pub const fn color256(self, color: u8) -> StyledObject<D> {
         self.fg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn bright(mut self) -> StyledObject<D> {
+    pub const fn bright(mut self) -> StyledObject<D> {
         self.style = self.style.bright();
         self
     }
 
     #[inline]
-    pub fn on_black(self) -> StyledObject<D> {
+    pub const fn on_black(self) -> StyledObject<D> {
         self.bg(Color::Black)
     }
     #[inline]
-    pub fn on_red(self) -> StyledObject<D> {
+    pub const fn on_red(self) -> StyledObject<D> {
         self.bg(Color::Red)
     }
     #[inline]
-    pub fn on_green(self) -> StyledObject<D> {
+    pub const fn on_green(self) -> StyledObject<D> {
         self.bg(Color::Green)
     }
     #[inline]
-    pub fn on_yellow(self) -> StyledObject<D> {
+    pub const fn on_yellow(self) -> StyledObject<D> {
         self.bg(Color::Yellow)
     }
     #[inline]
-    pub fn on_blue(self) -> StyledObject<D> {
+    pub const fn on_blue(self) -> StyledObject<D> {
         self.bg(Color::Blue)
     }
     #[inline]
-    pub fn on_magenta(self) -> StyledObject<D> {
+    pub const fn on_magenta(self) -> StyledObject<D> {
         self.bg(Color::Magenta)
     }
     #[inline]
-    pub fn on_cyan(self) -> StyledObject<D> {
+    pub const fn on_cyan(self) -> StyledObject<D> {
         self.bg(Color::Cyan)
     }
     #[inline]
-    pub fn on_white(self) -> StyledObject<D> {
+    pub const fn on_white(self) -> StyledObject<D> {
         self.bg(Color::White)
     }
     #[inline]
-    pub fn on_color256(self, color: u8) -> StyledObject<D> {
+    pub const fn on_color256(self, color: u8) -> StyledObject<D> {
         self.bg(Color::Color256(color))
     }
 
     #[inline]
-    pub fn on_bright(mut self) -> StyledObject<D> {
+    pub const fn on_bright(mut self) -> StyledObject<D> {
         self.style = self.style.on_bright();
         self
     }
 
     #[inline]
-    pub fn bold(self) -> StyledObject<D> {
+    pub const fn bold(self) -> StyledObject<D> {
         self.attr(Attribute::Bold)
     }
     #[inline]
-    pub fn dim(self) -> StyledObject<D> {
+    pub const fn dim(self) -> StyledObject<D> {
         self.attr(Attribute::Dim)
     }
     #[inline]
-    pub fn italic(self) -> StyledObject<D> {
+    pub const fn italic(self) -> StyledObject<D> {
         self.attr(Attribute::Italic)
     }
     #[inline]
-    pub fn underlined(self) -> StyledObject<D> {
+    pub const fn underlined(self) -> StyledObject<D> {
         self.attr(Attribute::Underlined)
     }
     #[inline]
-    pub fn blink(self) -> StyledObject<D> {
+    pub const fn blink(self) -> StyledObject<D> {
         self.attr(Attribute::Blink)
     }
     #[inline]
-    pub fn blink_fast(self) -> StyledObject<D> {
+    pub const fn blink_fast(self) -> StyledObject<D> {
         self.attr(Attribute::BlinkFast)
     }
     #[inline]
-    pub fn reverse(self) -> StyledObject<D> {
+    pub const fn reverse(self) -> StyledObject<D> {
         self.attr(Attribute::Reverse)
     }
     #[inline]
-    pub fn hidden(self) -> StyledObject<D> {
+    pub const fn hidden(self) -> StyledObject<D> {
         self.attr(Attribute::Hidden)
     }
     #[inline]
-    pub fn strikethrough(self) -> StyledObject<D> {
+    pub const fn strikethrough(self) -> StyledObject<D> {
         self.attr(Attribute::StrikeThrough)
     }
 }
