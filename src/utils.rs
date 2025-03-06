@@ -1,7 +1,7 @@
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
+use std::fmt::{Debug, Formatter};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use once_cell::sync::Lazy;
@@ -116,32 +116,85 @@ impl Color {
 
 /// A terminal style attribute.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
+#[repr(u16)]
 pub enum Attribute {
-    Bold,
-    Dim,
-    Italic,
-    Underlined,
-    Blink,
-    BlinkFast,
-    Reverse,
-    Hidden,
-    StrikeThrough,
+    // This mapping is important, it exactly matches ansi_num = (x as u16 + 1)
+    // See `ATTRIBUTES_LOOKUP` as well
+    Bold = 0,
+    Dim = 1,
+    Italic = 2,
+    Underlined = 3,
+    Blink = 4,
+    BlinkFast = 5,
+    Reverse = 6,
+    Hidden = 7,
+    StrikeThrough = 8,
 }
 
-impl Attribute {
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Attributes(u16);
+
+impl Attributes {
+    const ATTRIBUTES_LOOKUP: [Attribute; 9] = [
+        Attribute::Bold,
+        Attribute::Dim,
+        Attribute::Italic,
+        Attribute::Underlined,
+        Attribute::Blink,
+        Attribute::BlinkFast,
+        Attribute::Reverse,
+        Attribute::Hidden,
+        Attribute::StrikeThrough,
+    ];
+
     #[inline]
-    fn ansi_num(self) -> usize {
-        match self {
-            Attribute::Bold => 1,
-            Attribute::Dim => 2,
-            Attribute::Italic => 3,
-            Attribute::Underlined => 4,
-            Attribute::Blink => 5,
-            Attribute::BlinkFast => 6,
-            Attribute::Reverse => 7,
-            Attribute::Hidden => 8,
-            Attribute::StrikeThrough => 9,
+    const fn new() -> Self {
+        Attributes(0)
+    }
+
+    #[inline]
+    #[must_use]
+    const fn insert(mut self, attr: Attribute) -> Self {
+        let bit = attr as u16;
+        self.0 |= 1 << bit;
+        self
+    }
+
+    #[inline]
+    const fn bits(self) -> BitsIter {
+        BitsIter(self.0)
+    }
+
+    #[inline]
+    fn ansi_nums(self) -> impl Iterator<Item = u16> {
+        // Per construction of the enum
+        self.bits().map(|bit| bit + 1)
+    }
+
+    #[inline]
+    fn attrs(self) -> impl Iterator<Item = Attribute> {
+        self.bits().map(|bit| Self::ATTRIBUTES_LOOKUP[bit as usize])
+    }
+}
+
+struct BitsIter(u16);
+
+impl Iterator for BitsIter {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 0 {
+            return None;
         }
+        let bit = self.0.trailing_zeros();
+        self.0 ^= (1 << bit) as u16;
+        Some(bit as u16)
+    }
+}
+
+impl Debug for Attributes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self.attrs()).finish()
     }
 }
 
@@ -160,7 +213,7 @@ pub struct Style {
     bg: Option<Color>,
     fg_bright: bool,
     bg_bright: bool,
-    attrs: BTreeSet<Attribute>,
+    attrs: Attributes,
     force: Option<bool>,
     for_stderr: bool,
 }
@@ -179,7 +232,7 @@ impl Style {
             bg: None,
             fg_bright: false,
             bg_bright: false,
-            attrs: BTreeSet::new(),
+            attrs: Attributes::new(),
             force: None,
             for_stderr: false,
         }
@@ -291,7 +344,7 @@ impl Style {
     /// Adds a attr.
     #[inline]
     pub fn attr(mut self, attr: Attribute) -> Self {
-        self.attrs.insert(attr);
+        self.attrs = self.attrs.insert(attr);
         self
     }
 
@@ -650,8 +703,8 @@ macro_rules! impl_fmt {
                         }
                         reset = true;
                     }
-                    for attr in &self.style.attrs {
-                        write!(f, "\x1b[{}m", attr.ansi_num())?;
+                    for ansi_num in self.style.attrs.ansi_nums() {
+                        write!(f, "\x1b[{}m", ansi_num)?;
                         reset = true;
                     }
                 }
@@ -964,4 +1017,56 @@ fn test_pad_str_with() {
         pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
         "foo..."
     );
+}
+
+#[test]
+fn test_attributes_single() {
+    for attr in Attributes::ATTRIBUTES_LOOKUP {
+        let attrs = Attributes::new().insert(attr);
+        assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
+        assert_eq!(attrs.ansi_nums().collect::<Vec<_>>(), [attr as u16 + 1]);
+        assert_eq!(attrs.attrs().collect::<Vec<_>>(), [attr]);
+        assert_eq!(format!("{:?}", attrs), format!("{{{:?}}}", attr));
+    }
+}
+
+#[test]
+fn test_attributes_many() {
+    let tests: [&[Attribute]; 3] = [
+        &[
+            Attribute::Bold,
+            Attribute::Underlined,
+            Attribute::BlinkFast,
+            Attribute::Hidden,
+        ],
+        &[
+            Attribute::Dim,
+            Attribute::Italic,
+            Attribute::Blink,
+            Attribute::Reverse,
+            Attribute::StrikeThrough,
+        ],
+        &Attributes::ATTRIBUTES_LOOKUP,
+    ];
+    for test_attrs in tests {
+        let mut attrs = Attributes::new();
+        for attr in test_attrs {
+            attrs = attrs.insert(*attr);
+        }
+        assert_eq!(
+            attrs.bits().collect::<Vec<_>>(),
+            test_attrs
+                .iter()
+                .map(|attr| *attr as u16)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            attrs.ansi_nums().collect::<Vec<_>>(),
+            test_attrs
+                .iter()
+                .map(|attr| *attr as u16 + 1)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
+    }
 }
