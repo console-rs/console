@@ -131,11 +131,8 @@ pub enum Attribute {
     StrikeThrough = 8,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct Attributes(u16);
-
-impl Attributes {
-    const ATTRIBUTES_LOOKUP: [Attribute; 9] = [
+impl Attribute {
+    const MAP: [Attribute; 9] = [
         Attribute::Bold,
         Attribute::Dim,
         Attribute::Italic,
@@ -146,10 +143,15 @@ impl Attributes {
         Attribute::Hidden,
         Attribute::StrikeThrough,
     ];
+}
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct Attributes(u16);
+
+impl Attributes {
     #[inline]
     const fn new() -> Self {
-        Attributes(0)
+        Self(0)
     }
 
     #[inline]
@@ -173,7 +175,7 @@ impl Attributes {
 
     #[inline]
     fn attrs(self) -> impl Iterator<Item = Attribute> {
-        self.bits().map(|bit| Self::ATTRIBUTES_LOOKUP[bit as usize])
+        self.bits().map(|bit| Attribute::MAP[bit as usize])
     }
 }
 
@@ -1021,7 +1023,7 @@ fn test_pad_str_with() {
 
 #[test]
 fn test_attributes_single() {
-    for attr in Attributes::ATTRIBUTES_LOOKUP {
+    for attr in Attribute::MAP {
         let attrs = Attributes::new().insert(attr);
         assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
         assert_eq!(attrs.ansi_nums().collect::<Vec<_>>(), [attr as u16 + 1]);
@@ -1046,7 +1048,7 @@ fn test_attributes_many() {
             Attribute::Reverse,
             Attribute::StrikeThrough,
         ],
-        &Attributes::ATTRIBUTES_LOOKUP,
+        &Attribute::MAP,
     ];
     for test_attrs in tests {
         let mut attrs = Attributes::new();
