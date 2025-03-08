@@ -168,14 +168,22 @@ impl Attributes {
     }
 
     #[inline]
-    fn ansi_nums(self) -> impl Iterator<Item = u16> {
-        // Per construction of the enum
-        self.bits().map(|bit| bit + 1)
+    fn attrs(self) -> impl Iterator<Item = Attribute> {
+        self.bits().map(|bit| Attribute::MAP[bit as usize])
     }
 
     #[inline]
-    fn attrs(self) -> impl Iterator<Item = Attribute> {
-        self.bits().map(|bit| Attribute::MAP[bit as usize])
+    fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+}
+
+impl fmt::Display for Attributes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for ansi in self.bits().map(|bit| bit + 1) {
+            write!(f, "\x1b[{ansi}m")?;
+        }
+        Ok(())
     }
 }
 
@@ -705,8 +713,8 @@ macro_rules! impl_fmt {
                         }
                         reset = true;
                     }
-                    for ansi_num in self.style.attrs.ansi_nums() {
-                        write!(f, "\x1b[{}m", ansi_num)?;
+                    if !self.style.attrs.is_empty() {
+                        write!(f, "{}", self.style.attrs)?;
                         reset = true;
                     }
                 }
@@ -1026,7 +1034,6 @@ fn test_attributes_single() {
     for attr in Attribute::MAP {
         let attrs = Attributes::new().insert(attr);
         assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
-        assert_eq!(attrs.ansi_nums().collect::<Vec<_>>(), [attr as u16 + 1]);
         assert_eq!(attrs.attrs().collect::<Vec<_>>(), [attr]);
         assert_eq!(format!("{:?}", attrs), format!("{{{:?}}}", attr));
     }
@@ -1060,13 +1067,6 @@ fn test_attributes_many() {
             test_attrs
                 .iter()
                 .map(|attr| *attr as u16)
-                .collect::<Vec<_>>()
-        );
-        assert_eq!(
-            attrs.ansi_nums().collect::<Vec<_>>(),
-            test_attrs
-                .iter()
-                .map(|attr| *attr as u16 + 1)
                 .collect::<Vec<_>>()
         );
         assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
