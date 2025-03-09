@@ -980,18 +980,29 @@ fn test_text_width() {
         .on_black()
         .bold()
         .force_styling(true)
-        .to_string()
-        + "🐶bar";
+        .to_string();
+
     assert_eq!(
         measure_text_width(&s),
+        if cfg!(feature = "ansi-parsing") {
+            3
+        } else if cfg!(feature = "unicode-width") {
+            17
+        } else {
+            21
+        }
+    );
+
+    assert_eq!(
+        measure_text_width(&style("🐶").red().to_string()),
         match (
             cfg!(feature = "ansi-parsing"),
             cfg!(feature = "unicode-width")
         ) {
-            (true, true) => 8,
-            (true, false) => 7,
-            (false, true) => 22,
-            (false, false) => 25,
+            (true, true) => 2,
+            (true, false) => 1,
+            (false, true) => 17,
+            (false, false) => 1,
         }
     );
 }
@@ -1032,6 +1043,11 @@ fn test_slice_ansi_str() {
     let test_str = "Hello\x1b[31m🐶\x1b[1m🐶\x1b[0m world!";
     assert_eq!(slice_str(test_str, "", 0..test_str.len(), ""), test_str);
 
+    assert_eq!(
+        slice_str(test_str, ">>>", 0..test_str.len(), "<<<"),
+        format!(">>>{test_str}<<<"),
+    );
+
     if cfg!(feature = "unicode-width") && cfg!(feature = "ansi-parsing") {
         assert_eq!(measure_text_width(test_str), 16);
 
@@ -1063,6 +1079,11 @@ fn test_slice_ansi_str() {
         assert_eq!(
             slice_str(test_str, "", 7..21, ""),
             "\x1b[31m\x1b[1m🐶\x1b[0m world!"
+        );
+
+        assert_eq!(
+            slice_str(test_str, ">>>", 7..21, "<<<"),
+            "\x1b[31m>>>\x1b[1m🐶\x1b[0m world!<<<"
         );
     }
 }

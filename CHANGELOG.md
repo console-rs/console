@@ -3,7 +3,7 @@
 Newer changelog entries can be found [on
 GitHub](https://github.com/console-rs/console/releases).
 
-## 0.16.0
+## 0.15.12
 
 ### Enhancements
 
