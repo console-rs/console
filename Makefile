@@ -14,6 +14,8 @@ test:
 	@cargo test
 	@cargo test --all-features
 	@cargo test --no-default-features
+	@cargo test --no-default-features --features ansi-parsing
+	@cargo test --no-default-features --features unicode-width
 
 check-minver:
 	@echo "MINVER CHECK"
