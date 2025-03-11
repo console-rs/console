@@ -9,12 +9,7 @@ use once_cell::sync::Lazy;
 use crate::term::{wants_emoji, Term};
 
 #[cfg(feature = "ansi-parsing")]
-use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
-
-#[cfg(not(feature = "ansi-parsing"))]
-fn strip_ansi_codes(s: &str) -> &str {
-    s
-}
+use crate::ansi::AnsiCodeIterator;
 
 fn default_colors_enabled(out: &Term) -> bool {
     (out.features().colors_supported()
@@ -71,7 +66,19 @@ pub fn set_colors_enabled_stderr(val: bool) {
 
 /// Measure the width of a string in terminal characters.
 pub fn measure_text_width(s: &str) -> usize {
-    str_width(&strip_ansi_codes(s))
+    #[cfg(feature = "ansi-parsing")]
+    {
+        AnsiCodeIterator::new(s)
+            .filter_map(|(s, is_ansi)| match is_ansi {
+                false => Some(str_width(s)),
+                true => None,
+            })
+            .sum()
+    }
+    #[cfg(not(feature = "ansi-parsing"))]
+    {
+        str_width(s)
+    }
 }
 
 /// A terminal color.
@@ -937,14 +944,28 @@ fn test_text_width() {
         .bold()
         .force_styling(true)
         .to_string();
+
     assert_eq!(
         measure_text_width(&s),
         if cfg!(feature = "ansi-parsing") {
             3
-        } else if cfg!(feature = "unicode-width") {
-            17
         } else {
             21
+        }
+    );
+
+    let s = style("🐶 <3").red().force_styling(true).to_string();
+
+    assert_eq!(
+        measure_text_width(&s),
+        match (
+            cfg!(feature = "ansi-parsing"),
+            cfg!(feature = "unicode-width")
+        ) {
+            (true, true) => 5,    // "🐶 <3"
+            (true, false) => 4,   // "🐶 <3", no unicode-aware width
+            (false, true) => 14,  // full string
+            (false, false) => 13, // full string, no unicode-aware width
         }
     );
 }
