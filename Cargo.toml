@@ -19,7 +19,7 @@ ansi-parsing = []
 
 [dependencies]
 libc = "0.2.99"
-once_cell = "1.8"
+once_cell = "1.8,<1.21" # version 1.21 requires Rust >= 1.70
 unicode-width = { version = "0.2", optional = true }
 
 [target.'cfg(windows)'.dependencies]
