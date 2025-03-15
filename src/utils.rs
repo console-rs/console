@@ -814,6 +814,10 @@ pub(crate) fn char_width(_c: char) -> usize {
 /// escapes code will still be honored.  If truncation takes place
 /// the tail string will be appended.
 pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
+    if measure_text_width(s) <= width {
+        return Cow::Borrowed(s);
+    }
+
     #[cfg(feature = "ansi-parsing")]
     {
         use std::cmp::Ordering;
@@ -825,12 +829,12 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
             match item {
                 (s, false) => {
                     if rv.is_none() {
-                        if str_width(s) + length > width - str_width(tail) {
+                        if str_width(s) + length > width.saturating_sub(str_width(tail)) {
                             let ts = iter.current_slice();
 
                             let mut s_byte = 0;
                             let mut s_width = 0;
-                            let rest_width = width - str_width(tail) - length;
+                            let rest_width = width.saturating_sub(str_width(tail)).saturating_sub(length);
                             for c in s.chars() {
                                 s_byte += c.len_utf8();
                                 s_width += char_width(c);
@@ -869,15 +873,11 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 
     #[cfg(not(feature = "ansi-parsing"))]
     {
-        if s.len() <= width - tail.len() {
-            Cow::Borrowed(s)
-        } else {
-            Cow::Owned(format!(
-                "{}{}",
-                s.get(..width - tail.len()).unwrap_or_default(),
-                tail
-            ))
-        }
+        Cow::Owned(format!(
+            "{}{}",
+            &s[..width.saturating_sub(tail.len())],
+            tail
+        ))
     }
 }
 
@@ -998,13 +998,23 @@ fn test_truncate_str() {
         &truncate_str(&s, 6, ""),
         &format!("foo {}", style("バ").red().force_styling(true))
     );
+    let s = format!("foo {}", style("バー").red().force_styling(true));
+    assert_eq!(
+        &truncate_str(&s, 2, "!!!"),
+        &format!("!!!{}", style("").red().force_styling(true))
+    );
 }
 
 #[test]
 fn test_truncate_str_no_ansi() {
+    assert_eq!(&truncate_str("foo bar", 7, "!"), "foo bar");
     assert_eq!(&truncate_str("foo bar", 5, ""), "foo b");
     assert_eq!(&truncate_str("foo bar", 5, "!"), "foo !");
     assert_eq!(&truncate_str("foo bar baz", 10, "..."), "foo bar...");
+    assert_eq!(&truncate_str("foo bar", 0, ""), "");
+    assert_eq!(&truncate_str("foo bar", 0, "!"), "!");
+    assert_eq!(&truncate_str("foo bar", 2, "!!!"), "!!!");
+    assert_eq!(&truncate_str("ab", 2, "!!!"), "ab");
 }
 
 #[test]
