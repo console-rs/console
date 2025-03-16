@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::env;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use once_cell::sync::Lazy;
@@ -807,6 +808,112 @@ pub(crate) fn char_width(_c: char) -> usize {
     1
 }
 
+/// Slice a `&str` in terms of text width. This means that only the text
+/// columns strictly between `start` and `stop` will be kept.
+///
+/// If a multi-columns character overlaps with the end of the interval it will
+/// not be included. In such a case, the result will be less than `end - start`
+/// columns wide.
+///
+/// This ensures that escape codes are not screwed up in the process. And if
+/// non-empty head and tail are specified, they are inserted between the ANSI
+/// codes from truncated bounds and the slice.
+pub fn slice_str<'a>(s: &'a str, head: &str, bounds: Range<usize>, tail: &str) -> Cow<'a, str> {
+    #[cfg(feature = "ansi-parsing")]
+    {
+        let mut pos = 0; // Current search index by width
+        let mut code_iter = AnsiCodeIterator::new(s).peekable();
+
+        // Search for the begining of the slice while collecting heading ANSI
+        // codes
+        let mut front_ansi = String::new(); // ANSI codes found before bound start
+        let mut slice_start = 0; // Current search index by bytes
+
+        // Extract the leading slice, which *may be mutated* to remove just its first character.
+        'search_slice_start: while pos < bounds.start {
+            let Some((sub, is_ansi)) = code_iter.peek_mut() else {
+                break;
+            };
+
+            if *is_ansi {
+                // Keep track of leading ANSI for later output.
+                front_ansi.push_str(sub);
+                slice_start += sub.len();
+            } else {
+                for (c_idx, c) in sub.char_indices() {
+                    if pos >= bounds.start {
+                        // Ensure we don't drop the remaining of the slice before searching for the
+                        // end bound.
+                        *sub = &sub[c_idx..];
+                        break 'search_slice_start;
+                    }
+
+                    pos += char_width(c);
+                    slice_start += c.len_utf8();
+                }
+            }
+
+            code_iter.next();
+        }
+
+        // Search for the end of the slice. This loop is a bit simpler because we don't need to
+        // keep track of remaining characters if we cut in the middle of a non-ANSI slice.
+        let mut slice_end = slice_start;
+
+        'search_slice_end: for (sub, is_ansi) in &mut code_iter {
+            if is_ansi {
+                // Keep ANSI in the output slice but don't account for them in the total width.
+                slice_end += sub.len();
+                continue;
+            }
+
+            for c in sub.chars() {
+                let c_width = char_width(c);
+
+                if pos + c_width > bounds.end {
+                    // We will only search for ANSI codes after breaking this
+                    // loop, so we can safely drop the remaining of `sub`
+                    break 'search_slice_end;
+                }
+
+                pos += c_width;
+                slice_end += c.len_utf8();
+            }
+        }
+
+        // Initialise the result (before appending remaining ANSI slices)
+        let slice = &s[slice_start..slice_end];
+
+        let mut result = {
+            if front_ansi.is_empty() && head.is_empty() && tail.is_empty() {
+                // No allocation may have to be performed if there are no bounds.
+                Cow::Borrowed(slice)
+            } else {
+                Cow::Owned(front_ansi + head + slice + tail)
+            }
+        };
+
+        // Push back remaining ANSI codes to result
+        for (sub, is_ansi) in code_iter {
+            if is_ansi {
+                result.to_mut().push_str(sub);
+            }
+        }
+
+        result
+    }
+    #[cfg(not(feature = "ansi-parsing"))]
+    {
+        let slice = s.get(bounds).unwrap_or("");
+
+        if head.is_empty() && tail.is_empty() {
+            Cow::Borrowed(slice)
+        } else {
+            Cow::Owned(format!("{head}{slice}{tail}"))
+        }
+    }
+}
+
 /// Truncates a string to a certain number of characters.
 ///
 /// This ensures that escape codes are not screwed up in the process.
@@ -815,69 +922,10 @@ pub(crate) fn char_width(_c: char) -> usize {
 /// the tail string will be appended.
 pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
     if measure_text_width(s) <= width {
-        return Cow::Borrowed(s);
-    }
-
-    #[cfg(feature = "ansi-parsing")]
-    {
-        use std::cmp::Ordering;
-        let mut iter = AnsiCodeIterator::new(s);
-        let mut length = 0;
-        let mut rv = None;
-
-        while let Some(item) = iter.next() {
-            match item {
-                (s, false) => {
-                    if rv.is_none() {
-                        if str_width(s) + length > width.saturating_sub(str_width(tail)) {
-                            let ts = iter.current_slice();
-
-                            let mut s_byte = 0;
-                            let mut s_width = 0;
-                            let rest_width = width.saturating_sub(str_width(tail)).saturating_sub(length);
-                            for c in s.chars() {
-                                s_byte += c.len_utf8();
-                                s_width += char_width(c);
-                                match s_width.cmp(&rest_width) {
-                                    Ordering::Equal => break,
-                                    Ordering::Greater => {
-                                        s_byte -= c.len_utf8();
-                                        break;
-                                    }
-                                    Ordering::Less => continue,
-                                }
-                            }
-
-                            let idx = ts.len() - s.len() + s_byte;
-                            let mut buf = ts[..idx].to_string();
-                            buf.push_str(tail);
-                            rv = Some(buf);
-                        }
-                        length += str_width(s);
-                    }
-                }
-                (s, true) => {
-                    if let Some(ref mut rv) = rv {
-                        rv.push_str(s);
-                    }
-                }
-            }
-        }
-
-        if let Some(buf) = rv {
-            Cow::Owned(buf)
-        } else {
-            Cow::Borrowed(s)
-        }
-    }
-
-    #[cfg(not(feature = "ansi-parsing"))]
-    {
-        Cow::Owned(format!(
-            "{}{}",
-            &s[..width.saturating_sub(tail.len())],
-            tail
-        ))
+        Cow::Borrowed(s)
+    } else {
+        let tail_width = measure_text_width(tail);
+        slice_str(s, "", 0..width.saturating_sub(tail_width), tail)
     }
 }
 
@@ -1003,6 +1051,57 @@ fn test_truncate_str() {
         &truncate_str(&s, 2, "!!!"),
         &format!("!!!{}", style("").red().force_styling(true))
     );
+}
+
+#[test]
+fn test_slice_ansi_str() {
+    // Note that 🐶 is two columns wide
+    let test_str = "Hello\x1b[31m🐶\x1b[1m🐶\x1b[0m world!";
+    assert_eq!(slice_str(test_str, "", 0..test_str.len(), ""), test_str);
+
+    assert_eq!(
+        slice_str(test_str, ">>>", 0..test_str.len(), "<<<"),
+        format!(">>>{test_str}<<<"),
+    );
+
+    if cfg!(feature = "unicode-width") && cfg!(feature = "ansi-parsing") {
+        assert_eq!(measure_text_width(test_str), 16);
+
+        assert_eq!(
+            slice_str(test_str, "", 5..5, ""),
+            "\u{1b}[31m\u{1b}[1m\u{1b}[0m"
+        );
+
+        assert_eq!(
+            slice_str(test_str, "", 0..5, ""),
+            "Hello\x1b[31m\x1b[1m\x1b[0m"
+        );
+
+        assert_eq!(
+            slice_str(test_str, "", 0..6, ""),
+            "Hello\x1b[31m\x1b[1m\x1b[0m"
+        );
+
+        assert_eq!(
+            slice_str(test_str, "", 0..7, ""),
+            "Hello\x1b[31m🐶\x1b[1m\x1b[0m"
+        );
+
+        assert_eq!(
+            slice_str(test_str, "", 4..9, ""),
+            "o\x1b[31m🐶\x1b[1m🐶\x1b[0m"
+        );
+
+        assert_eq!(
+            slice_str(test_str, "", 7..21, ""),
+            "\x1b[31m\x1b[1m🐶\x1b[0m world!"
+        );
+
+        assert_eq!(
+            slice_str(test_str, ">>>", 7..21, "<<<"),
+            "\x1b[31m>>>\x1b[1m🐶\x1b[0m world!<<<"
+        );
+    }
 }
 
 #[test]
