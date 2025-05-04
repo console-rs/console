@@ -284,7 +284,7 @@ impl Term {
         }
     }
 
-    /// Read a single key form the terminal.
+    /// Read a single key from the terminal.
     ///
     /// This does not echo anything.  If the terminal is not user attended
     /// the return value will always be the unknown key.
