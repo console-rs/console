@@ -69,6 +69,9 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     if !is_a_terminal(out) {
         return false;
     }
+    if env::var("NO_COLOR").is_ok() {
+        return false;
+    }
     if msys_tty_on(out) {
         return match env::var("TERM") {
             Ok(term) => term != "dumb",
