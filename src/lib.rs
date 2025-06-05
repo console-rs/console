@@ -101,7 +101,7 @@ pub use crate::utils::{
 #[cfg(all(feature = "ansi-parsing", feature = "alloc"))]
 pub use crate::ansi::strip_ansi_codes;
 #[cfg(feature = "ansi-parsing")]
-pub use crate::ansi::AnsiCodeIterator;
+pub use crate::{ansi::AnsiCodeIterator, without_ansi::WithoutAnsi};
 
 #[cfg(feature = "std")]
 mod common_term;
@@ -120,3 +120,5 @@ mod windows_term;
 
 #[cfg(feature = "ansi-parsing")]
 mod ansi;
+#[cfg(feature = "ansi-parsing")]
+mod without_ansi;
