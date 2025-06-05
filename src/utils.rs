@@ -1,8 +1,9 @@
-use std::borrow::Cow;
+use alloc::borrow::Cow;
+use core::{
+    fmt::{self, Debug, Formatter},
+    sync::atomic::{AtomicBool, Ordering},
+};
 use std::env;
-use std::fmt;
-use std::fmt::{Debug, Formatter};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use once_cell::sync::Lazy;
 
@@ -820,7 +821,7 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 
     #[cfg(feature = "ansi-parsing")]
     {
-        use std::cmp::Ordering;
+        use core::cmp::Ordering;
         let mut iter = AnsiCodeIterator::new(s);
         let mut length = 0;
         let mut rv = None;
