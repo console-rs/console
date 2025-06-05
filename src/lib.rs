@@ -76,7 +76,11 @@
 //!   for stripping and taking ansi escape codes into account for length
 //!   calculations).
 
-#![warn(unreachable_pub)]
+#![warn(
+    unreachable_pub,
+    clippy::std_instead_of_core,
+    clippy::std_instead_of_alloc
+)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #[cfg(feature = "alloc")]
 extern crate alloc;
