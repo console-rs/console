@@ -1,5 +1,6 @@
-use std::{
-    borrow::Cow,
+#[cfg(feature = "alloc")]
+use alloc::{borrow::Cow, string::String};
+use core::{
     iter::{FusedIterator, Peekable},
     str::CharIndices,
 };
@@ -186,6 +187,7 @@ fn find_ansi_code_exclusive(it: &mut Peekable<CharIndices>) -> Option<(usize, us
 }
 
 /// Helper function to strip ansi codes.
+#[cfg(feature = "alloc")]
 pub fn strip_ansi_codes(s: &str) -> Cow<str> {
     let mut char_it = s.char_indices().peekable();
     match find_ansi_code_exclusive(&mut char_it) {

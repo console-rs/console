@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 /// Key mapping
 ///
 /// This is an incomplete mapping of keys that are supported for reading
