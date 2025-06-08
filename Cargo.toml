@@ -13,13 +13,15 @@ readme = "README.md"
 rust-version = "1.66"
 
 [features]
-default = ["unicode-width", "ansi-parsing"]
+default = ["unicode-width", "ansi-parsing", "std"]
+std = ["dep:libc", "dep:once_cell", "alloc"]
+alloc = []
 windows-console-colors = ["ansi-parsing"]
 ansi-parsing = []
 
 [dependencies]
-libc = "0.2.99"
-once_cell = "1.8"
+libc = { version = "0.2.99", optional = true }
+once_cell = { version = "1.8", optional = true }
 unicode-width = { version = "0.2", optional = true }
 
 [target.'cfg(windows)'.dependencies]
@@ -42,6 +44,26 @@ proptest = { version = "1.0.0", default-features = false, features = [
     "break-dead-code",
 ] }
 regex = "1.4.2"
+
+[[example]]
+name = "colors"
+required-features = ["std"]
+
+[[example]]
+name = "colors256"
+required-features = ["std"]
+
+[[example]]
+name = "cursor_at"
+required-features = ["std"]
+
+[[example]]
+name = "keyboard"
+required-features = ["std"]
+
+[[example]]
+name = "term"
+required-features = ["std"]
 
 ## These are currently disabled.  If you want to play around with the benchmarks
 ## uncommit this.
