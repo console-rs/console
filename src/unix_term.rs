@@ -1,10 +1,8 @@
+use core::{fmt::Display, mem, str};
 use std::env;
-use std::fmt::Display;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
-use std::mem;
 use std::os::fd::{AsRawFd, RawFd};
-use std::str;
 
 #[cfg(not(target_os = "macos"))]
 use once_cell::sync::Lazy;

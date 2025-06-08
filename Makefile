@@ -13,9 +13,11 @@ test:
 	@echo "CARGO TESTS"
 	@cargo test
 	@cargo test --all-features
-	@cargo test --no-default-features
-	@cargo test --no-default-features --features ansi-parsing
-	@cargo test --no-default-features --features unicode-width
+	@cargo test --lib --no-default-features
+	@cargo test --lib --no-default-features --features alloc
+	@cargo test --no-default-features --features std
+	@cargo test --no-default-features --features std,ansi-parsing
+	@cargo test --no-default-features --features std,unicode-width
 
 check-minver:
 	@echo "MINVER CHECK"

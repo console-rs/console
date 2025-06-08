@@ -1,11 +1,11 @@
-use std::fmt::{Debug, Display};
+use alloc::sync::Arc;
+use core::fmt::{Debug, Display};
 use std::io::{self, Read, Write};
-use std::sync::{Arc, Mutex, RwLock};
-
 #[cfg(any(unix, all(target_os = "wasi", target_env = "p1")))]
 use std::os::fd::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
+use std::sync::{Mutex, RwLock};
 
 use crate::{kb::Key, utils::Style};
 

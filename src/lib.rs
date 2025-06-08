@@ -76,30 +76,46 @@
 //!   for stripping and taking ansi escape codes into account for length
 //!   calculations).
 
-#![warn(unreachable_pub)]
+#![warn(
+    unreachable_pub,
+    clippy::std_instead_of_core,
+    clippy::std_instead_of_alloc
+)]
+#![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
+#[cfg(feature = "alloc")]
 pub use crate::kb::Key;
+#[cfg(feature = "std")]
 pub use crate::term::{
     user_attended, user_attended_stderr, Term, TermFamily, TermFeatures, TermTarget,
 };
+#[cfg(feature = "std")]
 pub use crate::utils::{
     colors_enabled, colors_enabled_stderr, measure_text_width, pad_str, pad_str_with,
     set_colors_enabled, set_colors_enabled_stderr, style, truncate_str, Alignment, Attribute,
     Color, Emoji, Style, StyledObject,
 };
 
+#[cfg(all(feature = "ansi-parsing", feature = "alloc"))]
+pub use crate::ansi::strip_ansi_codes;
 #[cfg(feature = "ansi-parsing")]
-pub use crate::ansi::{strip_ansi_codes, AnsiCodeIterator};
+pub use crate::ansi::AnsiCodeIterator;
 
+#[cfg(feature = "std")]
 mod common_term;
+#[cfg(feature = "alloc")]
 mod kb;
+#[cfg(feature = "std")]
 mod term;
-#[cfg(all(unix, not(target_arch = "wasm32")))]
+#[cfg(all(unix, not(target_arch = "wasm32"), feature = "std"))]
 mod unix_term;
+#[cfg(feature = "std")]
 mod utils;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(feature = "std", target_arch = "wasm32"))]
 mod wasm_term;
-#[cfg(windows)]
+#[cfg(all(feature = "std", windows))]
 mod windows_term;
 
 #[cfg(feature = "ansi-parsing")]
