@@ -1,3 +1,5 @@
+#[cfg(target_os = "macos")]
+use core::ptr;
 use core::{fmt::Display, mem, str};
 use std::env;
 use std::fs;
@@ -163,7 +165,7 @@ fn select_fd(fd: RawFd, timeout: i32) -> io::Result<bool> {
 
         let mut timeout_val;
         let timeout = if timeout < 0 {
-            std::ptr::null_mut()
+            ptr::null_mut()
         } else {
             timeout_val = libc::timeval {
                 tv_sec: (timeout / 1000) as _,
@@ -177,8 +179,8 @@ fn select_fd(fd: RawFd, timeout: i32) -> io::Result<bool> {
         let ret = libc::select(
             fd + 1,
             &mut read_fd_set,
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
             timeout,
         );
         if ret < 0 {
