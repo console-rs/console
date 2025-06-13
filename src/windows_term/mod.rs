@@ -1,14 +1,13 @@
-use std::cmp;
+use core::fmt::Display;
+use core::iter::once;
+use core::mem::{self, MaybeUninit};
+use core::{char, cmp};
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::Display;
 use std::io;
-use std::iter::once;
-use std::mem;
 use std::os::raw::c_void;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::io::AsRawHandle;
-use std::{char, mem::MaybeUninit};
 
 use encode_unicode::error::Utf16TupleError;
 use encode_unicode::CharExt;
@@ -590,7 +589,7 @@ pub(crate) fn msys_tty_on(term: &Term) -> bool {
             handle as HANDLE,
             FileNameInfo,
             &mut name_info as *mut _ as *mut c_void,
-            std::mem::size_of::<FILE_NAME_INFO>() as u32,
+            mem::size_of::<FILE_NAME_INFO>() as u32,
         );
         if res == 0 {
             return false;

@@ -1,7 +1,8 @@
+use crate::ansi::AnsiCodeIterator;
+use core::mem;
+use core::str::{from_utf8, Bytes};
 use std::io;
-use std::mem;
 use std::os::windows::io::AsRawHandle;
-use std::str::Bytes;
 
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::System::Console::{
@@ -289,9 +290,6 @@ impl Color {
 }
 
 pub(crate) fn console_colors(out: &Term, mut con: Console, bytes: &[u8]) -> io::Result<()> {
-    use crate::ansi::AnsiCodeIterator;
-    use std::str::from_utf8;
-
     let s = from_utf8(bytes).expect("data to be printed is not an ansi string");
     let mut iter = AnsiCodeIterator::new(s);
 

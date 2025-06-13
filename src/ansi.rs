@@ -314,7 +314,7 @@ mod tests {
 
         fn _check_all_strings_of_len(len: usize, chunk: &mut Vec<u8>) {
             if len == 0 {
-                if let Ok(s) = std::str::from_utf8(chunk) {
+                if let Ok(s) = core::str::from_utf8(chunk) {
                     let old_matches: Vec<_> = STRIP_ANSI_RE.find_iter(s).collect();
                     let new_matches: Vec<_> = Matches::new(s).collect();
                     assert_eq!(old_matches, new_matches);
