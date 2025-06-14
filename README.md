@@ -1,7 +1,7 @@
 # `console`
 
-[![Build Status](https://github.com/console-rs/console/workflows/CI/badge.svg?branch=master)](https://github.com/console-rs/console/actions?query=workflow%3ACI)
-[![Crates.io](https://img.shields.io/crates/d/console.svg)](https://crates.io/crates/console)
+[![Build Status](https://github.com/console-rs/console/actions/workflows/ci.yml/badge.svg)](https://github.com/console-rs/console/actions?query=workflow%3ACI)
+[![crates.io](https://img.shields.io/crates/d/console.svg)](https://crates.io/crates/console)
 [![License](https://img.shields.io/github/license/console-rs/console)](https://github.com/console-rs/console/blob/master/LICENSE)
 [![Documentation](https://docs.rs/console/badge.svg)](https://docs.rs/console)
 
