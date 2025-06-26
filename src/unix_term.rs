@@ -390,5 +390,5 @@ pub(crate) fn wants_emoji() -> bool {
 }
 
 pub(crate) fn set_title<T: Display>(title: T) {
-    print!("\x1b]0;{}\x07", title);
+    print!("\x1b]0;{title}\x07");
 }

@@ -469,8 +469,7 @@ pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
                     // (This error is given when reading a non-UTF8 file into a String, for example.)
                     Err(e) => {
                         let message = format!(
-                            "Read invalid surrogate pair ({}, {}): {}",
-                            unicode_char, next_surrogate, e
+                            "Read invalid surrogate pair ({unicode_char}, {next_surrogate}): {e}",
                         );
                         Err(io::Error::new(io::ErrorKind::InvalidData, message))
                     }
@@ -480,7 +479,7 @@ pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
             // Return an InvalidData error. This is the recommended value for UTF-related I/O errors.
             // (This error is given when reading a non-UTF8 file into a String, for example.)
             Err(e) => {
-                let message = format!("Read invalid utf16 {}: {}", unicode_char, e);
+                let message = format!("Read invalid utf16 {unicode_char}: {e}");
                 Err(io::Error::new(io::ErrorKind::InvalidData, message))
             }
         }
@@ -615,7 +614,7 @@ pub(crate) fn msys_tty_on(term: &Term) -> bool {
 }
 
 pub(crate) fn set_title<T: Display>(title: T) {
-    let buffer: Vec<u16> = OsStr::new(&format!("{}", title))
+    let buffer: Vec<u16> = OsStr::new(&format!("{title}"))
         .encode_wide()
         .chain(once(0))
         .collect();
