@@ -1068,7 +1068,7 @@ fn test_attributes_single() {
         let attrs = Attributes::new().insert(attr);
         assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
         assert_eq!(attrs.attrs().collect::<Vec<_>>(), [attr]);
-        assert_eq!(format!("{:?}", attrs), format!("{{{:?}}}", attr));
+        assert_eq!(format!("{attrs:?}"), format!("{{{:?}}}", attr));
     }
 }
 

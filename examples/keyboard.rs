@@ -12,7 +12,7 @@ fn main() -> io::Result<()> {
         } else {
             term.read_key()
         }?;
-        term.write_line(&format!("You pressed {:?}", key))?;
+        term.write_line(&format!("You pressed {key:?}"))?;
         if key == Key::Escape {
             break;
         }

@@ -23,7 +23,7 @@ fn do_stuff() -> io::Result<()> {
 
     write!(&term, "To edit: ")?;
     let res = term.read_line_initial_text("default")?;
-    writeln!(&term, "\n{}", res)?;
+    writeln!(&term, "\n{res}")?;
 
     Ok(())
 }

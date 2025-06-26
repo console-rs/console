@@ -351,7 +351,7 @@ impl Term {
                         slf.flush()?;
                     }
                     Key::Enter => {
-                        slf.write_through(format!("\n{}", initial).as_bytes())?;
+                        slf.write_through(format!("\n{initial}").as_bytes())?;
                         break;
                     }
                     _ => (),

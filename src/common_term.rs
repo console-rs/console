@@ -4,7 +4,7 @@ use crate::term::Term;
 
 pub(crate) fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
-        out.write_str(&format!("\x1b[{}B", n))
+        out.write_str(&format!("\x1b[{n}B"))
     } else {
         Ok(())
     }
@@ -12,14 +12,14 @@ pub(crate) fn move_cursor_down(out: &Term, n: usize) -> io::Result<()> {
 
 pub(crate) fn move_cursor_up(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
-        out.write_str(&format!("\x1b[{}A", n))
+        out.write_str(&format!("\x1b[{n}A"))
     } else {
         Ok(())
     }
 }
 pub(crate) fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
-        out.write_str(&format!("\x1b[{}D", n))
+        out.write_str(&format!("\x1b[{n}D"))
     } else {
         Ok(())
     }
@@ -27,7 +27,7 @@ pub(crate) fn move_cursor_left(out: &Term, n: usize) -> io::Result<()> {
 
 pub(crate) fn move_cursor_right(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
-        out.write_str(&format!("\x1b[{}C", n))
+        out.write_str(&format!("\x1b[{n}C"))
     } else {
         Ok(())
     }
@@ -40,7 +40,7 @@ pub(crate) fn move_cursor_to(out: &Term, x: usize, y: usize) -> io::Result<()> {
 
 pub(crate) fn clear_chars(out: &Term, n: usize) -> io::Result<()> {
     if n > 0 {
-        out.write_str(&format!("\x1b[{}D\x1b[0K", n))
+        out.write_str(&format!("\x1b[{n}D\x1b[0K"))
     } else {
         Ok(())
     }
