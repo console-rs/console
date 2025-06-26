@@ -37,7 +37,6 @@ features = [
 ]
 
 [dev-dependencies]
-criterion = "0.5.1"
 # Pick a setup for proptest that works with wasi
 proptest = { version = "1.0.0", default-features = false, features = [
     "std",
