@@ -3,7 +3,6 @@ name = "console"
 description = "A terminal and console abstraction for Rust"
 version = "0.16.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 license = "MIT"
 edition = "2021"
 homepage = "https://github.com/console-rs/console"
