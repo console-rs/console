@@ -206,18 +206,19 @@ pub fn strip_ansi_codes(s: &str) -> Cow<str> {
 pub struct WithoutAnsi<'a> {
     str: &'a str,
 }
+
 impl<'a> WithoutAnsi<'a> {
     pub fn new(str: &'a str) -> Self {
         Self { str }
     }
 }
+
 impl Display for WithoutAnsi<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        for str in
-            AnsiCodeIterator::new(self.str)
-                .filter_map(|(str, is_ansi)| if is_ansi { None } else { Some(str) })
-        {
-            f.write_str(str)?;
+        for (str, is_ansi) in AnsiCodeIterator::new(self.str) {
+            if !is_ansi {
+                f.write_str(str)?;
+            }
         }
         Ok(())
     }
