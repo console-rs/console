@@ -342,7 +342,7 @@ pub(crate) fn read_single_key(ctrlc_key: bool) -> io::Result<Key> {
     c_result(|| unsafe { libc::tcgetattr(input.as_raw_fd(), termios.as_mut_ptr()) })?;
     let mut termios = unsafe { termios.assume_init() };
     let original = termios;
-    unsafe { libc::cfmakeraw(&mut termios) };
+    make_raw(&mut termios);
     termios.c_oflag = original.c_oflag;
     c_result(|| unsafe { libc::tcsetattr(input.as_raw_fd(), libc::TCSADRAIN, &termios) })?;
     let rv = read_single_key_impl(input.as_raw_fd());
@@ -391,4 +391,28 @@ pub(crate) fn wants_emoji() -> bool {
 
 pub(crate) fn set_title<T: Display>(title: T) {
     print!("\x1b]0;{title}\x07");
+}
+
+#[cfg(target_os = "nto")]
+fn make_raw(termios: &mut libc::termios) {
+    // This is the manual implementation for QNX, which does not have cfmakeraw.
+    termios.c_iflag &= !(libc::IGNBRK
+        | libc::BRKINT
+        | libc::PARMRK
+        | libc::ISTRIP
+        | libc::INLCR
+        | libc::IGNCR
+        | libc::ICRNL
+        | libc::IXON);
+    termios.c_oflag &= !libc::OPOST;
+    termios.c_lflag &= !(libc::ECHO | libc::ECHONL | libc::ICANON | libc::ISIG | libc::IEXTEN);
+    termios.c_cflag &= !(libc::CSIZE | libc::PARENB);
+    termios.c_cflag |= libc::CS8;
+}
+
+// This version will be compiled for all targets that are NOT QNX.
+#[cfg(not(target_os = "nto"))]
+fn make_raw(termios: &mut libc::termios) {
+    // For other systems (Linux, macOS, BSD, etc.), use the standard libc call.
+    unsafe { libc::cfmakeraw(termios) };
 }
