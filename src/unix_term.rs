@@ -3,7 +3,7 @@ use core::ptr;
 use core::{fmt::Display, mem, str};
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 use std::os::fd::{AsRawFd, RawFd};
 
 #[cfg(not(target_os = "macos"))]
@@ -258,6 +258,44 @@ fn read_single_key_impl(fd: RawFd) -> Result<Key, io::Error> {
                                 'H' => Ok(Key::Home),
                                 'F' => Ok(Key::End),
                                 'Z' => Ok(Key::BackTab),
+                                '0'..='9' => {
+                                    // This is a special case for handling the response to a cursor
+                                    // position request ("\x1b[6n"). The response is given as
+                                    // "\x1b[<row>;<col>R", where <row> and <col> are numbers."
+                                    let mut buf = String::new();
+                                    buf.push(c2);
+                                    while let Some(c) = read_single_char(fd)? {
+                                        if c == 'R' {
+                                            break;
+                                        } else if c.is_ascii_digit() || c == ';' {
+                                            buf.push(c);
+                                            if buf.len() > 64 {
+                                                // Prevent infinite loop in case of malformed input
+                                                return Ok(Key::UnknownEscSeq(
+                                                    buf.chars().collect(),
+                                                ));
+                                            }
+                                        } else {
+                                            // If we encounter an unexpected character, we treat it
+                                            // as an unknown escape sequence
+                                            return Ok(Key::UnknownEscSeq(vec![c1, c2, c]));
+                                        }
+                                    }
+                                    // buf now contains "<row>;<col>"
+                                    let v = buf
+                                        .split(';')
+                                        .map(|s| s.parse::<usize>().unwrap_or(0))
+                                        .collect::<Vec<_>>();
+                                    if v.len() == 2 {
+                                        // x is column, y is row
+                                        Ok(Key::CursorPosition(
+                                            v[1].saturating_sub(1),
+                                            v[0].saturating_sub(1),
+                                        ))
+                                    } else {
+                                        Ok(Key::UnknownEscSeq(buf.chars().collect()))
+                                    }
+                                }
                                 _ => {
                                     let c3 = read_single_char(fd)?;
                                     if let Some(c3) = c3 {
@@ -332,6 +370,23 @@ fn read_single_key_impl(fd: RawFd) -> Result<Key, io::Error> {
                 }
             }
         }
+    }
+}
+
+pub(crate) fn cursor_position() -> io::Result<(usize, usize)> {
+    // Send the cursor position request escape sequence
+    print!("\x1b[6n");
+    io::stdout().flush()?;
+
+    // Read the response from the terminal
+    let key = read_single_key(false)?;
+
+    match key {
+        Key::CursorPosition(x, y) => Ok((x, y)),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Unexpected response to cursor position request",
+        )),
     }
 }
 
