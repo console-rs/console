@@ -379,9 +379,7 @@ pub(crate) fn cursor_position() -> io::Result<(usize, usize)> {
     io::stdout().flush()?;
 
     // Read the response from the terminal
-    let key = read_single_key(false)?;
-
-    match key {
+    match read_single_key(false)? {
         Key::CursorPosition(x, y) => Ok((x, y)),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidData,

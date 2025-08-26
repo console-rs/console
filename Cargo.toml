@@ -1,7 +1,7 @@
 [package]
 name = "console"
 description = "A terminal and console abstraction for Rust"
-version = "0.17.0"
+version = "0.16.0"
 keywords = ["cli", "terminal", "colors", "console", "ansi"]
 license = "MIT"
 edition = "2021"
@@ -55,10 +55,6 @@ required-features = ["std"]
 
 [[example]]
 name = "cursor_at"
-required-features = ["std"]
-
-[[example]]
-name = "cursor_position"
 required-features = ["std"]
 
 [[example]]
