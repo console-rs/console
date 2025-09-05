@@ -10,7 +10,7 @@ use std::os::fd::{AsRawFd, RawFd};
 use once_cell::sync::Lazy;
 
 use crate::kb::Key;
-use crate::term::Term;
+use crate::term::{msys_tty_on, Term};
 
 pub(crate) use crate::common_term::*;
 
@@ -34,6 +34,13 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
         Ok(term) => term != "dumb",
         Err(_) => false,
     }
+}
+
+pub(crate) fn is_a_true_color_terminal(out: &Term) -> bool {
+    if !is_a_color_terminal(out) {
+        return false;
+    }
+    env::var("COLORTERM").map_or(false, |term| term == "truecolor" || term == "24bit")
 }
 
 fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
