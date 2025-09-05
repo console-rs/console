@@ -10,7 +10,7 @@ use std::os::fd::{AsRawFd, RawFd};
 use once_cell::sync::Lazy;
 
 use crate::kb::Key;
-use crate::term::{msys_tty_on, Term};
+use crate::term::Term;
 
 pub(crate) use crate::common_term::*;
 
