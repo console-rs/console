@@ -18,10 +18,18 @@ fn default_colors_enabled(out: &Term) -> bool {
         || &env::var("CLICOLOR_FORCE").unwrap_or_else(|_| "0".into()) != "0"
 }
 
+fn default_true_colors_enabled(out: &Term) -> bool {
+    out.features().true_colors_supported()
+}
+
 static STDOUT_COLORS: Lazy<AtomicBool> =
     Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stdout())));
+static STDOUT_TRUE_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_true_colors_enabled(&Term::stdout())));
 static STDERR_COLORS: Lazy<AtomicBool> =
     Lazy::new(|| AtomicBool::new(default_colors_enabled(&Term::stderr())));
+static STDERR_TRUE_COLORS: Lazy<AtomicBool> =
+    Lazy::new(|| AtomicBool::new(default_true_colors_enabled(&Term::stderr())));
 
 /// Returns `true` if colors should be enabled for stdout.
 ///
@@ -35,6 +43,12 @@ pub fn colors_enabled() -> bool {
     STDOUT_COLORS.load(Ordering::Relaxed)
 }
 
+/// Returns `true` if true colors should be enabled for stdout.
+#[inline]
+pub fn true_colors_enabled() -> bool {
+    STDERR_TRUE_COLORS.load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stdout.
 ///
 /// This overrides the default for the current process and changes the return value of the
@@ -42,6 +56,15 @@ pub fn colors_enabled() -> bool {
 #[inline]
 pub fn set_colors_enabled(val: bool) {
     STDOUT_COLORS.store(val, Ordering::Relaxed)
+}
+
+/// Forces true colorization on or off for stdout.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `true_colors_enabled` function.
+#[inline]
+pub fn set_true_colors_enabled(val: bool) {
+    STDOUT_TRUE_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Returns `true` if colors should be enabled for stderr.
@@ -56,6 +79,12 @@ pub fn colors_enabled_stderr() -> bool {
     STDERR_COLORS.load(Ordering::Relaxed)
 }
 
+/// Returns `true` if true colors should be enabled for stderr.
+#[inline]
+pub fn true_colors_enabled_stderr() -> bool {
+    STDERR_TRUE_COLORS.load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stderr.
 ///
 /// This overrides the default for the current process and changes the return value of the
@@ -63,6 +92,15 @@ pub fn colors_enabled_stderr() -> bool {
 #[inline]
 pub fn set_colors_enabled_stderr(val: bool) {
     STDERR_COLORS.store(val, Ordering::Relaxed)
+}
+
+/// Forces true colorization on or off for stderr.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `true_colors_enabled_stderr` function.
+#[inline]
+pub fn set_true_colors_enabled_stderr(val: bool) {
+    STDERR_TRUE_COLORS.store(val, Ordering::Relaxed)
 }
 
 /// Measure the width of a string in terminal characters.
@@ -94,6 +132,7 @@ pub enum Color {
     Cyan,
     White,
     Color256(u8),
+    TrueColor(u8, u8, u8),
 }
 
 impl Color {
@@ -109,6 +148,7 @@ impl Color {
             Color::Cyan => 6,
             Color::White => 7,
             Color::Color256(x) => x as usize,
+            Color::TrueColor(_, _, _) => panic!("RGB colors must be handled separately"),
         }
     }
 
@@ -293,6 +333,28 @@ impl Style {
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
                 "strikethrough" => rv.strikethrough(),
+                on_true_color if on_true_color.starts_with("on_#") && on_true_color.len() == 10 => {
+                    if let (Ok(r), Ok(g), Ok(b)) = (
+                        u8::from_str_radix(&on_true_color[4..6], 16),
+                        u8::from_str_radix(&on_true_color[6..8], 16),
+                        u8::from_str_radix(&on_true_color[8..10], 16),
+                    ) {
+                        rv.on_true_color(r, g, b)
+                    } else {
+                        continue;
+                    }
+                }
+                true_color if true_color.starts_with('#') && true_color.len() == 7 => {
+                    if let (Ok(r), Ok(g), Ok(b)) = (
+                        u8::from_str_radix(&true_color[1..3], 16),
+                        u8::from_str_radix(&true_color[3..5], 16),
+                        u8::from_str_radix(&true_color[5..7], 16),
+                    ) {
+                        rv.true_color(r, g, b)
+                    } else {
+                        continue;
+                    }
+                }
                 on_c if on_c.starts_with("on_") => {
                     if let Ok(n) = on_c[3..].parse::<u8>() {
                         rv.on_color256(n)
@@ -402,6 +464,10 @@ impl Style {
     pub const fn color256(self, color: u8) -> Self {
         self.fg(Color::Color256(color))
     }
+    #[inline]
+    pub const fn true_color(self, r: u8, g: u8, b: u8) -> Self {
+        self.fg(Color::TrueColor(r, g, b))
+    }
 
     #[inline]
     pub const fn bright(mut self) -> Self {
@@ -444,6 +510,10 @@ impl Style {
     #[inline]
     pub const fn on_color256(self, color: u8) -> Self {
         self.bg(Color::Color256(color))
+    }
+    #[inline]
+    pub const fn on_true_color(self, r: u8, g: u8, b: u8) -> Self {
+        self.bg(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -600,6 +670,10 @@ impl<D> StyledObject<D> {
     pub const fn color256(self, color: u8) -> StyledObject<D> {
         self.fg(Color::Color256(color))
     }
+    #[inline]
+    pub const fn true_color(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
+        self.fg(Color::TrueColor(r, g, b))
+    }
 
     #[inline]
     pub const fn bright(mut self) -> StyledObject<D> {
@@ -642,6 +716,10 @@ impl<D> StyledObject<D> {
     #[inline]
     pub const fn on_color256(self, color: u8) -> StyledObject<D> {
         self.bg(Color::Color256(color))
+    }
+    #[inline]
+    pub const fn on_true_color(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
+        self.bg(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -702,7 +780,9 @@ macro_rules! impl_fmt {
                     })
                 {
                     if let Some(fg) = self.style.fg {
-                        if fg.is_color256() {
+                        if let Color::TrueColor(r, g, b) = fg {
+                            write!(f, "\x1b[38;2;{};{};{}m", r, g, b)?;
+                        } else if fg.is_color256() {
                             write!(f, "\x1b[38;5;{}m", fg.ansi_num())?;
                         } else if self.style.fg_bright {
                             write!(f, "\x1b[38;5;{}m", fg.ansi_num() + 8)?;
@@ -712,7 +792,9 @@ macro_rules! impl_fmt {
                         reset = true;
                     }
                     if let Some(bg) = self.style.bg {
-                        if bg.is_color256() {
+                        if let Color::TrueColor(r, g, b) = bg {
+                            write!(f, "\x1b[48;2;{};{};{}m", r, g, b)?;
+                        } else if bg.is_color256() {
                             write!(f, "\x1b[48;5;{}m", bg.ansi_num())?;
                         } else if self.style.bg_bright {
                             write!(f, "\x1b[48;5;{}m", bg.ansi_num() + 8)?;

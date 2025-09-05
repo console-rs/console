@@ -80,6 +80,21 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     enable_ansi_on(out)
 }
 
+pub(crate) fn is_a_true_color_terminal(out: &Term) -> bool {
+    if !is_a_color_terminal(out) {
+        return false;
+    }
+    // Powershell does not respect the COLORTERM var despite supporting true colors
+    // but other shells may respect it
+    if msys_tty_on(out) {
+        return match env::var("COLORTERM") {
+            Ok(term) => term == "truecolor" || term == "24bit",
+            Err(_) => true,
+        };
+    }
+    false
+}
+
 /// Enables or disables the `mode` flag on the given `HANDLE` and yields the previous mode.
 fn set_console_mode(handle: HANDLE, mode: CONSOLE_MODE, enable: bool) -> Option<CONSOLE_MODE> {
     unsafe {

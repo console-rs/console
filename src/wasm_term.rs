@@ -29,6 +29,11 @@ pub(crate) fn is_a_color_terminal(_out: &Term) -> bool {
 }
 
 #[inline]
+pub(crate) fn is_a_true_color_terminal(_out: &Term) -> bool {
+    false
+}
+
+#[inline]
 pub(crate) fn terminal_size(_out: &Term) -> Option<(u16, u16)> {
     None
 }
