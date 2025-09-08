@@ -9,7 +9,7 @@ homepage = "https://github.com/console-rs/console"
 repository = "https://github.com/console-rs/console"
 documentation = "https://docs.rs/console"
 readme = "README.md"
-rust-version = "1.66"
+rust-version = "1.71"
 
 [features]
 default = ["unicode-width", "ansi-parsing", "std"]

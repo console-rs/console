@@ -6,17 +6,17 @@ on:
     branches: [main]
 jobs:
   build-msrv:
-    name: Build on MSRV (1.66)
+    name: Build on MSRV (1.71)
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            rust: 1.66.0
+            rust: 1.71.0
           - os: windows-latest
             target: i686-pc-windows-msvc
-            rust: 1.66.0
+            rust: 1.71.0
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install rust
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: MSRV dependencies
-        if: matrix.rust == '1.66.0'
+        if: matrix.rust == '1.71.0'
         run: make msrv-lock
       - name: Check
         env:
@@ -47,16 +47,16 @@ jobs:
             rust: stable
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            rust: 1.66.0
+            rust: 1.71.0
           - os: ubuntu-latest
             target: i686-unknown-linux-gnu
-            rust: 1.66.0
+            rust: 1.71.0
           - os: windows-latest
             target: i686-pc-windows-msvc
-            rust: 1.66.0
+            rust: 1.71.0
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            rust: 1.66.0
+            rust: 1.71.0
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             rust: stable
@@ -80,7 +80,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install gcc-multilib
       - name: MSRV dependencies
-        if: matrix.rust == '1.66.0'
+        if: matrix.rust == '1.71.0'
         run: make msrv-lock
       - name: Test
         env:
