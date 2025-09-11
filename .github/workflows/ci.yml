@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
 jobs:
   build-msrv:
     name: Build on MSRV (1.71)
