@@ -40,7 +40,7 @@ pub(crate) fn is_a_true_color_terminal(out: &Term) -> bool {
     if !is_a_color_terminal(out) {
         return false;
     }
-    env::var("COLORTERM").map_or(false, |term| term == "truecolor" || term == "24bit")
+    env::var("COLORTERM").is_ok_and(|term| term == "truecolor" || term == "24bit")
 }
 
 fn c_result<F: FnOnce() -> libc::c_int>(f: F) -> io::Result<()> {
