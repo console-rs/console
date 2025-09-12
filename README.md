@@ -38,7 +38,8 @@ term.clear_line()?;
 
 ## Colors and Styles
 
-`console` automatically detects when to use colors based on the tty flag.  It also
+`console` automatically detects when to use colors based on the tty flag, following the
+[clicolors standard](https://bixense.com/clicolors/) for color enabling/disabling. It also
 provides higher level wrappers for styling text and other things that can be
 displayed with the `style` function and utility types.
 
