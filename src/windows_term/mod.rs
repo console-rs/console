@@ -564,7 +564,7 @@ fn read_key_event() -> io::Result<KEY_EVENT_RECORD> {
 }
 
 pub(crate) fn wants_emoji() -> bool {
-    // If WT_SESSION is set, we can assume we're running in the nne
+    // If WT_SESSION is set, we can assume we're running in the new
     // Windows Terminal.  The correct way to detect this is not available
     // yet.  See https://github.com/microsoft/terminal/issues/1040
     env::var("WT_SESSION").is_ok()

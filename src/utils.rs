@@ -46,7 +46,7 @@ pub fn colors_enabled() -> bool {
 /// Returns `true` if true colors should be enabled for stdout.
 #[inline]
 pub fn true_colors_enabled() -> bool {
-    STDERR_TRUE_COLORS.load(Ordering::Relaxed)
+    STDOUT_TRUE_COLORS.load(Ordering::Relaxed)
 }
 
 /// Forces colorization on or off for stdout.
@@ -88,7 +88,7 @@ pub fn true_colors_enabled_stderr() -> bool {
 /// Forces colorization on or off for stderr.
 ///
 /// This overrides the default for the current process and changes the return value of the
-/// `colors_enabled` function.
+/// `colors_enabled_stderr` function.
 #[inline]
 pub fn set_colors_enabled_stderr(val: bool) {
     STDERR_COLORS.store(val, Ordering::Relaxed)
