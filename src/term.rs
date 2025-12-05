@@ -222,7 +222,7 @@ impl Term {
             TermTarget::Stderr => Style::new().for_stderr(),
             TermTarget::Stdout => Style::new().for_stdout(),
             #[cfg(unix)]
-            TermTarget::ReadWritePair(ReadWritePair { ref style, .. }) => style.clone(),
+            TermTarget::ReadWritePair(ReadWritePair { ref style, .. }) => *style,
         }
     }
 

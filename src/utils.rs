@@ -168,6 +168,94 @@ impl Color {
             _ => false,
         }
     }
+
+    /// Converts a color to its RGB representation.
+    ///
+    /// Basic ANSI colors are converted to their standard RGB equivalents.
+    /// Color256 values are converted using the standard 256-color palette.
+    #[inline]
+    pub fn to_rgb(&self) -> (u8, u8, u8) {
+        match self {
+            Color::Black => (0, 0, 0),
+            Color::Red => (205, 49, 49),
+            Color::Green => (13, 188, 121),
+            Color::Yellow => (229, 229, 16),
+            Color::Blue => (36, 114, 200),
+            Color::Magenta => (188, 63, 188),
+            Color::Cyan => (17, 168, 205),
+            Color::White => (229, 229, 229),
+            Color::Color256(n) => color256_to_rgb(*n),
+            Color::TrueColor(r, g, b) => (*r, *g, *b),
+        }
+    }
+
+    /// Interpolates between two colors at a given position.
+    ///
+    /// The position `t` should be between 0.0 and 1.0, where 0.0 returns
+    /// `self` and 1.0 returns `other`.
+    #[inline]
+    pub fn interpolate(self, other: Self, t: f32) -> (u8, u8, u8) {
+        let (r1, g1, b1) = self.to_rgb();
+        let (r2, g2, b2) = other.to_rgb();
+
+        let r = (r1 as f32 + (r2 as f32 - r1 as f32) * t).round() as u8;
+        let g = (g1 as f32 + (g2 as f32 - g1 as f32) * t).round() as u8;
+        let b = (b1 as f32 + (b2 as f32 - b1 as f32) * t).round() as u8;
+
+        (r, g, b)
+    }
+}
+
+/// Parses a hex color string like "#ff0000" into a (r, g, b) tuple.
+fn parse_hex_color(s: &str) -> Option<(u8, u8, u8)> {
+    if s.len() != 7 || !s.starts_with('#') {
+        return None;
+    }
+
+    let r = u8::from_str_radix(&s[1..3], 16).ok()?;
+    let g = u8::from_str_radix(&s[3..5], 16).ok()?;
+    let b = u8::from_str_radix(&s[5..7], 16).ok()?;
+
+    Some((r, g, b))
+}
+
+/// Converts a 256-color palette index to RGB values.
+fn color256_to_rgb(n: u8) -> (u8, u8, u8) {
+    match n {
+        0 => (0, 0, 0),
+        1 => (128, 0, 0),
+        2 => (0, 128, 0),
+        3 => (128, 128, 0),
+        4 => (0, 0, 128),
+        5 => (128, 0, 128),
+        6 => (0, 128, 128),
+        7 => (192, 192, 192),
+        8 => (128, 128, 128),
+        9 => (255, 0, 0),
+        10 => (0, 255, 0),
+        11 => (255, 255, 0),
+        12 => (0, 0, 255),
+        13 => (255, 0, 255),
+        14 => (0, 255, 255),
+        15 => (255, 255, 255),
+        // 216 color cube (16-231)
+        16..=231 => {
+            let n = n - 16;
+            let b = n % 6;
+            let g = (n / 6) % 6;
+            let r = n / 36;
+
+            let to_val = |x: u8| if x == 0 { 0 } else { 55 + x * 40 };
+
+            (to_val(r), to_val(g), to_val(b))
+        }
+        // Grayscale (232-255)
+        232..=255 => {
+            let v = 8 + (n - 232) * 10;
+
+            (v, v, v)
+        }
+    }
 }
 
 /// A terminal style attribute.
@@ -273,10 +361,12 @@ pub enum Alignment {
 }
 
 /// A stored style that can be applied.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Style {
     fg: Option<Color>,
+    fg_end: Option<Color>,
     bg: Option<Color>,
+    bg_end: Option<Color>,
     fg_bright: bool,
     bg_bright: bool,
     attrs: Attributes,
@@ -295,7 +385,9 @@ impl Style {
     pub const fn new() -> Self {
         Self {
             fg: None,
+            fg_end: None,
             bg: None,
+            bg_end: None,
             fg_bright: false,
             bg_bright: false,
             attrs: Attributes::new(),
@@ -311,6 +403,11 @@ impl Style {
     /// create a string that is red on blue background. `9.on_12` is
     /// the same, but using 256 color numbers. Unknown terms are
     /// ignored.
+    ///
+    /// Gradients can be specified using `->` syntax:
+    ///
+    /// - `#ff0000->#00ff00` - foreground gradient from red to green
+    /// - `on_#ff0000->#0000ff` - background gradient from red to blue
     pub fn from_dotted_str(s: &str) -> Self {
         let mut rv = Self::new();
         for part in s.split('.') {
@@ -341,27 +438,47 @@ impl Style {
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
                 "strikethrough" => rv.strikethrough(),
-                on_true_color if on_true_color.starts_with("on_#") && on_true_color.len() == 10 => {
-                    if let (Ok(r), Ok(g), Ok(b)) = (
-                        u8::from_str_radix(&on_true_color[4..6], 16),
-                        u8::from_str_radix(&on_true_color[6..8], 16),
-                        u8::from_str_radix(&on_true_color[8..10], 16),
-                    ) {
-                        rv.on_true_color(r, g, b)
-                    } else {
+                // Background gradient: on_#rrggbb->#rrggbb
+                on_gradient if on_gradient.starts_with("on_#") && on_gradient.contains("->") => {
+                    let Some((start, end)) = on_gradient[3..].split_once("->") else {
                         continue;
-                    }
+                    };
+
+                    let Some((start, end)) = parse_hex_color(start).zip(parse_hex_color(end))
+                    else {
+                        continue;
+                    };
+
+                    rv.on_true_color(start.0, start.1, start.2)
+                        .on_true_color_end(end.0, end.1, end.2)
+                }
+                // Foreground gradient: #rrggbb->#rrggbb
+                gradient if gradient.starts_with('#') && gradient.contains("->") => {
+                    let Some((start, end)) = gradient.split_once("->") else {
+                        continue;
+                    };
+
+                    let Some((start, end)) = parse_hex_color(start).zip(parse_hex_color(end))
+                    else {
+                        continue;
+                    };
+
+                    rv.true_color(start.0, start.1, start.2)
+                        .true_color_end(end.0, end.1, end.2)
+                }
+                on_true_color if on_true_color.starts_with("on_#") && on_true_color.len() == 10 => {
+                    let Some(color) = parse_hex_color(&on_true_color[3..]) else {
+                        continue;
+                    };
+
+                    rv.on_true_color(color.0, color.1, color.2)
                 }
                 true_color if true_color.starts_with('#') && true_color.len() == 7 => {
-                    if let (Ok(r), Ok(g), Ok(b)) = (
-                        u8::from_str_radix(&true_color[1..3], 16),
-                        u8::from_str_radix(&true_color[3..5], 16),
-                        u8::from_str_radix(&true_color[5..7], 16),
-                    ) {
-                        rv.true_color(r, g, b)
-                    } else {
+                    let Some(color) = parse_hex_color(true_color) else {
                         continue;
-                    }
+                    };
+
+                    rv.true_color(color.0, color.1, color.2)
                 }
                 on_c if on_c.starts_with("on_") => {
                     if let Ok(n) = on_c[3..].parse::<u8>() {
@@ -385,8 +502,10 @@ impl Style {
     /// Apply the style to something that can be displayed.
     pub fn apply_to<D>(&self, val: D) -> StyledObject<D> {
         StyledObject {
-            style: self.clone(),
+            style: *self,
             val,
+            size_hint: None,
+            position_hint: None,
         }
     }
 
@@ -422,10 +541,34 @@ impl Style {
         self
     }
 
+    /// Sets the foreground gradient end color.
+    ///
+    /// When a end color is set, the foreground will transition
+    /// from the foreground color to this color across the text.
+    ///
+    /// Requires true color support in the terminal.
+    #[inline]
+    pub const fn fg_end(mut self, color: Color) -> Self {
+        self.fg_end = Some(color);
+        self
+    }
+
     /// Sets a background color.
     #[inline]
     pub const fn bg(mut self, color: Color) -> Self {
         self.bg = Some(color);
+        self
+    }
+
+    /// Sets the background gradient end color.
+    ///
+    /// When a end color is set, the background will transition
+    /// from the background color to this color across the background.
+    ///
+    /// Requires true color support in the terminal.
+    #[inline]
+    pub const fn bg_end(mut self, color: Color) -> Self {
+        self.bg_end = Some(color);
         self
     }
 
@@ -441,40 +584,80 @@ impl Style {
         self.fg(Color::Black)
     }
     #[inline]
+    pub const fn black_end(self) -> Self {
+        self.fg_end(Color::Black)
+    }
+    #[inline]
     pub const fn red(self) -> Self {
         self.fg(Color::Red)
+    }
+    #[inline]
+    pub const fn red_end(self) -> Self {
+        self.fg_end(Color::Red)
     }
     #[inline]
     pub const fn green(self) -> Self {
         self.fg(Color::Green)
     }
     #[inline]
+    pub const fn green_end(self) -> Self {
+        self.fg_end(Color::Green)
+    }
+    #[inline]
     pub const fn yellow(self) -> Self {
         self.fg(Color::Yellow)
+    }
+    #[inline]
+    pub const fn yellow_end(self) -> Self {
+        self.fg_end(Color::Yellow)
     }
     #[inline]
     pub const fn blue(self) -> Self {
         self.fg(Color::Blue)
     }
     #[inline]
+    pub const fn blue_end(self) -> Self {
+        self.fg_end(Color::Blue)
+    }
+    #[inline]
     pub const fn magenta(self) -> Self {
         self.fg(Color::Magenta)
+    }
+    #[inline]
+    pub const fn magenta_end(self) -> Self {
+        self.fg_end(Color::Magenta)
     }
     #[inline]
     pub const fn cyan(self) -> Self {
         self.fg(Color::Cyan)
     }
     #[inline]
+    pub const fn cyan_end(self) -> Self {
+        self.fg_end(Color::Cyan)
+    }
+    #[inline]
     pub const fn white(self) -> Self {
         self.fg(Color::White)
+    }
+    #[inline]
+    pub const fn white_end(self) -> Self {
+        self.fg_end(Color::White)
     }
     #[inline]
     pub const fn color256(self, color: u8) -> Self {
         self.fg(Color::Color256(color))
     }
     #[inline]
+    pub const fn color256_end(self, color: u8) -> Self {
+        self.fg_end(Color::Color256(color))
+    }
+    #[inline]
     pub const fn true_color(self, r: u8, g: u8, b: u8) -> Self {
         self.fg(Color::TrueColor(r, g, b))
+    }
+    #[inline]
+    pub const fn true_color_end(self, r: u8, g: u8, b: u8) -> Self {
+        self.fg_end(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -488,40 +671,80 @@ impl Style {
         self.bg(Color::Black)
     }
     #[inline]
+    pub const fn on_black_end(self) -> Self {
+        self.bg_end(Color::Black)
+    }
+    #[inline]
     pub const fn on_red(self) -> Self {
         self.bg(Color::Red)
+    }
+    #[inline]
+    pub const fn on_red_end(self) -> Self {
+        self.bg_end(Color::Red)
     }
     #[inline]
     pub const fn on_green(self) -> Self {
         self.bg(Color::Green)
     }
     #[inline]
+    pub const fn on_green_end(self) -> Self {
+        self.bg_end(Color::Green)
+    }
+    #[inline]
     pub const fn on_yellow(self) -> Self {
         self.bg(Color::Yellow)
+    }
+    #[inline]
+    pub const fn on_yellow_end(self) -> Self {
+        self.bg_end(Color::Yellow)
     }
     #[inline]
     pub const fn on_blue(self) -> Self {
         self.bg(Color::Blue)
     }
     #[inline]
+    pub const fn on_blue_end(self) -> Self {
+        self.bg_end(Color::Blue)
+    }
+    #[inline]
     pub const fn on_magenta(self) -> Self {
         self.bg(Color::Magenta)
+    }
+    #[inline]
+    pub const fn on_magenta_end(self) -> Self {
+        self.bg_end(Color::Magenta)
     }
     #[inline]
     pub const fn on_cyan(self) -> Self {
         self.bg(Color::Cyan)
     }
     #[inline]
+    pub const fn on_cyan_end(self) -> Self {
+        self.bg_end(Color::Cyan)
+    }
+    #[inline]
     pub const fn on_white(self) -> Self {
         self.bg(Color::White)
+    }
+    #[inline]
+    pub const fn on_white_end(self) -> Self {
+        self.bg_end(Color::White)
     }
     #[inline]
     pub const fn on_color256(self, color: u8) -> Self {
         self.bg(Color::Color256(color))
     }
     #[inline]
+    pub const fn on_color256_end(self, color: u8) -> Self {
+        self.bg_end(Color::Color256(color))
+    }
+    #[inline]
     pub const fn on_true_color(self, r: u8, g: u8, b: u8) -> Self {
         self.bg(Color::TrueColor(r, g, b))
+    }
+    #[inline]
+    pub const fn on_true_color_end(self, r: u8, g: u8, b: u8) -> Self {
+        self.bg_end(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -566,6 +789,30 @@ impl Style {
     pub const fn strikethrough(self) -> Self {
         self.attr(Attribute::StrikeThrough)
     }
+
+    #[inline]
+    const fn get_fg_gradient(&self) -> Option<FgGradient> {
+        let Some(start) = self.fg else {
+            return None;
+        };
+        let Some(end) = self.fg_end else {
+            return None;
+        };
+
+        Some(FgGradient(Gradient { start, end }))
+    }
+
+    #[inline]
+    const fn get_bg_gradient(&self) -> Option<BgGradient> {
+        let Some(start) = self.bg else {
+            return None;
+        };
+        let Some(end) = self.bg_end else {
+            return None;
+        };
+
+        Some(BgGradient(Gradient { start, end }))
+    }
 }
 
 /// Wraps an object for formatting for styling.
@@ -593,6 +840,8 @@ pub fn style<D>(val: D) -> StyledObject<D> {
 pub struct StyledObject<D> {
     style: Style,
     val: D,
+    size_hint: Option<usize>,
+    position_hint: Option<usize>,
 }
 
 impl<D> StyledObject<D> {
@@ -628,10 +877,34 @@ impl<D> StyledObject<D> {
         self
     }
 
+    /// Sets the foreground gradient end color.
+    ///
+    /// When a end color is set, the foreground will transition
+    /// from the foreground color to this color across the text.
+    ///
+    /// Requires true color support in the terminal.
+    #[inline]
+    pub const fn fg_end(mut self, color: Color) -> StyledObject<D> {
+        self.style = self.style.fg_end(color);
+        self
+    }
+
     /// Sets a background color.
     #[inline]
     pub const fn bg(mut self, color: Color) -> StyledObject<D> {
         self.style = self.style.bg(color);
+        self
+    }
+
+    /// Sets the background gradient end color.
+    ///
+    /// When a end color is set, the background will transition
+    /// from the background color to this color across the background.
+    ///
+    /// Requires true color support in the terminal.
+    #[inline]
+    pub const fn bg_end(mut self, color: Color) -> StyledObject<D> {
+        self.style = self.style.bg_end(color);
         self
     }
 
@@ -647,40 +920,80 @@ impl<D> StyledObject<D> {
         self.fg(Color::Black)
     }
     #[inline]
+    pub const fn black_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Black)
+    }
+    #[inline]
     pub const fn red(self) -> StyledObject<D> {
         self.fg(Color::Red)
+    }
+    #[inline]
+    pub const fn red_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Red)
     }
     #[inline]
     pub const fn green(self) -> StyledObject<D> {
         self.fg(Color::Green)
     }
     #[inline]
+    pub const fn green_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Green)
+    }
+    #[inline]
     pub const fn yellow(self) -> StyledObject<D> {
         self.fg(Color::Yellow)
+    }
+    #[inline]
+    pub const fn yellow_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Yellow)
     }
     #[inline]
     pub const fn blue(self) -> StyledObject<D> {
         self.fg(Color::Blue)
     }
     #[inline]
+    pub const fn blue_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Blue)
+    }
+    #[inline]
     pub const fn magenta(self) -> StyledObject<D> {
         self.fg(Color::Magenta)
+    }
+    #[inline]
+    pub const fn magenta_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Magenta)
     }
     #[inline]
     pub const fn cyan(self) -> StyledObject<D> {
         self.fg(Color::Cyan)
     }
     #[inline]
+    pub const fn cyan_end(self) -> StyledObject<D> {
+        self.fg_end(Color::Cyan)
+    }
+    #[inline]
     pub const fn white(self) -> StyledObject<D> {
         self.fg(Color::White)
+    }
+    #[inline]
+    pub const fn white_end(self) -> StyledObject<D> {
+        self.fg_end(Color::White)
     }
     #[inline]
     pub const fn color256(self, color: u8) -> StyledObject<D> {
         self.fg(Color::Color256(color))
     }
     #[inline]
+    pub const fn color256_end(self, color: u8) -> StyledObject<D> {
+        self.fg_end(Color::Color256(color))
+    }
+    #[inline]
     pub const fn true_color(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
         self.fg(Color::TrueColor(r, g, b))
+    }
+    #[inline]
+    pub const fn true_color_end(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
+        self.fg_end(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -694,40 +1007,80 @@ impl<D> StyledObject<D> {
         self.bg(Color::Black)
     }
     #[inline]
+    pub const fn on_black_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Black)
+    }
+    #[inline]
     pub const fn on_red(self) -> StyledObject<D> {
         self.bg(Color::Red)
+    }
+    #[inline]
+    pub const fn on_red_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Red)
     }
     #[inline]
     pub const fn on_green(self) -> StyledObject<D> {
         self.bg(Color::Green)
     }
     #[inline]
+    pub const fn on_green_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Green)
+    }
+    #[inline]
     pub const fn on_yellow(self) -> StyledObject<D> {
         self.bg(Color::Yellow)
+    }
+    #[inline]
+    pub const fn on_yellow_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Yellow)
     }
     #[inline]
     pub const fn on_blue(self) -> StyledObject<D> {
         self.bg(Color::Blue)
     }
     #[inline]
+    pub const fn on_blue_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Blue)
+    }
+    #[inline]
     pub const fn on_magenta(self) -> StyledObject<D> {
         self.bg(Color::Magenta)
+    }
+    #[inline]
+    pub const fn on_magenta_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Magenta)
     }
     #[inline]
     pub const fn on_cyan(self) -> StyledObject<D> {
         self.bg(Color::Cyan)
     }
     #[inline]
+    pub const fn on_cyan_end(self) -> StyledObject<D> {
+        self.bg_end(Color::Cyan)
+    }
+    #[inline]
     pub const fn on_white(self) -> StyledObject<D> {
         self.bg(Color::White)
+    }
+    #[inline]
+    pub const fn on_white_end(self) -> StyledObject<D> {
+        self.bg_end(Color::White)
     }
     #[inline]
     pub const fn on_color256(self, color: u8) -> StyledObject<D> {
         self.bg(Color::Color256(color))
     }
     #[inline]
+    pub const fn on_color256_end(self, color: u8) -> StyledObject<D> {
+        self.bg_end(Color::Color256(color))
+    }
+    #[inline]
     pub const fn on_true_color(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
         self.bg(Color::TrueColor(r, g, b))
+    }
+    #[inline]
+    pub const fn on_true_color_end(self, r: u8, g: u8, b: u8) -> StyledObject<D> {
+        self.bg_end(Color::TrueColor(r, g, b))
     }
 
     #[inline]
@@ -772,21 +1125,65 @@ impl<D> StyledObject<D> {
     pub const fn strikethrough(self) -> StyledObject<D> {
         self.attr(Attribute::StrikeThrough)
     }
+
+    #[inline]
+    pub const fn size_hint(mut self, size_hint: Option<usize>) -> Self {
+        self.size_hint = size_hint;
+        self
+    }
+    #[inline]
+    pub const fn position_hint(mut self, position_hint: Option<usize>) -> Self {
+        self.position_hint = position_hint;
+        self
+    }
 }
 
 macro_rules! impl_fmt {
     ($name:ident) => {
         impl<D: fmt::$name> fmt::$name for StyledObject<D> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                let mut reset = false;
-                if self
+                let use_colors = self
                     .style
                     .force
                     .unwrap_or_else(|| match self.style.for_stderr {
                         true => colors_enabled_stderr(),
                         false => colors_enabled(),
-                    })
-                {
+                    });
+
+                let fg_gradient = self.style.get_fg_gradient();
+                let bg_gradient = self.style.get_bg_gradient();
+
+                let use_gradient = use_colors && (fg_gradient.is_some() || bg_gradient.is_some());
+
+                if use_gradient {
+                    struct DisplayWrapper<'a, D>(&'a D);
+
+                    impl<'a, D> fmt::Display for DisplayWrapper<'a, D>
+                    where
+                        D: fmt::$name,
+                    {
+                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            self.0.fmt(f)
+                        }
+                    }
+
+                    let text = DisplayWrapper(&self.val).to_string();
+
+                    fmt_gradient(
+                        f,
+                        &text,
+                        fg_gradient,
+                        bg_gradient,
+                        self.size_hint,
+                        self.position_hint,
+                        self.style.attrs,
+                    )?;
+
+                    return Ok(());
+                }
+
+                let mut reset = false;
+                if use_colors {
                     if let Some(fg) = self.style.fg {
                         if let Color::TrueColor(r, g, b) = fg {
                             write!(f, "\x1b[38;2;{};{};{}m", r, g, b)?;
@@ -835,6 +1232,89 @@ impl_fmt!(Octal);
 impl_fmt!(Pointer);
 impl_fmt!(UpperExp);
 impl_fmt!(UpperHex);
+
+struct Gradient {
+    start: Color,
+    end: Color,
+}
+
+struct FgGradient(Gradient);
+struct BgGradient(Gradient);
+
+/// Formats text with gradient colors.
+fn fmt_gradient(
+    f: &mut fmt::Formatter,
+    text: &str,
+    fg_gradient: Option<FgGradient>,
+    bg_gradient: Option<BgGradient>,
+    size_hint: Option<usize>,
+    position_hint: Option<usize>,
+    attrs: Attributes,
+) -> fmt::Result {
+    let char_count = size_hint.unwrap_or(measure_text_width(text));
+
+    if char_count == 0 {
+        return Ok(());
+    }
+
+    let mut visible_idx = position_hint.unwrap_or_default();
+
+    #[cfg(feature = "ansi-parsing")]
+    fn escape_iterator(text: &str) -> impl Iterator<Item = (&str, bool)> {
+        AnsiCodeIterator::new(text)
+    }
+
+    // Assume there are no existing escape codes when ansi-parsing feature is disabled.
+    #[cfg(not(feature = "ansi-parsing"))]
+    fn escape_iterator(text: &str) -> impl Iterator<Item = (&str, bool)> {
+        [text].into_iter().map(|s| (s, false))
+    }
+
+    for (chars, is_escape) in escape_iterator(text) {
+        if is_escape {
+            write!(f, "{chars}")?;
+
+            continue;
+        }
+
+        for ch in chars.chars() {
+            // Calculate interpolation factor
+            let t = if char_count == 1 {
+                0.0
+            } else {
+                visible_idx as f32 / (char_count - 1) as f32
+            };
+
+            // Apply foreground gradient
+            if let Some(FgGradient(Gradient { start, end })) = fg_gradient {
+                let (r, g, b) = start.interpolate(end, t);
+
+                write!(f, "\x1b[38;2;{r};{g};{b}m")?;
+            };
+
+            // Apply background gradient
+            if let Some(BgGradient(Gradient { start, end })) = bg_gradient {
+                let (r, g, b) = start.interpolate(end, t);
+
+                write!(f, "\x1b[48;2;{r};{g};{b}m")?;
+            }
+
+            // Apply attributes (only needed once per char since we're resetting)
+            if !attrs.is_empty() {
+                write!(f, "{attrs}")?;
+            }
+
+            write!(f, "{ch}")?;
+
+            visible_idx += 1;
+        }
+    }
+
+    // Reset at the end
+    write!(f, "\x1b[0m")?;
+
+    Ok(())
+}
 
 /// "Intelligent" emoji formatter.
 ///
@@ -1194,4 +1674,87 @@ fn test_attributes_many() {
         );
         assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
     }
+}
+
+#[test]
+fn test_color_to_rgb() {
+    assert_eq!(Color::Black.to_rgb(), (0, 0, 0));
+    assert_eq!(Color::Red.to_rgb(), (205, 49, 49));
+    assert_eq!(Color::White.to_rgb(), (229, 229, 229));
+    assert_eq!(Color::TrueColor(100, 150, 200).to_rgb(), (100, 150, 200));
+    assert_eq!(Color::Color256(0).to_rgb(), (0, 0, 0));
+    assert_eq!(Color::Color256(15).to_rgb(), (255, 255, 255));
+}
+
+#[test]
+fn test_color_interpolate() {
+    let start = Color::TrueColor(0, 0, 0);
+    let end = Color::TrueColor(255, 255, 255);
+
+    // At t=0, should be start color
+    assert_eq!(start.interpolate(end, 0.0), (0, 0, 0));
+
+    // At t=1, should be end color
+    assert_eq!(start.interpolate(end, 1.0), (255, 255, 255));
+
+    // At t=0.5, should be midpoint
+    assert_eq!(start.interpolate(end, 0.5), (128, 128, 128));
+}
+
+#[test]
+fn test_style_gradient_builder() {
+    let style = Style::new().fg(Color::Red).fg_end(Color::Blue);
+
+    assert!(style.get_fg_gradient().is_some());
+    assert!(style.get_bg_gradient().is_none());
+}
+
+#[test]
+fn test_style_from_dotted_str_gradient() {
+    let style = Style::from_dotted_str("#ff0000->#00ff00");
+
+    assert!(style.get_fg_gradient().is_some());
+
+    let style = Style::from_dotted_str("on_#ff0000->#0000ff");
+    assert!(style.get_bg_gradient().is_some());
+
+    let style = Style::from_dotted_str("#ff0000->#00ff00.on_#0000ff->#ff00ff");
+    assert!(style.get_fg_gradient().is_some());
+    assert!(style.get_bg_gradient().is_some());
+}
+
+#[test]
+fn test_gradient_styled_output() {
+    let styled = style("AB")
+        .fg(Color::TrueColor(255, 0, 0))
+        .fg_end(Color::TrueColor(0, 0, 255))
+        .force_styling(true);
+
+    assert_eq!(
+        styled.to_string(),
+        "\u{1b}[38;2;255;0;0mA\u{1b}[38;2;0;0;255mB\u{1b}[0m"
+    );
+}
+
+#[test]
+fn test_gradient_single_char() {
+    // Single character should just use start color
+    let styled = style("X")
+        .fg(Color::TrueColor(255, 0, 0))
+        .fg_end(Color::TrueColor(0, 0, 255))
+        .force_styling(true);
+
+    let output = format!("{}", styled);
+    // Should contain the start color (255, 0, 0)
+    assert!(output.contains("\x1b[38;2;255;0;0m"));
+}
+
+#[test]
+fn test_gradient_empty_string() {
+    let styled = style("")
+        .fg(Color::TrueColor(255, 0, 0))
+        .fg_end(Color::TrueColor(0, 0, 255))
+        .force_styling(true);
+
+    assert_eq!(styled.to_string(), "");
 }
