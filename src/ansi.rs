@@ -6,8 +6,9 @@ use core::{
     str::CharIndices,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 enum State {
+    #[default]
     Start,
     S1,
     S2,
@@ -21,12 +22,6 @@ enum State {
     S10,
     S11,
     Trap,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::Start
-    }
 }
 
 impl State {
