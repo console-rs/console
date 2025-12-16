@@ -10,6 +10,7 @@ repository = "https://github.com/console-rs/console"
 documentation = "https://docs.rs/console"
 readme = "README.md"
 rust-version = "1.71"
+include = ["CHANGELOG.md", "Cargo.toml", "LICENSE", "README.md", "src/**/*.rs"]
 
 [features]
 default = ["unicode-width", "ansi-parsing", "std"]
