@@ -472,6 +472,15 @@ impl Term {
         move_cursor_right(self, n)
     }
 
+    /// Get the position of the cursor.
+    ///
+    /// Returns the current zero-indexed cursor position as a tuple of (x, y).
+    #[cfg(unix)]
+    #[inline]
+    pub fn cursor_position(&self) -> io::Result<(usize, usize)> {
+        cursor_position()
+    }
+
     /// Clear the current line.
     ///
     /// Position the cursor at the beginning of the current line.
