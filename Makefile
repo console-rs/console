@@ -37,7 +37,4 @@ lint:
 	@rustup component add clippy 2> /dev/null
 	@cargo clippy --examples --tests --all-features -- --deny warnings
 
-msrv-lock:
-	@# cargo update -p once_cell --precise 1.20.3
-
-.PHONY: all doc build check test format format-check lint check-minver msrv-lock
+.PHONY: all doc build check test format format-check lint check-minver
