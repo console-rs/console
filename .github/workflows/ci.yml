@@ -28,9 +28,6 @@ jobs:
           override: true
       - name: Checkout
         uses: actions/checkout@v3
-      - name: MSRV dependencies
-        if: matrix.rust == '1.71.0'
-        run: make msrv-lock
       - name: Check
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -79,9 +76,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install gcc-multilib
-      - name: MSRV dependencies
-        if: matrix.rust == '1.71.0'
-        run: make msrv-lock
       - name: Test
         env:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
