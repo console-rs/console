@@ -293,8 +293,26 @@ fn read_single_key_impl(fd: RawFd) -> Result<Key, io::Error> {
                             // \x1b[ and no more input
                             Ok(Key::UnknownEscSeq(vec![c1]))
                         }
+                    } else if c1 == 'O' {
+                        // SS3 (Single Shift 3) sequences. Sent by terminals in
+                        // application cursor key mode (DECCKM, enabled via
+                        // `ESC [ ? 1 h` / terminfo smkx). zsh's ZLE commonly
+                        // leaves DECCKM on when running external commands.
+                        if let Some(c2) = read_single_char(fd)? {
+                            match c2 {
+                                'A' => Ok(Key::ArrowUp),
+                                'B' => Ok(Key::ArrowDown),
+                                'C' => Ok(Key::ArrowRight),
+                                'D' => Ok(Key::ArrowLeft),
+                                'H' => Ok(Key::Home),
+                                'F' => Ok(Key::End),
+                                _ => Ok(Key::UnknownEscSeq(vec![c1, c2])),
+                            }
+                        } else {
+                            Ok(Key::UnknownEscSeq(vec![c1]))
+                        }
                     } else {
-                        // char after escape is not [
+                        // char after escape is not [ or O
                         Ok(Key::UnknownEscSeq(vec![c1]))
                     }
                 } else {
