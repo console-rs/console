@@ -341,7 +341,11 @@ impl Style {
                 "reverse" => rv.reverse(),
                 "hidden" => rv.hidden(),
                 "strikethrough" => rv.strikethrough(),
-                on_true_color if on_true_color.starts_with("on_#") && on_true_color.len() == 10 => {
+                on_true_color
+                    if on_true_color.starts_with("on_#")
+                        && on_true_color.len() == 10
+                        && on_true_color.is_ascii() =>
+                {
                     if let (Ok(r), Ok(g), Ok(b)) = (
                         u8::from_str_radix(&on_true_color[4..6], 16),
                         u8::from_str_radix(&on_true_color[6..8], 16),
@@ -352,7 +356,11 @@ impl Style {
                         continue;
                     }
                 }
-                true_color if true_color.starts_with('#') && true_color.len() == 7 => {
+                true_color
+                    if true_color.starts_with('#')
+                        && true_color.len() == 7
+                        && true_color.is_ascii() =>
+                {
                     if let (Ok(r), Ok(g), Ok(b)) = (
                         u8::from_str_radix(&true_color[1..3], 16),
                         u8::from_str_radix(&true_color[3..5], 16),
@@ -1197,8 +1205,6 @@ fn test_attributes_many() {
 }
 
 #[test]
-// NOTE: Documenting the current panic message. Ideally this input should be silently ignored
-#[should_panic = "end byte index 3 is not a char boundary; it is inside '€' (bytes 1..4 of string)"]
 fn test_style_from_non_ascii_fg() {
     // len() == 7, starts_with('#'), but slices [1..3] land mid-€ (3 bytes)
     let fg = "#€€";
@@ -1211,8 +1217,6 @@ fn test_style_from_non_ascii_fg() {
 }
 
 #[test]
-// NOTE: Documenting the current panic message. Ideally this input should be silently ignored
-#[should_panic = "end byte index 6 is not a char boundary; it is inside '€' (bytes 4..7 of string)"]
 fn test_style_from_non_ascii_bg() {
     // len() == 10, starts_with("on_#"), but slices [4..6] land mid-€
     let bg = "on_#€€";
