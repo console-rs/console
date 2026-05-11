@@ -1195,3 +1195,31 @@ fn test_attributes_many() {
         assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
     }
 }
+
+#[test]
+// NOTE: Documenting the current panic message. Ideally this input should be silently ignored
+#[should_panic = "end byte index 3 is not a char boundary; it is inside '€' (bytes 1..4 of string)"]
+fn test_style_from_non_ascii_fg() {
+    // len() == 7, starts_with('#'), but slices [1..3] land mid-€ (3 bytes)
+    let fg = "#€€";
+    assert_eq!(fg.len(), 7);
+
+    let parsed_style = Style::from_dotted_str(fg);
+
+    // silently ignores non-ascii
+    assert_eq!(parsed_style, Style::default());
+}
+
+#[test]
+// NOTE: Documenting the current panic message. Ideally this input should be silently ignored
+#[should_panic = "end byte index 6 is not a char boundary; it is inside '€' (bytes 4..7 of string)"]
+fn test_style_from_non_ascii_bg() {
+    // len() == 10, starts_with("on_#"), but slices [4..6] land mid-€
+    let bg = "on_#€€";
+    assert_eq!(bg.len(), 10);
+
+    let parsed_style = Style::from_dotted_str(bg);
+
+    // silently ignores non-ascii
+    assert_eq!(parsed_style, Style::default());
+}
