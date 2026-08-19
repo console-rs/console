@@ -30,6 +30,11 @@ fn stdout_true_colors() -> &'static AtomicBool {
     static ENABLED: OnceLock<AtomicBool> = OnceLock::new();
     ENABLED.get_or_init(|| AtomicBool::new(default_true_colors_enabled(&Term::stdout())))
 }
+fn stdout_progress_integration() -> &'static AtomicBool {
+    static ENABLED: OnceLock<AtomicBool> = OnceLock::new();
+    ENABLED
+        .get_or_init(|| AtomicBool::new(Term::stdout().features().progress_integration_supported()))
+}
 fn stderr_colors() -> &'static AtomicBool {
     static ENABLED: OnceLock<AtomicBool> = OnceLock::new();
     ENABLED.get_or_init(|| AtomicBool::new(default_colors_enabled(&Term::stderr())))
@@ -37,6 +42,11 @@ fn stderr_colors() -> &'static AtomicBool {
 fn stderr_true_colors() -> &'static AtomicBool {
     static ENABLED: OnceLock<AtomicBool> = OnceLock::new();
     ENABLED.get_or_init(|| AtomicBool::new(default_true_colors_enabled(&Term::stderr())))
+}
+fn stderr_progress_integration() -> &'static AtomicBool {
+    static ENABLED: OnceLock<AtomicBool> = OnceLock::new();
+    ENABLED
+        .get_or_init(|| AtomicBool::new(Term::stderr().features().progress_integration_supported()))
 }
 
 /// Returns `true` if colors should be enabled for stdout.
@@ -57,6 +67,12 @@ pub fn true_colors_enabled() -> bool {
     stdout_true_colors().load(Ordering::Relaxed)
 }
 
+/// Returns `true` if the terminal-integrated progress should be enabled for stdout.
+#[inline]
+pub fn progress_integration() -> bool {
+    stdout_progress_integration().load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stdout.
 ///
 /// This overrides the default for the current process and changes the return value of the
@@ -73,6 +89,15 @@ pub fn set_colors_enabled(val: bool) {
 #[inline]
 pub fn set_true_colors_enabled(val: bool) {
     stdout_true_colors().store(val, Ordering::Relaxed)
+}
+
+/// Forces terminal-integrated progress on or off for stdout.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `progress_integration` function.
+#[inline]
+pub fn set_progress_integration(val: bool) {
+    stdout_progress_integration().store(val, Ordering::Relaxed)
 }
 
 /// Returns `true` if colors should be enabled for stderr.
@@ -93,6 +118,12 @@ pub fn true_colors_enabled_stderr() -> bool {
     stderr_true_colors().load(Ordering::Relaxed)
 }
 
+/// Returns `true` if the terminal-integrated progress should be enabled for stderr.
+#[inline]
+pub fn progress_integration_stderr() -> bool {
+    stderr_progress_integration().load(Ordering::Relaxed)
+}
+
 /// Forces colorization on or off for stderr.
 ///
 /// This overrides the default for the current process and changes the return value of the
@@ -109,6 +140,15 @@ pub fn set_colors_enabled_stderr(val: bool) {
 #[inline]
 pub fn set_true_colors_enabled_stderr(val: bool) {
     stderr_true_colors().store(val, Ordering::Relaxed)
+}
+
+/// Forces terminal-integrated progress on or off for stderr.
+///
+/// This overrides the default for the current process and changes the return value of the
+/// `progress_integration_stderr` function.
+#[inline]
+pub fn set_progress_integration_stderr(val: bool) {
+    stderr_progress_integration().store(val, Ordering::Relaxed)
 }
 
 /// Measure the width of a string in terminal characters.
@@ -1034,6 +1074,100 @@ pub fn pad_str_with<'a>(
         rv.push(pad);
     }
     Cow::Owned(rv)
+}
+
+#[derive(Clone, Debug)]
+pub struct TermProgress {
+    inner: anstyle_progress::TermProgress,
+    force: Option<bool>,
+    for_stderr: bool,
+}
+
+impl Default for TermProgress {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TermProgress {
+    pub const fn new() -> Self {
+        Self {
+            inner: anstyle_progress::TermProgress::none(),
+            force: None,
+            for_stderr: false,
+        }
+    }
+
+    /// Forces terminal-integrated progress on or off.
+    ///
+    /// This overrides the automatic detection.
+    #[inline]
+    pub const fn force_styling(mut self, value: bool) -> Self {
+        self.force = Some(value);
+        self
+    }
+
+    /// Specifies that terminal-integrated progress is being written on stderr.
+    #[inline]
+    pub const fn for_stderr(mut self) -> Self {
+        self.for_stderr = true;
+        self
+    }
+
+    /// Specifies that terminal-integrated progress is being written on stdout.
+    ///
+    /// This is the default behaviour.
+    #[inline]
+    pub const fn for_stdout(mut self) -> Self {
+        self.for_stderr = false;
+        self
+    }
+
+    /// Start a progress indicator
+    ///
+    /// This starts in an indeterminate state
+    pub const fn start(mut self) -> Self {
+        self.inner = self
+            .inner
+            .status(anstyle_progress::TermProgressStatus::Normal);
+        self
+    }
+
+    /// Set progress percentage (between `0..=100`)
+    ///
+    /// Without setting this, progress will be indeterminate
+    pub const fn percent(mut self, percent: u8) -> Self {
+        self.inner = self.inner.percent(percent);
+        self
+    }
+
+    /// Start an error indicator
+    pub const fn error(mut self) -> Self {
+        self.inner = self
+            .inner
+            .status(anstyle_progress::TermProgressStatus::Error);
+        self
+    }
+
+    /// Remove the indicator
+    pub const fn remove(mut self) -> Self {
+        self.inner = self
+            .inner
+            .status(anstyle_progress::TermProgressStatus::Removed);
+        self
+    }
+}
+
+impl fmt::Display for TermProgress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.force.unwrap_or_else(|| match self.for_stderr {
+            true => progress_integration_stderr(),
+            false => progress_integration(),
+        }) {
+            fmt::Display::fmt(&self.inner, f)?;
+        }
+        Ok(())
+    }
 }
 
 #[test]

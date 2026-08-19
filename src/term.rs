@@ -103,6 +103,11 @@ impl TermFeatures<'_> {
         is_a_true_color_terminal(self.0)
     }
 
+    /// The termninal supports integrated progress reporting.
+    pub fn progress_integration_supported(&self) -> bool {
+        anstyle_progress::supports_term_progress(self.is_attended())
+    }
+
     /// Check if this terminal is an msys terminal.
     ///
     /// This is sometimes useful to disable features that are known to not
