@@ -875,6 +875,87 @@ impl fmt::Display for Emoji<'_, '_> {
     }
 }
 
+/// A clickable terminal hyperlink.
+///
+/// This pairs a piece of text with a URL and renders it using the
+/// [OSC 8 escape sequence](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda),
+/// which supporting terminals show as a clickable link. Terminals that do not
+/// understand the sequence simply display the text.
+///
+/// Hyperlinks follow the same enablement rules as colors: the escape sequence
+/// is only emitted when colors are enabled for the target stream (see
+/// [`colors_enabled`]). That way piped or redirected output stays free of
+/// escape codes and just shows the text. Use [`Link::force`] to override this.
+///
+/// # Example
+///
+/// ```rust
+/// use console::Link;
+/// println!("Read the {}.", Link::new("docs", "https://docs.rs/console"));
+/// ```
+#[derive(Copy, Clone, Debug)]
+pub struct Link<'a, D> {
+    text: D,
+    url: &'a str,
+    for_stderr: bool,
+    force: Option<bool>,
+}
+
+impl<'a, D> Link<'a, D> {
+    /// Creates a new hyperlink that points `text` at `url`.
+    pub fn new(text: D, url: &'a str) -> Link<'a, D> {
+        Link {
+            text,
+            url,
+            for_stderr: false,
+            force: None,
+        }
+    }
+
+    /// Renders this hyperlink for stderr instead of stdout.
+    ///
+    /// This only changes which stream's color configuration decides whether
+    /// the escape sequence is emitted.
+    pub fn for_stderr(mut self) -> Link<'a, D> {
+        self.for_stderr = true;
+        self
+    }
+
+    /// Renders this hyperlink for stdout.
+    ///
+    /// This is the default.
+    pub fn for_stdout(mut self) -> Link<'a, D> {
+        self.for_stderr = false;
+        self
+    }
+
+    /// Forces emitting the escape sequence on or off.
+    ///
+    /// This overrides the automatic detection that otherwise follows the color
+    /// configuration of the target stream.
+    pub fn force(mut self, value: bool) -> Link<'a, D> {
+        self.force = Some(value);
+        self
+    }
+
+    fn enabled(&self) -> bool {
+        self.force.unwrap_or_else(|| match self.for_stderr {
+            true => colors_enabled_stderr(),
+            false => colors_enabled(),
+        })
+    }
+}
+
+impl<D: fmt::Display> fmt::Display for Link<'_, D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.enabled() {
+            write!(f, "\x1b]8;;{}\x1b\\{}\x1b]8;;\x1b\\", self.url, self.text)
+        } else {
+            self.text.fmt(f)
+        }
+    }
+}
+
 fn str_width(s: &str) -> usize {
     #[cfg(feature = "unicode-width")]
     {
@@ -1226,4 +1307,31 @@ fn test_style_from_non_ascii_bg() {
 
     // silently ignores non-ascii
     assert_eq!(parsed_style, Style::default());
+}
+
+#[test]
+fn test_link_enabled() {
+    let link = Link::new("example", "https://example.com").force(true);
+    assert_eq!(
+        link.to_string(),
+        "\x1b]8;;https://example.com\x1b\\example\x1b]8;;\x1b\\"
+    );
+}
+
+#[test]
+fn test_link_disabled() {
+    // When emission is turned off only the text is rendered.
+    let link = Link::new("example", "https://example.com").force(false);
+    assert_eq!(link.to_string(), "example");
+}
+
+#[test]
+fn test_link_for_stderr() {
+    let link = Link::new(42, "https://example.com")
+        .for_stderr()
+        .force(true);
+    assert_eq!(
+        link.to_string(),
+        "\x1b]8;;https://example.com\x1b\\42\x1b]8;;\x1b\\"
+    );
 }
