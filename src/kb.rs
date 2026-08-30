@@ -10,6 +10,8 @@ pub enum Key {
     Unknown,
     /// Unrecognized sequence containing Esc and a list of chars
     UnknownEscSeq(Vec<char>),
+    /// Cursor position (x, y), zero-indexed
+    CursorPosition(usize, usize),
     ArrowLeft,
     ArrowRight,
     ArrowUp,
