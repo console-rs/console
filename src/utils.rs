@@ -887,7 +887,7 @@ fn str_width(s: &str) -> usize {
     }
 }
 
-#[cfg(feature = "ansi-parsing")]
+/// The display width of a single character, on the same scale as `str_width`.
 pub(crate) fn char_width(c: char) -> usize {
     #[cfg(feature = "unicode-width")]
     {
@@ -899,11 +899,6 @@ pub(crate) fn char_width(c: char) -> usize {
         let _c = c;
         1
     }
-}
-
-#[cfg(not(feature = "ansi-parsing"))]
-pub(crate) fn char_width(_c: char) -> usize {
-    1
 }
 
 /// Truncates a string to a certain number of characters.
@@ -973,11 +968,24 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 
     #[cfg(not(feature = "ansi-parsing"))]
     {
-        Cow::Owned(format!(
-            "{}{}",
-            &s[..width.saturating_sub(tail.len())],
-            tail
-        ))
+        // Columns come from `char_width` (0, 1 or 2 per char); the cut is a
+        // byte offset from `char_indices`, which a multi-byte char advances by
+        // more than its width.
+        let column_budget = width.saturating_sub(str_width(tail));
+        let mut columns = 0;
+        let mut cut_at = s.len();
+        for (byte_index, c) in s.char_indices() {
+            columns += char_width(c);
+            if columns > column_budget {
+                cut_at = byte_index;
+                break;
+            }
+        }
+
+        let mut buf = String::with_capacity(cut_at + tail.len());
+        buf.push_str(&s[..cut_at]);
+        buf.push_str(tail);
+        Cow::Owned(buf)
     }
 }
 
@@ -1226,4 +1234,30 @@ fn test_style_from_non_ascii_bg() {
 
     // silently ignores non-ascii
     assert_eq!(parsed_style, Style::default());
+}
+
+/// Expected values are display widths, so this needs `unicode-width`.
+#[test]
+#[cfg(feature = "unicode-width")]
+fn test_truncate_str_multibyte_no_panic() {
+    let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}"; // 4 wide chars, 3 bytes each
+    assert_eq!(&truncate_str(s, 4, ""), "\u{4f60}\u{597d}");
+    assert_eq!(&truncate_str(s, 5, ""), "\u{4f60}\u{597d}");
+    assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}");
+    assert_eq!(&truncate_str(s, 1, ""), "");
+    // A 3-column tail at width 4 leaves 1 column, too narrow for a wide char.
+    assert_eq!(&truncate_str(s, 4, "..."), "...");
+    assert_eq!(&truncate_str(s, 1, "..."), "...");
+    // Mixed ASCII and multi-byte.
+    assert_eq!(&truncate_str("ab\u{4f60}cd", 4, ""), "ab\u{4f60}");
+}
+
+/// Without `unicode-width` every char is one column.
+#[test]
+#[cfg(not(feature = "unicode-width"))]
+fn test_truncate_str_multibyte_no_panic() {
+    let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}";
+    assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}\u{597d}");
+    assert_eq!(&truncate_str(s, 5, ""), s);
+    assert_eq!(&truncate_str("ab\u{4f60}cd", 3, ""), "ab\u{4f60}");
 }
