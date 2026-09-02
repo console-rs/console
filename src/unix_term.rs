@@ -27,7 +27,7 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
         return false;
     }
 
-    if env::var("NO_COLOR").is_ok() {
+    if env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()) {
         return false;
     }
 

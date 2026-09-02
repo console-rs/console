@@ -823,6 +823,16 @@ macro_rules! impl_fmt {
                         write!(f, "{}", self.style.attrs)?;
                         reset = true;
                     }
+                } else {
+                    // NO_COLOR and similar controls disable color, but per
+                    // <https://no-color.org/> text attributes (bold, italic,
+                    // underline, etc.) are not "color" and should remain
+                    // visible. Emit them outside the colors_enabled gate so
+                    // they survive when colors are suppressed.
+                    if !self.style.attrs.is_empty() {
+                        write!(f, "{}", self.style.attrs)?;
+                        reset = true;
+                    }
                 }
                 fmt::$name::fmt(&self.val, f)?;
                 if reset {
@@ -1260,4 +1270,47 @@ fn test_truncate_str_multibyte_no_panic() {
     assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}\u{597d}");
     assert_eq!(&truncate_str(s, 5, ""), s);
     assert_eq!(&truncate_str("ab\u{4f60}cd", 3, ""), "ab\u{4f60}");
+}
+
+#[test]
+fn test_attrs_survive_colors_disabled() {
+    // Regression test for <https://github.com/console-rs/console/issues/291>:
+    // per <https://no-color.org/>, `NO_COLOR` suppresses *color*, not text
+    // attributes. When color output is otherwise disabled, attributes such as
+    // bold/italic/underline should still be emitted (with a trailing reset).
+    let prev = colors_enabled();
+    set_colors_enabled(false);
+
+    let bold = style("foo").bold().to_string();
+    assert!(
+        bold.contains("\x1b[1m"),
+        "bold escape sequence missing when colors are disabled: {bold:?}"
+    );
+    assert!(
+        bold.ends_with("\x1b[0m"),
+        "reset escape sequence missing after bold: {bold:?}"
+    );
+
+    let italic = style("bar").italic().to_string();
+    assert!(
+        italic.contains("\x1b[3m"),
+        "italic escape sequence missing when colors are disabled: {italic:?}"
+    );
+    assert!(
+        italic.ends_with("\x1b[0m"),
+        "reset escape sequence missing after italic: {italic:?}"
+    );
+
+    // Foreground color is *still* suppressed when colors are disabled.
+    let colored = style("baz").red().to_string();
+    assert!(
+        !colored.contains("\x1b[31m"),
+        "foreground color escape sequence should be suppressed when colors are disabled: {colored:?}"
+    );
+    assert!(
+        !colored.contains("\x1b[0m"),
+        "reset escape sequence should not be emitted when nothing is styled: {colored:?}"
+    );
+
+    set_colors_enabled(prev);
 }

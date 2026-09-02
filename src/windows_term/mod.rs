@@ -63,7 +63,7 @@ pub(crate) fn is_a_color_terminal(out: &Term) -> bool {
     if !is_a_terminal(out) {
         return false;
     }
-    if env::var("NO_COLOR").is_ok() {
+    if env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()) {
         return false;
     }
     if msys_tty_on(out) {
