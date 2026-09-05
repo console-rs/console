@@ -115,6 +115,12 @@ pub fn set_true_colors_enabled_stderr(val: bool) {
 pub fn measure_text_width(s: &str) -> usize {
     #[cfg(feature = "ansi-parsing")]
     {
+        let printable_ascii = s
+            .bytes()
+            .fold(true, |ok, b| ok & (0x20..=0x7e).contains(&b));
+        if printable_ascii {
+            return s.len();
+        }
         AnsiCodeIterator::new(s)
             .filter_map(|(s, is_ansi)| match is_ansi {
                 false => Some(str_width(s)),
