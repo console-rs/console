@@ -924,18 +924,19 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
         let mut iter = AnsiCodeIterator::new(s);
         let mut length = 0;
         let mut rv = None;
+        let tail_width = measure_text_width(tail);
 
         while let Some(item) = iter.next() {
             match item {
                 (s, false) => {
                     if rv.is_none() {
-                        if str_width(s) + length > width.saturating_sub(str_width(tail)) {
+                        if str_width(s) + length > width.saturating_sub(tail_width) {
                             let ts = iter.current_slice();
 
                             let mut s_byte = 0;
                             let mut s_width = 0;
                             let rest_width =
-                                width.saturating_sub(str_width(tail)).saturating_sub(length);
+                                width.saturating_sub(tail_width).saturating_sub(length);
                             for c in s.chars() {
                                 s_byte += c.len_utf8();
                                 s_width += char_width(c);
@@ -1116,6 +1117,20 @@ fn test_truncate_str() {
     assert_eq!(
         &truncate_str(&s, 2, "!!!"),
         &format!("!!!{}", style("").red().force_styling(true))
+    );
+}
+
+#[test]
+#[cfg(feature = "ansi-parsing")]
+fn test_truncate_str_ansi_tail() {
+    // escape sequences in the tail take no columns, so they cost no budget
+    assert_eq!(
+        &truncate_str("foo bar baz", 10, "\x1b[31m...\x1b[0m"),
+        "foo bar\x1b[31m...\x1b[0m"
+    );
+    assert_eq!(
+        &truncate_str("foo bar baz", 10, "\x1b[0m"),
+        "foo bar ba\x1b[0m"
     );
 }
 
