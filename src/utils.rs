@@ -1051,268 +1051,273 @@ pub fn pad_str_with<'a>(
     Cow::Owned(rv)
 }
 
-#[test]
-fn test_text_width() {
-    let s = style("foo")
-        .red()
-        .on_black()
-        .bold()
-        .force_styling(true)
-        .to_string();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    assert_eq!(
-        measure_text_width(&s),
-        if cfg!(feature = "ansi-parsing") {
-            3
-        } else {
-            21
-        }
-    );
+    #[test]
+    fn test_text_width() {
+        let s = style("foo")
+            .red()
+            .on_black()
+            .bold()
+            .force_styling(true)
+            .to_string();
 
-    let s = style("🐶 <3").red().force_styling(true).to_string();
-
-    assert_eq!(
-        measure_text_width(&s),
-        match (
-            cfg!(feature = "ansi-parsing"),
-            cfg!(feature = "unicode-width")
-        ) {
-            (true, true) => 5,    // "🐶 <3"
-            (true, false) => 4,   // "🐶 <3", no unicode-aware width
-            (false, true) => 14,  // full string
-            (false, false) => 13, // full string, no unicode-aware width
-        }
-    );
-}
-
-#[test]
-#[cfg(all(feature = "unicode-width", feature = "ansi-parsing"))]
-fn test_truncate_str() {
-    let s = format!("foo {}", style("bar").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 5, ""),
-        &format!("foo {}", style("b").red().force_styling(true))
-    );
-    let s = format!("foo {}", style("bar").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 5, "!"),
-        &format!("foo {}", style("!").red().force_styling(true))
-    );
-    let s = format!("foo {} baz", style("bar").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 10, "..."),
-        &format!("foo {}...", style("bar").red().force_styling(true))
-    );
-    let s = format!("foo {}", style("バー").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 5, ""),
-        &format!("foo {}", style("").red().force_styling(true))
-    );
-    let s = format!("foo {}", style("バー").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 6, ""),
-        &format!("foo {}", style("バ").red().force_styling(true))
-    );
-    let s = format!("foo {}", style("バー").red().force_styling(true));
-    assert_eq!(
-        &truncate_str(&s, 2, "!!!"),
-        &format!("!!!{}", style("").red().force_styling(true))
-    );
-}
-
-#[test]
-#[cfg(feature = "ansi-parsing")]
-fn test_truncate_str_ansi_tail() {
-    // escape sequences in the tail take no columns, so they cost no budget
-    assert_eq!(
-        &truncate_str("foo bar baz", 10, "\x1b[31m...\x1b[0m"),
-        "foo bar\x1b[31m...\x1b[0m"
-    );
-    assert_eq!(
-        &truncate_str("foo bar baz", 10, "\x1b[0m"),
-        "foo bar ba\x1b[0m"
-    );
-}
-
-#[test]
-fn test_truncate_str_no_ansi() {
-    assert_eq!(&truncate_str("foo bar", 7, "!"), "foo bar");
-    assert_eq!(&truncate_str("foo bar", 5, ""), "foo b");
-    assert_eq!(&truncate_str("foo bar", 5, "!"), "foo !");
-    assert_eq!(&truncate_str("foo bar baz", 10, "..."), "foo bar...");
-    assert_eq!(&truncate_str("foo bar", 0, ""), "");
-    assert_eq!(&truncate_str("foo bar", 0, "!"), "!");
-    assert_eq!(&truncate_str("foo bar", 2, "!!!"), "!!!");
-    assert_eq!(&truncate_str("ab", 2, "!!!"), "ab");
-}
-
-#[test]
-fn test_pad_str() {
-    assert_eq!(pad_str("foo", 7, Alignment::Center, None), "  foo  ");
-    assert_eq!(pad_str("foo", 7, Alignment::Left, None), "foo    ");
-    assert_eq!(pad_str("foo", 7, Alignment::Right, None), "    foo");
-    assert_eq!(pad_str("foo", 3, Alignment::Left, None), "foo");
-    assert_eq!(pad_str("foobar", 3, Alignment::Left, None), "foobar");
-    assert_eq!(pad_str("foobar", 3, Alignment::Left, Some("")), "foo");
-    assert_eq!(
-        pad_str("foobarbaz", 6, Alignment::Left, Some("...")),
-        "foo..."
-    );
-}
-
-#[test]
-fn test_pad_str_with() {
-    assert_eq!(
-        pad_str_with("foo", 7, Alignment::Center, None, '#'),
-        "##foo##"
-    );
-    assert_eq!(
-        pad_str_with("foo", 7, Alignment::Left, None, '#'),
-        "foo####"
-    );
-    assert_eq!(
-        pad_str_with("foo", 7, Alignment::Right, None, '#'),
-        "####foo"
-    );
-    assert_eq!(pad_str_with("foo", 3, Alignment::Left, None, '#'), "foo");
-    assert_eq!(
-        pad_str_with("foobar", 3, Alignment::Left, None, '#'),
-        "foobar"
-    );
-    assert_eq!(
-        pad_str_with("foobar", 3, Alignment::Left, Some(""), '#'),
-        "foo"
-    );
-    assert_eq!(
-        pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
-        "foo..."
-    );
-}
-
-#[test]
-fn test_attributes_single() {
-    for attr in Attribute::MAP {
-        let attrs = Attributes::new().insert(attr);
-        assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
-        assert_eq!(attrs.attrs().collect::<Vec<_>>(), [attr]);
-        assert_eq!(format!("{attrs:?}"), format!("{{{:?}}}", attr));
-    }
-}
-
-#[test]
-fn test_attributes_many() {
-    let tests: [&[Attribute]; 3] = [
-        &[
-            Attribute::Bold,
-            Attribute::Underlined,
-            Attribute::BlinkFast,
-            Attribute::Hidden,
-        ],
-        &[
-            Attribute::Dim,
-            Attribute::Italic,
-            Attribute::Blink,
-            Attribute::Reverse,
-            Attribute::StrikeThrough,
-        ],
-        &Attribute::MAP,
-    ];
-    for test_attrs in tests {
-        let mut attrs = Attributes::new();
-        for attr in test_attrs {
-            attrs = attrs.insert(*attr);
-        }
         assert_eq!(
-            attrs.bits().collect::<Vec<_>>(),
-            test_attrs
-                .iter()
-                .map(|attr| *attr as u16)
-                .collect::<Vec<_>>()
+            measure_text_width(&s),
+            if cfg!(feature = "ansi-parsing") {
+                3
+            } else {
+                21
+            }
         );
-        assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
+
+        let s = style("🐶 <3").red().force_styling(true).to_string();
+
+        assert_eq!(
+            measure_text_width(&s),
+            match (
+                cfg!(feature = "ansi-parsing"),
+                cfg!(feature = "unicode-width")
+            ) {
+                (true, true) => 5,    // "🐶 <3"
+                (true, false) => 4,   // "🐶 <3", no unicode-aware width
+                (false, true) => 14,  // full string
+                (false, false) => 13, // full string, no unicode-aware width
+            }
+        );
     }
-}
 
-#[test]
-fn test_style_from_non_ascii_fg() {
-    // len() == 7, starts_with('#'), but slices [1..3] land mid-€ (3 bytes)
-    let fg = "#€€";
-    assert_eq!(fg.len(), 7);
+    #[test]
+    #[cfg(all(feature = "unicode-width", feature = "ansi-parsing"))]
+    fn test_truncate_str() {
+        let s = format!("foo {}", style("bar").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 5, ""),
+            &format!("foo {}", style("b").red().force_styling(true))
+        );
+        let s = format!("foo {}", style("bar").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 5, "!"),
+            &format!("foo {}", style("!").red().force_styling(true))
+        );
+        let s = format!("foo {} baz", style("bar").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 10, "..."),
+            &format!("foo {}...", style("bar").red().force_styling(true))
+        );
+        let s = format!("foo {}", style("バー").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 5, ""),
+            &format!("foo {}", style("").red().force_styling(true))
+        );
+        let s = format!("foo {}", style("バー").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 6, ""),
+            &format!("foo {}", style("バ").red().force_styling(true))
+        );
+        let s = format!("foo {}", style("バー").red().force_styling(true));
+        assert_eq!(
+            &truncate_str(&s, 2, "!!!"),
+            &format!("!!!{}", style("").red().force_styling(true))
+        );
+    }
 
-    let parsed_style = Style::from_dotted_str(fg);
+    #[test]
+    #[cfg(feature = "ansi-parsing")]
+    fn test_truncate_str_ansi_tail() {
+        // escape sequences in the tail take no columns, so they cost no budget
+        assert_eq!(
+            &truncate_str("foo bar baz", 10, "\x1b[31m...\x1b[0m"),
+            "foo bar\x1b[31m...\x1b[0m"
+        );
+        assert_eq!(
+            &truncate_str("foo bar baz", 10, "\x1b[0m"),
+            "foo bar ba\x1b[0m"
+        );
+    }
 
-    // silently ignores non-ascii
-    assert_eq!(parsed_style, Style::default());
-}
+    #[test]
+    fn test_truncate_str_no_ansi() {
+        assert_eq!(&truncate_str("foo bar", 7, "!"), "foo bar");
+        assert_eq!(&truncate_str("foo bar", 5, ""), "foo b");
+        assert_eq!(&truncate_str("foo bar", 5, "!"), "foo !");
+        assert_eq!(&truncate_str("foo bar baz", 10, "..."), "foo bar...");
+        assert_eq!(&truncate_str("foo bar", 0, ""), "");
+        assert_eq!(&truncate_str("foo bar", 0, "!"), "!");
+        assert_eq!(&truncate_str("foo bar", 2, "!!!"), "!!!");
+        assert_eq!(&truncate_str("ab", 2, "!!!"), "ab");
+    }
 
-#[test]
-fn test_style_from_non_ascii_bg() {
-    // len() == 10, starts_with("on_#"), but slices [4..6] land mid-€
-    let bg = "on_#€€";
-    assert_eq!(bg.len(), 10);
+    #[test]
+    fn test_pad_str() {
+        assert_eq!(pad_str("foo", 7, Alignment::Center, None), "  foo  ");
+        assert_eq!(pad_str("foo", 7, Alignment::Left, None), "foo    ");
+        assert_eq!(pad_str("foo", 7, Alignment::Right, None), "    foo");
+        assert_eq!(pad_str("foo", 3, Alignment::Left, None), "foo");
+        assert_eq!(pad_str("foobar", 3, Alignment::Left, None), "foobar");
+        assert_eq!(pad_str("foobar", 3, Alignment::Left, Some("")), "foo");
+        assert_eq!(
+            pad_str("foobarbaz", 6, Alignment::Left, Some("...")),
+            "foo..."
+        );
+    }
 
-    let parsed_style = Style::from_dotted_str(bg);
+    #[test]
+    fn test_pad_str_with() {
+        assert_eq!(
+            pad_str_with("foo", 7, Alignment::Center, None, '#'),
+            "##foo##"
+        );
+        assert_eq!(
+            pad_str_with("foo", 7, Alignment::Left, None, '#'),
+            "foo####"
+        );
+        assert_eq!(
+            pad_str_with("foo", 7, Alignment::Right, None, '#'),
+            "####foo"
+        );
+        assert_eq!(pad_str_with("foo", 3, Alignment::Left, None, '#'), "foo");
+        assert_eq!(
+            pad_str_with("foobar", 3, Alignment::Left, None, '#'),
+            "foobar"
+        );
+        assert_eq!(
+            pad_str_with("foobar", 3, Alignment::Left, Some(""), '#'),
+            "foo"
+        );
+        assert_eq!(
+            pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
+            "foo..."
+        );
+    }
 
-    // silently ignores non-ascii
-    assert_eq!(parsed_style, Style::default());
-}
+    #[test]
+    fn test_attributes_single() {
+        for attr in Attribute::MAP {
+            let attrs = Attributes::new().insert(attr);
+            assert_eq!(attrs.bits().collect::<Vec<_>>(), [attr as u16]);
+            assert_eq!(attrs.attrs().collect::<Vec<_>>(), [attr]);
+            assert_eq!(format!("{attrs:?}"), format!("{{{:?}}}", attr));
+        }
+    }
 
-/// Expected values are display widths, so this needs `unicode-width`.
-#[test]
-#[cfg(feature = "unicode-width")]
-fn test_truncate_str_multibyte_no_panic() {
-    let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}"; // 4 wide chars, 3 bytes each
-    assert_eq!(&truncate_str(s, 4, ""), "\u{4f60}\u{597d}");
-    assert_eq!(&truncate_str(s, 5, ""), "\u{4f60}\u{597d}");
-    assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}");
-    assert_eq!(&truncate_str(s, 1, ""), "");
-    // A 3-column tail at width 4 leaves 1 column, too narrow for a wide char.
-    assert_eq!(&truncate_str(s, 4, "..."), "...");
-    assert_eq!(&truncate_str(s, 1, "..."), "...");
-    // Mixed ASCII and multi-byte.
-    assert_eq!(&truncate_str("ab\u{4f60}cd", 4, ""), "ab\u{4f60}");
-}
+    #[test]
+    fn test_attributes_many() {
+        let tests: [&[Attribute]; 3] = [
+            &[
+                Attribute::Bold,
+                Attribute::Underlined,
+                Attribute::BlinkFast,
+                Attribute::Hidden,
+            ],
+            &[
+                Attribute::Dim,
+                Attribute::Italic,
+                Attribute::Blink,
+                Attribute::Reverse,
+                Attribute::StrikeThrough,
+            ],
+            &Attribute::MAP,
+        ];
+        for test_attrs in tests {
+            let mut attrs = Attributes::new();
+            for attr in test_attrs {
+                attrs = attrs.insert(*attr);
+            }
+            assert_eq!(
+                attrs.bits().collect::<Vec<_>>(),
+                test_attrs
+                    .iter()
+                    .map(|attr| *attr as u16)
+                    .collect::<Vec<_>>()
+            );
+            assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
+        }
+    }
 
-/// Without `unicode-width` every char is one column.
-#[test]
-#[cfg(not(feature = "unicode-width"))]
-fn test_truncate_str_multibyte_no_panic() {
-    let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}";
-    assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}\u{597d}");
-    assert_eq!(&truncate_str(s, 5, ""), s);
-    assert_eq!(&truncate_str("ab\u{4f60}cd", 3, ""), "ab\u{4f60}");
-}
+    #[test]
+    fn test_style_from_non_ascii_fg() {
+        // len() == 7, starts_with('#'), but slices [1..3] land mid-€ (3 bytes)
+        let fg = "#€€";
+        assert_eq!(fg.len(), 7);
 
-#[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
-#[test]
-fn printable_ascii_uses_width() {
-    assert_eq!(measure_text_width(""), 0);
-    assert_eq!(measure_text_width(" !~"), 3);
-}
+        let parsed_style = Style::from_dotted_str(fg);
 
-#[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
-#[test]
-fn controls_and_ansi_fall_back_to_parser() {
-    // Existing str_width counts the newline as one column in this contract.
-    assert_eq!(measure_text_width("a\nb"), 3);
-    assert_eq!(measure_text_width("\x1b[31mred\x1b[0m"), 3);
-    assert_eq!(measure_text_width("\u{9b}31mred\u{9b}0m"), 3);
-}
+        // silently ignores non-ascii
+        assert_eq!(parsed_style, Style::default());
+    }
 
-#[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
-#[test]
-fn unicode_width_falls_back() {
-    assert_eq!(measure_text_width("é"), 1);
-    assert_eq!(measure_text_width("e\u{301}"), 1);
-    assert_eq!(measure_text_width("1\u{fe0f}\u{20e3}"), 2);
-    assert_eq!(measure_text_width("👩‍💻"), 2);
-}
+    #[test]
+    fn test_style_from_non_ascii_bg() {
+        // len() == 10, starts_with("on_#"), but slices [4..6] land mid-€
+        let bg = "on_#€€";
+        assert_eq!(bg.len(), 10);
 
-#[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
-#[test]
-fn long_ascii_prefix_with_later_control_falls_back() {
-    let mut value = "x".repeat(4096);
-    value.push('\n');
-    value.push('y');
-    assert_eq!(measure_text_width(&value), 4098);
+        let parsed_style = Style::from_dotted_str(bg);
+
+        // silently ignores non-ascii
+        assert_eq!(parsed_style, Style::default());
+    }
+
+    /// Expected values are display widths, so this needs `unicode-width`.
+    #[test]
+    #[cfg(feature = "unicode-width")]
+    fn test_truncate_str_multibyte_no_panic() {
+        let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}"; // 4 wide chars, 3 bytes each
+        assert_eq!(&truncate_str(s, 4, ""), "\u{4f60}\u{597d}");
+        assert_eq!(&truncate_str(s, 5, ""), "\u{4f60}\u{597d}");
+        assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}");
+        assert_eq!(&truncate_str(s, 1, ""), "");
+        // A 3-column tail at width 4 leaves 1 column, too narrow for a wide char.
+        assert_eq!(&truncate_str(s, 4, "..."), "...");
+        assert_eq!(&truncate_str(s, 1, "..."), "...");
+        // Mixed ASCII and multi-byte.
+        assert_eq!(&truncate_str("ab\u{4f60}cd", 4, ""), "ab\u{4f60}");
+    }
+
+    /// Without `unicode-width` every char is one column.
+    #[test]
+    #[cfg(not(feature = "unicode-width"))]
+    fn test_truncate_str_multibyte_no_panic() {
+        let s = "\u{4f60}\u{597d}\u{4e16}\u{754c}";
+        assert_eq!(&truncate_str(s, 2, ""), "\u{4f60}\u{597d}");
+        assert_eq!(&truncate_str(s, 5, ""), s);
+        assert_eq!(&truncate_str("ab\u{4f60}cd", 3, ""), "ab\u{4f60}");
+    }
+
+    #[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
+    #[test]
+    fn printable_ascii_uses_width() {
+        assert_eq!(measure_text_width(""), 0);
+        assert_eq!(measure_text_width(" !~"), 3);
+    }
+
+    #[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
+    #[test]
+    fn controls_and_ansi_fall_back_to_parser() {
+        // Existing str_width counts the newline as one column in this contract.
+        assert_eq!(measure_text_width("a\nb"), 3);
+        assert_eq!(measure_text_width("\x1b[31mred\x1b[0m"), 3);
+        assert_eq!(measure_text_width("\u{9b}31mred\u{9b}0m"), 3);
+    }
+
+    #[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
+    #[test]
+    fn unicode_width_falls_back() {
+        assert_eq!(measure_text_width("é"), 1);
+        assert_eq!(measure_text_width("e\u{301}"), 1);
+        assert_eq!(measure_text_width("1\u{fe0f}\u{20e3}"), 2);
+        assert_eq!(measure_text_width("👩‍💻"), 2);
+    }
+
+    #[cfg(all(feature = "std", feature = "ansi-parsing", feature = "unicode-width"))]
+    #[test]
+    fn long_ascii_prefix_with_later_control_falls_back() {
+        let mut value = "x".repeat(4096);
+        value.push('\n');
+        value.push('y');
+        assert_eq!(measure_text_width(&value), 4098);
+    }
 }
