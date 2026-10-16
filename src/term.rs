@@ -329,9 +329,8 @@ impl Term {
         self.write_str(initial)?;
 
         fn read_line_internal(slf: &Term, initial: &str) -> io::Result<String> {
-            let prefix_len = initial.len();
-
             let mut chars: Vec<char> = initial.chars().collect();
+            let prefix_len = chars.len();
 
             loop {
                 match slf.read_key()? {
