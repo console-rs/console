@@ -941,12 +941,11 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
                                 s_byte += c.len_utf8();
                                 s_width += char_width(c);
                                 match s_width.cmp(&rest_width) {
-                                    Ordering::Equal => break,
                                     Ordering::Greater => {
                                         s_byte -= c.len_utf8();
                                         break;
                                     }
-                                    Ordering::Less => continue,
+                                    Ordering::Less | Ordering::Equal => continue,
                                 }
                             }
 
@@ -1121,6 +1120,23 @@ mod tests {
         assert_eq!(
             &truncate_str(&s, 2, "!!!"),
             &format!("!!!{}", style("").red().force_styling(true))
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "unicode-width")]
+    fn test_truncate_str_combining_marks() {
+        assert_eq!(&truncate_str("e\u{301}xy", 1, ""), "e\u{301}");
+        assert_eq!(
+            &truncate_str("a\u{308}\u{301}xy", 2, "!"),
+            "a\u{308}\u{301}!"
+        );
+        assert_eq!(&truncate_str("e\u{301}xy", 0, ""), "");
+        assert_eq!(&truncate_str("界\u{301}xy", 2, ""), "界\u{301}");
+        #[cfg(feature = "ansi-parsing")]
+        assert_eq!(
+            &truncate_str("\x1b[31me\u{301}xy\x1b[0m", 1, ""),
+            "\x1b[31me\u{301}\x1b[0m"
         );
     }
 
