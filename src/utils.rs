@@ -341,6 +341,7 @@ impl Style {
                 "on_bright" => rv.on_bright(),
                 "bold" => rv.bold(),
                 "dim" => rv.dim(),
+                "italic" => rv.italic(),
                 "underlined" => rv.underlined(),
                 "blink" => rv.blink(),
                 "blink_fast" => rv.blink_fast(),
@@ -1235,6 +1236,15 @@ mod tests {
             );
             assert_eq!(&attrs.attrs().collect::<Vec<_>>(), test_attrs);
         }
+    }
+
+    #[test]
+    fn test_style_from_dotted_italic() {
+        assert_eq!(Style::from_dotted_str("italic"), Style::new().italic());
+        assert_eq!(
+            Style::from_dotted_str("bold.italic.underlined"),
+            Style::new().bold().italic().underlined()
+        );
     }
 
     #[test]
