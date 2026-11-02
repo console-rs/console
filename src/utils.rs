@@ -908,25 +908,37 @@ pub(crate) fn char_width(c: char) -> usize {
     }
 }
 
-/// Returns the byte index of the widest prefix of `s` that fits into
-/// `budget` display columns.
+/// Returns the byte index of the longest prefix that fits in `budget` columns.
+///
+/// The index never splits a display cluster: a base character stays with its
+/// trailing zero-width characters (e.g. combining marks), and a
+/// `U+200D ZERO WIDTH JOINER` keeps the character that follows it in the same
+/// cluster, so joined sequences such as the family emoji are never split
+/// apart.
 fn cut_index(s: &str, budget: usize) -> usize {
-    use core::cmp::Ordering;
-
-    let mut s_byte = 0;
-    let mut s_width = 0;
-    for c in s.chars() {
-        s_byte += c.len_utf8();
-        s_width += char_width(c);
-        match s_width.cmp(&budget) {
-            Ordering::Greater => {
-                s_byte -= c.len_utf8();
-                break;
-            }
-            Ordering::Less | Ordering::Equal => continue,
+    let mut columns = 0;
+    let mut cluster_start = 0;
+    let mut joins_next = false;
+    for (index, c) in s.char_indices() {
+        let keeps_cluster = index == cluster_start || joins_next || char_width(c) == 0;
+        joins_next = c == '\u{200d}';
+        if keeps_cluster {
+            continue;
         }
+        // `c` starts a new cluster, so the previous one is complete: keep it
+        // if it still fits, otherwise stop right before it.
+        let cluster_width = str_width(&s[cluster_start..index]);
+        if columns + cluster_width > budget {
+            return cluster_start;
+        }
+        columns += cluster_width;
+        cluster_start = index;
     }
-    s_byte
+    if columns + str_width(&s[cluster_start..]) <= budget {
+        s.len()
+    } else {
+        cluster_start
+    }
 }
 
 /// Truncates a string to a certain number of characters.
@@ -1137,6 +1149,26 @@ mod tests {
             &truncate_str("\x1b[31me\u{301}xy\x1b[0m", 1, ""),
             "\x1b[31me\u{301}\x1b[0m"
         );
+    }
+
+    #[test]
+    #[cfg(feature = "unicode-width")]
+    fn test_truncate_str_zwj_sequence() {
+        let family = "\u{1f468}\u{200d}\u{1f469}\u{200d}\u{1f467}\u{200d}\u{1f466}";
+        assert_eq!(measure_text_width(family), 2);
+        // The joined sequence fits the requested width as a whole, so it
+        // must not be split (#306).
+        assert_eq!(&truncate_str(&format!("{family}X"), 2, ""), family);
+        // Too narrow for the sequence: drop it entirely rather than leaving
+        // a dangling joiner behind.
+        assert_eq!(&truncate_str(&format!("{family}X"), 1, ""), "");
+        // The tail is taken into account.
+        assert_eq!(
+            &truncate_str(&format!("{family}XY"), 3, ">"),
+            &format!("{family}>")
+        );
+        // The wide control character keeps its behaviour.
+        assert_eq!(&truncate_str("界X", 2, ""), "界");
     }
 
     #[test]
