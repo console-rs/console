@@ -1050,12 +1050,19 @@ pub fn pad_str_with<'a>(
         Alignment::Center => (diff / 2, diff - diff / 2),
     };
 
+    // The padding character can take up more than one column, so the number
+    // of columns to fill needs to be translated into a number of copies of
+    // the padding character. Only copy as many as fit, so the padded string
+    // never exceeds the requested width.
+    let pad_width = char_width(pad);
+    let pad_copies = |cols: usize| cols.checked_div(pad_width).unwrap_or(cols);
+
     let mut rv = String::new();
-    for _ in 0..left_pad {
+    for _ in 0..pad_copies(left_pad) {
         rv.push(pad);
     }
     rv.push_str(s);
-    for _ in 0..right_pad {
+    for _ in 0..pad_copies(right_pad) {
         rv.push(pad);
     }
     Cow::Owned(rv)
@@ -1238,6 +1245,24 @@ mod tests {
             pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
             "foo..."
         );
+    }
+
+    #[test]
+    #[cfg(feature = "unicode-width")]
+    fn test_pad_str_with_wide_pad() {
+        // A padding character can take up more than one column; the padded
+        // result must not exceed the requested width (#305).
+        assert_eq!(pad_str_with("a", 5, Alignment::Right, None, '界'), "界界a");
+        assert_eq!(pad_str_with("a", 5, Alignment::Left, None, '界'), "a界界");
+        assert_eq!(pad_str_with("a", 5, Alignment::Center, None, '界'), "界a界");
+        assert_eq!(
+            measure_text_width(&pad_str_with("a", 5, Alignment::Right, None, '界')),
+            5
+        );
+        // The requested width is not exactly attainable: stay short of it
+        // instead of exceeding it.
+        assert_eq!(pad_str_with("", 5, Alignment::Left, None, '界'), "界界");
+        assert_eq!(pad_str_with("a", 4, Alignment::Right, None, '界'), "界a");
     }
 
     #[test]
