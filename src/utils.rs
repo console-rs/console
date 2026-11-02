@@ -908,6 +908,27 @@ pub(crate) fn char_width(c: char) -> usize {
     }
 }
 
+/// Returns the byte index of the widest prefix of `s` that fits into
+/// `budget` display columns.
+fn cut_index(s: &str, budget: usize) -> usize {
+    use core::cmp::Ordering;
+
+    let mut s_byte = 0;
+    let mut s_width = 0;
+    for c in s.chars() {
+        s_byte += c.len_utf8();
+        s_width += char_width(c);
+        match s_width.cmp(&budget) {
+            Ordering::Greater => {
+                s_byte -= c.len_utf8();
+                break;
+            }
+            Ordering::Less | Ordering::Equal => continue,
+        }
+    }
+    s_byte
+}
+
 /// Truncates a string to a certain number of characters.
 ///
 /// This ensures that escape codes are not screwed up in the process.
@@ -921,7 +942,6 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
 
     #[cfg(feature = "ansi-parsing")]
     {
-        use core::cmp::Ordering;
         let mut iter = AnsiCodeIterator::new(s);
         let mut length = 0;
         let mut rv = None;
@@ -934,23 +954,9 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
                         if str_width(s) + length > width.saturating_sub(tail_width) {
                             let ts = iter.current_slice();
 
-                            let mut s_byte = 0;
-                            let mut s_width = 0;
                             let rest_width =
                                 width.saturating_sub(tail_width).saturating_sub(length);
-                            for c in s.chars() {
-                                s_byte += c.len_utf8();
-                                s_width += char_width(c);
-                                match s_width.cmp(&rest_width) {
-                                    Ordering::Greater => {
-                                        s_byte -= c.len_utf8();
-                                        break;
-                                    }
-                                    Ordering::Less | Ordering::Equal => continue,
-                                }
-                            }
-
-                            let idx = ts.len() - s.len() + s_byte;
+                            let idx = ts.len() - s.len() + cut_index(s, rest_width);
                             let mut buf = ts[..idx].to_string();
                             buf.push_str(tail);
                             rv = Some(buf);
@@ -979,15 +985,7 @@ pub fn truncate_str<'a>(s: &'a str, width: usize, tail: &str) -> Cow<'a, str> {
         // byte offset from `char_indices`, which a multi-byte char advances by
         // more than its width.
         let column_budget = width.saturating_sub(str_width(tail));
-        let mut columns = 0;
-        let mut cut_at = s.len();
-        for (byte_index, c) in s.char_indices() {
-            columns += char_width(c);
-            if columns > column_budget {
-                cut_at = byte_index;
-                break;
-            }
-        }
+        let cut_at = cut_index(s, column_budget);
 
         let mut buf = String::with_capacity(cut_at + tail.len());
         buf.push_str(&s[..cut_at]);
