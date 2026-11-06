@@ -1020,7 +1020,12 @@ pub fn pad_str<'a>(
 ) -> Cow<'a, str> {
     pad_str_with(s, width, align, truncate, ' ')
 }
-/// Pads a string with specific padding to fill a certain number of characters.
+/// Pads a string with specific padding to fill a certain number of terminal columns.
+///
+/// Only whole padding characters are added. If the remaining columns cannot
+/// fit another padding character, they are left unused, so the result can be
+/// narrower than `width` for any alignment. Zero-width padding characters are
+/// repeated as if they occupied one column.
 ///
 /// This will honor ansi codes correctly and allows you to align a string
 /// on the left, right or centered.  Additionally truncation can be enabled
@@ -1042,7 +1047,7 @@ pub fn pad_str_with<'a>(
         };
     }
 
-    let diff = width - cols;
+    let diff = (width - cols) / char_width(pad).max(1);
 
     let (left_pad, right_pad) = match align {
         Alignment::Left => (0, diff),
@@ -1238,6 +1243,73 @@ mod tests {
             pad_str_with("foobarbaz", 6, Alignment::Left, Some("..."), '#'),
             "foo..."
         );
+    }
+
+    #[cfg(feature = "unicode-width")]
+    #[test]
+    fn test_pad_str_with_wide_padding() {
+        for (input, width, align, pad, expected) in [
+            ("a", 5, Alignment::Left, '界', "a界界"),
+            ("a", 5, Alignment::Right, '界', "界界a"),
+            ("a", 5, Alignment::Center, '界', "界a界"),
+            ("a", 8, Alignment::Center, '界', "界a界界"),
+            ("a", 7, Alignment::Center, '界', "界a界界"),
+            ("a", 4, Alignment::Left, '界', "a界"),
+            ("a", 4, Alignment::Right, '界', "界a"),
+            ("a", 4, Alignment::Center, '界', "a界"),
+            ("a", 2, Alignment::Right, '界', "a"),
+            ("", 4, Alignment::Center, '界', "界界"),
+            ("界", 6, Alignment::Center, '🤖', "🤖界🤖"),
+            ("界", 5, Alignment::Right, '.', "...界"),
+        ] {
+            let output = pad_str_with(input, width, align, None, pad);
+            assert_eq!(output, expected);
+            assert!(measure_text_width(&output) <= width);
+        }
+    }
+
+    #[cfg(all(feature = "unicode-width", feature = "ansi-parsing"))]
+    #[test]
+    fn test_pad_str_with_wide_padding_ansi() {
+        let input = "\x1b[31ma\x1b[0m";
+        let output = pad_str_with(input, 5, Alignment::Center, None, '界');
+        assert_eq!(output, "界\x1b[31ma\x1b[0m界");
+        assert_eq!(measure_text_width(&output), 5);
+    }
+
+    #[cfg(feature = "unicode-width")]
+    #[test]
+    fn test_pad_str_with_zero_width_padding() {
+        for pad in ['\u{301}', '\0', '\x1b'] {
+            assert_eq!(
+                pad_str_with("a", 3, Alignment::Right, None, pad),
+                format!("{pad}{pad}a")
+            );
+        }
+    }
+
+    #[cfg(feature = "unicode-width")]
+    #[test]
+    fn test_pad_str_with_wide_padding_no_room() {
+        let output = pad_str_with("a", 2, Alignment::Right, Some("..."), '界');
+        assert_eq!(output, "a");
+        assert!(matches!(output, Cow::Owned(_)));
+        assert!(matches!(
+            pad_str_with("界", 2, Alignment::Right, None, '界'),
+            Cow::Borrowed(_)
+        ));
+        assert_eq!(
+            pad_str_with("界a", 2, Alignment::Right, Some(""), '界'),
+            "界"
+        );
+    }
+
+    #[cfg(not(feature = "unicode-width"))]
+    #[test]
+    fn test_pad_str_with_without_unicode_width() {
+        let output = pad_str_with("a", 5, Alignment::Right, None, '界');
+        assert_eq!(output, "界界界界a");
+        assert_eq!(measure_text_width(&output), 5);
     }
 
     #[test]
