@@ -182,7 +182,7 @@ impl State {
                 Self::S2 | Self::S4 => Self::S4,
                 _ => Self::Trap,
             },
-            ';' => match self {
+            ';' | ':' => match self {
                 Self::S1 | Self::S2 | Self::S4 => Self::S4,
                 Self::S5 | Self::S6 | Self::S7 | Self::S8 | Self::S10 => Self::S10,
                 _ => Self::Trap,
@@ -430,7 +430,7 @@ mod tests {
                 r"(?s)(?:",
                 r"\x1b\].*?(?:\x07|\x9c|\x1b\\|\z)|",
                 r"\x1bP(?:[^\x1b\x9c]|\x1b\x1b|\x1b[^\x1b\\])*?(?:\x9c|\x1b\\|\x1b\z|\z)|",
-                r"[\x1b\x9b]([()][012AB]|[\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?",
+                r"[\x1b\x9b]([()][012AB]|[\[()#;:?]*(?:[0-9]{1,4}(?:[;:][0-9]{0,4})*)?",
                 r"[0-9A-PRZcf-nqry=><])",
                 r")",
             ))
@@ -458,7 +458,7 @@ mod tests {
         // To make sure the test runs in a reasonable time this is a slimmed down list of
         // characters to reduce the groups that are only used with each other along with one
         // arbitrarily chosen character not used in the regex (' ')
-        const POSSIBLE_BYTES: &[u8] = &[b' ', 0x1b, 0x9b, b'(', b'0', b'[', b';', b'3', b'C'];
+        const POSSIBLE_BYTES: &[u8] = &[b' ', 0x1b, 0x9b, b'(', b'0', b'[', b';', b':', b'3', b'C'];
 
         fn check_all_strings_of_len(len: usize) {
             _check_all_strings_of_len(len, &mut Vec::with_capacity(len));
@@ -568,6 +568,13 @@ mod tests {
             strip_ansi_codes(&format!("{open}hello{close}")).as_ref(),
             "hello"
         );
+    }
+
+    #[test]
+    fn strip_sgr_with_colon_separated_params() {
+        // Curly underline and a true color foreground in the ITU T.416 colon form.
+        let s = "\x1b[4:3mwavy\x1b[0m \x1b[38:2::255:128:0morange\x1b[0m";
+        assert_eq!(strip_ansi_codes(s).as_ref(), "wavy orange");
     }
 
     #[test]
