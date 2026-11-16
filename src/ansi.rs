@@ -212,19 +212,17 @@ impl State {
                 Self::S10 => Self::S5,
                 _ => Self::Trap,
             },
-            'A'..='P' | 'R' | 'Z' | 'c' | 'f'..='n' | 'q' | 'r' | 'y' | '=' | '>' | '<' => {
-                match self {
-                    Self::S1
-                    | Self::S2
-                    | Self::S4
-                    | Self::S5
-                    | Self::S6
-                    | Self::S7
-                    | Self::S8
-                    | Self::S10 => Self::S11,
-                    _ => Self::Trap,
-                }
-            }
+            '@'..='Z' | '`'..='~' | '=' | '>' | '<' => match self {
+                Self::S1
+                | Self::S2
+                | Self::S4
+                | Self::S5
+                | Self::S6
+                | Self::S7
+                | Self::S8
+                | Self::S10 => Self::S11,
+                _ => Self::Trap,
+            },
             _ => Self::Trap,
         };
     }
@@ -431,7 +429,7 @@ mod tests {
                 r"\x1b\].*?(?:\x07|\x9c|\x1b\\|\z)|",
                 r"\x1bP(?:[^\x1b\x9c]|\x1b\x1b|\x1b[^\x1b\\])*?(?:\x9c|\x1b\\|\x1b\z|\z)|",
                 r"[\x1b\x9b]([()][012AB]|[\[()#;:?]*(?:[0-9]{1,4}(?:[;:][0-9]{0,4})*)?",
-                r"[0-9A-PRZcf-nqry=><])",
+                r"[0-9@-Z`-~=><])",
                 r")",
             ))
             .unwrap()
@@ -575,6 +573,15 @@ mod tests {
         // Curly underline and a true color foreground in the ITU T.416 colon form.
         let s = "\x1b[4:3mwavy\x1b[0m \x1b[38:2::255:128:0morange\x1b[0m";
         assert_eq!(strip_ansi_codes(s).as_ref(), "wavy orange");
+    }
+
+    #[test]
+    fn strip_csi_with_any_final_byte() {
+        // Save and restore cursor, scroll up, erase characters, and a tilde-terminated
+        // sequence: any CSI final byte in 0x40..=0x7e ends the sequence.
+        let s = "a\x1b[sb\x1b[uc\x1b[5Sd\x1b[2Xe\x1b[1;5~f";
+        assert_eq!(strip_ansi_codes(s).as_ref(), "abcdef");
+        assert_eq!(crate::measure_text_width(s), 6);
     }
 
     #[test]
