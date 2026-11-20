@@ -155,21 +155,25 @@ fn poll_fd(fd: RawFd, timeout: i32) -> io::Result<bool> {
         events: libc::POLLIN,
         revents: 0,
     };
-    let ret = unsafe { libc::poll(&mut pollfd as *mut _, 1, timeout) };
-    if ret < 0 {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(pollfd.revents & libc::POLLIN != 0)
+    loop {
+        let ret = unsafe { libc::poll(&mut pollfd as *mut _, 1, timeout) };
+        if ret < 0 {
+            let err = io::Error::last_os_error();
+            if err.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            break Err(err);
+        }
+        break Ok(pollfd.revents & libc::POLLIN != 0);
     }
 }
 
 #[cfg(target_os = "macos")]
 fn select_fd(fd: RawFd, timeout: i32) -> io::Result<bool> {
-    unsafe {
-        let mut read_fd_set: libc::fd_set = mem::zeroed();
-
+    loop {
+        let mut read_fd_set: libc::fd_set = unsafe { mem::zeroed() };
         let mut timeout_val;
-        let timeout = if timeout < 0 {
+        let timeout_ptr: *mut libc::timeval = if timeout < 0 {
             ptr::null_mut()
         } else {
             timeout_val = libc::timeval {
@@ -179,20 +183,25 @@ fn select_fd(fd: RawFd, timeout: i32) -> io::Result<bool> {
             &mut timeout_val
         };
 
-        libc::FD_ZERO(&mut read_fd_set);
-        libc::FD_SET(fd, &mut read_fd_set);
-        let ret = libc::select(
-            fd + 1,
-            &mut read_fd_set,
-            ptr::null_mut(),
-            ptr::null_mut(),
-            timeout,
-        );
+        let ret = unsafe {
+            libc::FD_ZERO(&mut read_fd_set);
+            libc::FD_SET(fd, &mut read_fd_set);
+            libc::select(
+                fd + 1,
+                &mut read_fd_set,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                timeout_ptr,
+            )
+        };
         if ret < 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(libc::FD_ISSET(fd, &read_fd_set))
+            let err = io::Error::last_os_error();
+            if err.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            break Err(err);
         }
+        break Ok(unsafe { libc::FD_ISSET(fd, &read_fd_set) });
     }
 }
 
@@ -229,10 +238,18 @@ fn read_single_char(fd: RawFd) -> io::Result<Option<char>> {
 // If successful, return the number of bytes read.
 // Will return an error if nothing was read, i.e when called at end of file.
 fn read_bytes(fd: RawFd, buf: &mut [u8], count: u8) -> io::Result<u8> {
-    let read = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, count as usize) };
-    if read < 0 {
-        Err(io::Error::last_os_error())
-    } else if read == 0 {
+    let read = loop {
+        let n = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut _, count as usize) };
+        if n < 0 {
+            let err = io::Error::last_os_error();
+            if err.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(err);
+        }
+        break n;
+    };
+    if read == 0 {
         Err(io::Error::new(
             io::ErrorKind::UnexpectedEof,
             "Reached end of file",
