@@ -1047,7 +1047,7 @@ pub fn pad_str_with<'a>(
         };
     }
 
-    let diff = (width - cols) / char_width(pad).max(1);
+    let diff = (width - cols) / Ord::max(char_width(pad), 1);
 
     let (left_pad, right_pad) = match align {
         Alignment::Left => (0, diff),
